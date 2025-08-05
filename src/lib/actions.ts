@@ -2,7 +2,14 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { users } from './data';
+import { db } from '@/lib/firebaseConfig';
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  limit,
+} from 'firebase/firestore';
 
 const adminLoginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -17,8 +24,12 @@ export type AdminLoginState = {
   message?: string | null;
 };
 
-export async function loginAdmin(prevState: AdminLoginState, formData: FormData): Promise<AdminLoginState> {
+export async function loginAdmin(
+  prevState: AdminLoginState,
+  formData: FormData
+): Promise<AdminLoginState> {
   await new Promise((resolve) => setTimeout(resolve, 500));
+
   const validatedFields = adminLoginSchema.safeParse({
     email: formData.get('email'),
     username: formData.get('username'),
@@ -33,42 +44,73 @@ export async function loginAdmin(prevState: AdminLoginState, formData: FormData)
 
   const { email, username } = validatedFields.data;
 
-  const user = users.find(
-    (u) => u.role === 'Admin' && u.email === email && u.username === username && u.active
+  const usersRef = collection(db, 'users');
+  const q = query(
+    usersRef,
+    where('email', '==', email),
+    limit(1)
   );
 
-  if (!user) {
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) {
+    return { message: 'Invalid credentials or user is inactive.' };
+  }
+
+  const user = snapshot.docs[0].data();
+
+  if (
+    user.username !== username ||
+    user.role.toLowerCase() !== 'admin' ||
+    !user.active
+  ) {
     return { message: 'Invalid credentials or user is inactive.' };
   }
 
   redirect('/dashboard-admin');
 }
 
+// ---------------------------
+// STAFF LOGIN
+// ---------------------------
+
 export type StaffLoginState = {
   error?: string | null;
 };
 
-
-export async function loginStaff(prevState: StaffLoginState, formData: FormData): Promise<StaffLoginState> {
+export async function loginStaff(
+  prevState: StaffLoginState,
+  formData: FormData
+): Promise<StaffLoginState> {
   await new Promise((resolve) => setTimeout(resolve, 500));
   const pin = formData.get('pin') as string;
 
-  if(!pin || pin.length !== 4){
-      return {error: "Invalid PIN. Must be 4 digits."}
+  if (!pin || pin.length !== 4) {
+    return { error: 'Invalid PIN. Must be 4 digits.' };
   }
 
-  const user = users.find((u) => u.pin === pin && u.active);
+  const usersRef = collection(db, 'users');
+  const q = query(
+    usersRef,
+    where('pin', '==', pin),
+    where('active', '==', true),
+    limit(1)
+  );
 
-  if (!user) {
+  const snapshot = await getDocs(q);
+
+  if (snapshot.empty) {
     return { error: 'Invalid PIN or user is inactive.' };
   }
 
-  switch (user.role) {
-    case 'Cashier':
+  const user = snapshot.docs[0].data();
+
+  switch (user.role.toLowerCase()) {
+    case 'cashier':
       redirect('/dashboard-cashier');
-    case 'Waiter':
+    case 'waiter':
       redirect('/dashboard-waiter');
-    case 'Kitchen':
+    case 'kitchen':
       redirect('/dashboard-kitchen');
     default:
       return { error: 'User has an invalid role.' };

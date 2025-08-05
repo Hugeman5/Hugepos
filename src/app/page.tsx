@@ -8,7 +8,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-background">
       <div className="text-center mb-12">
         <h1 className="text-5xl font-bold font-headline text-primary">
-          FirePOS
+          HUGEPOS
         </h1>
         <p className="text-muted-foreground mt-2 text-lg">
           The blazing fast Point of Sale system for your business.
@@ -80,7 +80,7 @@ export default function Home() {
       </div>
       <footer className="mt-12 text-center text-muted-foreground text-sm">
         <p>
-          Copyright © {new Date().getFullYear()} FirePOS. All rights reserved.
+          Copyright © {new Date().getFullYear()} HUGEPOS. All rights reserved.
         </p>
       </footer>
     </main>

@@ -48,7 +48,7 @@ export default function AdminDashboardPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Welcome, Admin!</CardTitle>
-                    <CardDescription>From here you can control every aspect of your FirePOS system. Use the links above to get started.</CardDescription>
+                    <CardDescription>From here you can control every aspect of your HUGEPOS system. Use the links above to get started.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <p>Future updates will include more detailed reporting and inventory management features right here on this dashboard.</p>

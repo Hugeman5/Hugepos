@@ -3,7 +3,7 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'FirePOS',
+  title: 'HUGEPOS',
   description: 'A Point of Sale system built with Firebase and Next.js',
 };
 

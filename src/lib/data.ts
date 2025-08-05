@@ -38,7 +38,7 @@ export type Order = {
 };
 
 export const users: User[] = [
-  { id: 1, name: 'Admin User', role: 'Admin', email: 'admin@firepos.com', username: 'admin', active: true },
+  { id: 1, name: 'Admin User', role: 'Admin', email: 'admin@hugepos.com', username: 'admin', active: true },
   { id: 2, name: 'John Cashier', role: 'Cashier', pin: '1234', active: true },
   { id: 3, name: 'Jane Waiter', role: 'Waiter', pin: '5678', active: true },
   { id: 4, name: 'Chef Mike', role: 'Kitchen', pin: '9876', active: true },

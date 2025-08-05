@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { ArrowLeft, LogIn } from 'lucide-react';
 import { loginAdmin, type AdminLoginState } from '@/lib/actions';
@@ -22,7 +22,7 @@ function LoginButton() {
 export default function AdminLoginPage() {
   const initialState: AdminLoginState = { message: null, errors: {} };
   const [state, dispatch] = useFormState(loginAdmin, initialState);
-
+ 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md">
@@ -48,7 +48,7 @@ export default function AdminLoginPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" name="email" type="email" placeholder="admin@firepos.com" required />
+                <Input id="email" name="email" type="email" placeholder="admin@hugepos.com" required />
                  {state.errors?.email && (
                   <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>
                 )}
