@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useFormStatus } from 'react-dom';
+import { useFormState, useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { ArrowLeft, LogIn } from 'lucide-react';
 import { loginAdmin, type AdminLoginState } from '@/lib/actions';
