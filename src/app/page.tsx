@@ -8,7 +8,7 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-background">
       <div className="text-center mb-12">
         <h1 className="text-5xl font-bold font-headline text-primary">
-          HUGEPOS
+          Welcome to HugePOS 🚀
         </h1>
         <p className="text-muted-foreground mt-2 text-lg">
           The blazing fast Point of Sale system for your business.
