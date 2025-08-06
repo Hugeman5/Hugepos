@@ -16,7 +16,6 @@
     }
   ],
   "hosting": {
-    "target": "hugepos",
     "public": "out",
     "ignore": [
       "firebase.json",
