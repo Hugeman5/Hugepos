@@ -1,69 +1,65 @@
 'use client';
-
 import { useState } from 'react';
-import Image from 'next/image';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { type Product, type Category } from '@/lib/data';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-type ProductGridProps = {
-  products: Product[];
-  categories: Category[];
-};
+const products = [
+  { id: 1, name: 'Espresso', price: 2.5, category: 'Coffee' },
+  { id: 2, name: 'Latte', price: 3.5, category: 'Coffee' },
+  { id: 3, name: 'Cappuccino', price: 3.5, category: 'Coffee' },
+  { id: 4, name: 'Croissant', price: 2.0, category: 'Pastries' },
+  { id: 5, name: 'Muffin', price: 2.2, category: 'Pastries' },
+  { id: 6, name: 'Sandwich', price: 5.5, category: 'Food' },
+  { id: 7, name: 'Salad', price: 6.0, category: 'Food' },
+];
 
-export default function ProductGrid({ products, categories }: ProductGridProps) {
+const categories = ['All', 'Coffee', 'Pastries', 'Food'];
+
+export default function ProductGrid() {
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const filteredProducts =
-    selectedCategory === 'All'
-      ? products
-      : products.filter((p) => p.category === selectedCategory);
-  
-  const handleAddToCart = (product: Product) => {
-    document.dispatchEvent(new CustomEvent('addToCart', { detail: product }));
-  };
+  const filteredProducts = products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      (selectedCategory === 'All' || product.category === selectedCategory)
+  );
 
   return (
-    <div className="flex flex-col gap-4 h-full">
-      <Tabs defaultValue="All" onValueChange={setSelectedCategory}>
-        <div className="overflow-x-auto pb-2">
-          <TabsList>
-            <TabsTrigger value="All">All</TabsTrigger>
-            {categories.map((cat) => (
-              <TabsTrigger key={cat.id} value={cat.name}>
-                {cat.name}
-              </TabsTrigger>
+    <div>
+      <div className="mb-4 flex space-x-4">
+        <Input
+          placeholder="Search products..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-xs"
+        />
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by category" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map((category) => (
+              <SelectItem key={category} value={category}>
+                {category}
+              </SelectItem>
             ))}
-          </TabsList>
-        </div>
-      </Tabs>
-      <div className="flex-1 overflow-y-auto pr-2">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredProducts.map((product) => (
-            <Card key={product.id} className="overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-              <CardHeader className="p-0 relative h-32">
-                 <Image
-                    src={product.imageUrl}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                    className="object-cover"
-                    data-ai-hint={product.dataAiHint}
-                 />
-              </CardHeader>
-              <CardContent className="p-4 flex-1">
-                <h3 className="font-semibold leading-tight">{product.name}</h3>
-                <p className="text-muted-foreground text-sm">${product.price.toFixed(2)}</p>
-              </CardContent>
-              <CardFooter className="p-2 mt-auto">
-                <Button className="w-full" variant="outline" onClick={() => handleAddToCart(product)}>
-                  Add to Order
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        {filteredProducts.map((product) => (
+          <Button key={product.id} variant="outline" className="h-24">
+            {product.name}
+          </Button>
+        ))}
       </div>
     </div>
   );
