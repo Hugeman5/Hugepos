@@ -19,10 +19,6 @@
         pkgs.direnv
         pkgs.zulu
       ];
-
-      env = {
-        NODE_ENV = "development";
-      };
     };
   };
 }
