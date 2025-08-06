@@ -3,14 +3,31 @@
     {
       "source": "functions",
       "codebase": "default",
-      "ignore": [...],
-      "predeploy": [...]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
     }
   ],
   "hosting": {
-    "target": "hugepos",         // must be directly inside hosting
+    "target": "hugepos",
     "public": "out",
-    "ignore": [...],
-    "rewrites": [...]
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }

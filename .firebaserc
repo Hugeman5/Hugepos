@@ -1,13 +1,14 @@
 {
-    "projects": {
-      "default": "hugepos-beed0"
-    },
-    "targets": {
-      "hugepos-beed0": {
-        "hosting": {
-          "hugepos": ["hugepos-beed0"]
-        }
+  "projects": {
+    "default": "hugepos-beed0"
+  },
+  "targets": {
+    "hugepos-beed0": {
+      "hosting": {
+        "hugepos": [
+          "hugepos-beed0"
+        ]
       }
     }
   }
-  
+}
