@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
 
+// This is a comment to force a commit
 const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
