@@ -1,19 +1,13 @@
 { pkgs }:
 
 {
-  # This defines the shell environment
-  shell = pkgs.mkShell {
-    packages = [
-      pkgs.nodejs_20
-      pkgs.zulu
-      pkgs.gh
-      pkgs.direnv
-    ];
-
-    env = {
-      NODE_ENV = "development";
-    };
-  };
+  # This defines the packages available in your environment
+  packages = [
+    pkgs.nodejs_20
+    pkgs.zulu
+    pkgs.gh
+    pkgs.direnv
+  ];
 
   # Required to enable preview in Firebase Studio
   idx = {
