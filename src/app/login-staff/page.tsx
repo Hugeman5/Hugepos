@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PinPad } from '@/components/pin-pad';
 import { db } from '@/lib/firebaseConfig';
-import { collection, doc, getDoc, getDocs, query, where, limit } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit, onSnapshot, orderBy } from 'firebase/firestore';
 
 export default function StaffLoginPage() {
   const initialState: StaffLoginState = { error: null };
@@ -23,27 +23,32 @@ export default function StaffLoginPage() {
   type QuickUser = { id: string; name: string; pin?: string | null };
   const [quickUsers, setQuickUsers] = useState<QuickUser[]>([]);
 
-  // Fetch Eugene and Jeanne for quick select
+  // Subscribe to active staff for quick select (show only those with a 4-digit pin)
   useEffect(() => {
-    let isMounted = true;
-    async function fetchQuickUsers() {
-      try {
-        const usersRef = collection(db, 'users');
-        // Perform two simple queries to avoid composite index requirements
-        const [eugeneSnap, jeanneSnap] = await Promise.all([
-          getDocs(query(usersRef, where('name', '==', 'Eugene'), where('active', '==', true), limit(1))),
-          getDocs(query(usersRef, where('name', '==', 'Jeanne'), where('active', '==', true), limit(1))),
-        ]);
-        const results: QuickUser[] = [];
-        eugeneSnap.forEach(d => results.push({ id: d.id, name: (d.data().name ?? 'Eugene'), pin: d.data().pin ?? null }));
-        jeanneSnap.forEach(d => results.push({ id: d.id, name: (d.data().name ?? 'Jeanne'), pin: d.data().pin ?? null }));
-        if (isMounted) setQuickUsers(results);
-      } catch (err) {
-        // No-op if blocked by rules/App Check; quick select just won't render
-      }
-    }
-    fetchQuickUsers();
-    return () => { isMounted = false; };
+    const usersRef = collection(db, 'users');
+    const q = query(
+      usersRef,
+      where('active', '==', true),
+      orderBy('name'),
+      limit(24)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const results: QuickUser[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as any;
+        const pinVal = data?.pin ?? null;
+        if (typeof pinVal === 'string' && /^\d{4}$/.test(pinVal)) {
+          results.push({ id: d.id, name: data?.name ?? d.id, pin: pinVal });
+        }
+      });
+      setQuickUsers(results);
+    }, () => {
+      // ignore errors (rules/app check); list simply won't render
+      setQuickUsers([]);
+    });
+
+    return () => unsub();
   }, []);
 
   // Automatically submit the form when PIN is 4 digits
