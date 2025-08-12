@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PinPad } from '@/components/pin-pad';
-
+import { db } from '@/lib/firebaseConfig';
+import { collection, doc, getDoc, getDocs, query, where, limit } from 'firebase/firestore';
 
 export default function StaffLoginPage() {
   const initialState: StaffLoginState = { error: null };
@@ -19,19 +20,52 @@ export default function StaffLoginPage() {
   const [pin, setPin] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
 
+  type QuickUser = { id: string; name: string; pin?: string | null };
+  const [quickUsers, setQuickUsers] = useState<QuickUser[]>([]);
+
+  // Fetch Eugene and Jeanne for quick select
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchQuickUsers() {
+      try {
+        const usersRef = collection(db, 'users');
+        // Perform two simple queries to avoid composite index requirements
+        const [eugeneSnap, jeanneSnap] = await Promise.all([
+          getDocs(query(usersRef, where('name', '==', 'Eugene'), where('active', '==', true), limit(1))),
+          getDocs(query(usersRef, where('name', '==', 'Jeanne'), where('active', '==', true), limit(1))),
+        ]);
+        const results: QuickUser[] = [];
+        eugeneSnap.forEach(d => results.push({ id: d.id, name: (d.data().name ?? 'Eugene'), pin: d.data().pin ?? null }));
+        jeanneSnap.forEach(d => results.push({ id: d.id, name: (d.data().name ?? 'Jeanne'), pin: d.data().pin ?? null }));
+        if (isMounted) setQuickUsers(results);
+      } catch (err) {
+        // No-op if blocked by rules/App Check; quick select just won't render
+      }
+    }
+    fetchQuickUsers();
+    return () => { isMounted = false; };
+  }, []);
+
   // Automatically submit the form when PIN is 4 digits
   useEffect(() => {
     if (pin.length === 4 && formRef.current && !pending) {
-        formRef.current.requestSubmit();
+      formRef.current.requestSubmit();
     }
   }, [pin, pending]);
 
   // Clear PIN on error
   useEffect(() => {
     if (state.error) {
-        setPin('');
+      setPin('');
     }
   }, [state.error])
+
+  function handleQuickSelect(user: QuickUser) {
+    if (user.pin && typeof user.pin === 'string' && /^\d{4}$/.test(user.pin)) {
+      setPin(user.pin);
+      // submission will auto-trigger via effect
+    }
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
@@ -51,10 +85,22 @@ export default function StaffLoginPage() {
             <form ref={formRef} action={dispatch} className="space-y-6">
               <input type="hidden" name="pin" value={pin} />
               <PinPad pin={pin} setPin={setPin} isPending={pending} />
+              {quickUsers.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Quick select</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {quickUsers.map((user) => (
+                      <Button key={user.id} type="button" variant="secondary" onClick={() => handleQuickSelect(user)} disabled={pending || !user.pin}>
+                        {user.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {state.error && (
-                 <Alert variant="destructive">
-                   <AlertDescription>{state.error}</AlertDescription>
-                 </Alert>
+                <Alert variant="destructive">
+                  <AlertDescription>{state.error}</AlertDescription>
+                </Alert>
               )}
             </form>
           </CardContent>

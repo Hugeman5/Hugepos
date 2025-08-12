@@ -6,12 +6,12 @@ import { getFirestore } from "firebase/firestore";
 
 // Your Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyCAuMZIM-pdIGVrPwc4sE5tpBQACgcY_Ks",
-  authDomain: "hugepos-beed0.firebaseapp.com",
-  projectId: "hugepos-beed0",
-  storageBucket: "hugepos-beed0.firebasestorage.app",
-  messagingSenderId: "1040281110757",
-  appId: "1:1040281110757:web:fa040f5dfb139e6a0fac0c"
+  apiKey: "AIzaSyDGgrDjgC4fhmj8zXdsNa2yb_NNM9jR0X8",
+  authDomain: "hugepos-blazing-fast.firebaseapp.com",
+  projectId: "hugepos-blazing-fast",
+  storageBucket: "hugepos-blazing-fast.firebasestorage.app",
+  messagingSenderId: "220653708464",
+  appId: "1:220653708464:web:9c0a85d86fd0a7eab0c775"
 };
 
 // Initialize Firebase safely (prevents double init)
