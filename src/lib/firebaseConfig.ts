@@ -1,6 +1,7 @@
 // Import the functions you need from the SDKs
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 // Optional: Uncomment below if you plan to use Auth
 // import { getAuth } from "firebase/auth";
 
@@ -16,6 +17,17 @@ const firebaseConfig = {
 
 // Initialize Firebase safely (prevents double init)
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+// Initialize App Check in browser before using other services
+if (typeof window !== 'undefined') {
+  // Debug token registered in Firebase Console for this Web App
+  (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = 'EF8EFDA6-59DE-42DF-98E4-09B1AB424DEE';
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_V3_SITE_KEY || 'unused-in-debug'),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
+
 const db = getFirestore(app);
 // const auth = getAuth(app); // Optional
 
