@@ -44,27 +44,27 @@ export async function loginAdmin(
 
   const { email, username } = validatedFields.data;
 
-  const usersRef = collection(db, 'users');
-  const q = query(
-    usersRef,
-    where('email', '==', email),
-    limit(1)
-  );
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('email', '==', email), limit(1));
 
-  const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q);
 
-  if (snapshot.empty) {
-    return { message: 'Invalid credentials or user is inactive.' };
-  }
+    if (snapshot.empty) {
+      return { message: 'Invalid credentials or user is inactive.' };
+    }
 
-  const user = snapshot.docs[0].data();
+    const user = snapshot.docs[0].data() as any;
 
-  if (
-    user.username !== username ||
-    user.role.toLowerCase() !== 'admin' ||
-    !user.active
-  ) {
-    return { message: 'Invalid credentials or user is inactive.' };
+    if (
+      user.username !== username ||
+      user.role?.toLowerCase() !== 'admin' ||
+      !user.active
+    ) {
+      return { message: 'Invalid credentials or user is inactive.' };
+    }
+  } catch (error: unknown) {
+    return { message: 'Login failed. Please try again later.' };
   }
 
   redirect('/dashboard-admin');
@@ -89,30 +89,34 @@ export async function loginStaff(
     return { error: 'Invalid PIN. Must be 4 digits.' };
   }
 
-  const usersRef = collection(db, 'users');
-  const q = query(
-    usersRef,
-    where('pin', '==', pin),
-    where('active', '==', true),
-    limit(1)
-  );
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(
+      usersRef,
+      where('pin', '==', pin),
+      where('active', '==', true),
+      limit(1)
+    );
 
-  const snapshot = await getDocs(q);
+    const snapshot = await getDocs(q);
 
-  if (snapshot.empty) {
-    return { error: 'Invalid PIN or user is inactive.' };
-  }
+    if (snapshot.empty) {
+      return { error: 'Invalid PIN or user is inactive.' };
+    }
 
-  const user = snapshot.docs[0].data();
+    const user = snapshot.docs[0].data() as any;
 
-  switch (user.role.toLowerCase()) {
-    case 'cashier':
-      redirect('/dashboard-cashier');
-    case 'waiter':
-      redirect('/dashboard-waiter');
-    case 'kitchen':
-      redirect('/dashboard-kitchen');
-    default:
-      return { error: 'User has an invalid role.' };
+    switch (user.role?.toLowerCase()) {
+      case 'cashier':
+        redirect('/dashboard-cashier');
+      case 'waiter':
+        redirect('/dashboard-waiter');
+      case 'kitchen':
+        redirect('/dashboard-kitchen');
+      default:
+        return { error: 'User has an invalid role.' };
+    }
+  } catch (error: unknown) {
+    return { error: 'Login failed. If this persists, ensure Firestore indexes are deployed.' };
   }
 }
