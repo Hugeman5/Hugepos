@@ -18,6 +18,7 @@ type StaffPickerProps = {
   onSelect: (user: StaffListUser) => void;
   className?: string;
   includeAdmins?: boolean;
+  selectedId?: string;
 };
 
 function getInitials(name?: string | null): string {
@@ -26,7 +27,7 @@ function getInitials(name?: string | null): string {
   return parts.map((p) => p[0]?.toUpperCase() ?? '').join('');
 }
 
-export default function StaffPicker({ onSelect, className, includeAdmins = false }: StaffPickerProps) {
+export default function StaffPicker({ onSelect, className, includeAdmins = false, selectedId }: StaffPickerProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [users, setUsers] = useState<StaffListUser[]>([]);
   const [search, setSearch] = useState<string>('');
@@ -96,7 +97,10 @@ export default function StaffPicker({ onSelect, className, includeAdmins = false
               key={u.id}
               type="button"
               onClick={() => onSelect(u)}
-              className="group rounded-lg border bg-card hover:bg-accent/40 transition-colors p-3 text-left flex items-center gap-3"
+              className={cn(
+                "group rounded-lg border bg-card hover:bg-accent/40 transition-colors p-3 text-left flex items-center gap-3",
+                selectedId === u.id && "ring-2 ring-primary/60 bg-accent/30"
+              )}
             >
               {u.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element

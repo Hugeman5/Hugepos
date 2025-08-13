@@ -49,11 +49,14 @@ export default function StaffLoginPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-6">
-              <StaffPicker onSelect={(u) => setSelected(u)} />
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Select your user</div>
+                <StaffPicker onSelect={(u) => setSelected(u)} selectedId={selected?.id} />
+              </div>
 
               <form ref={formRef} action={dispatch} className="space-y-4">
                 <input type="hidden" name="pin" value={pin} />
-                <PinPad pin={pin} setPin={setPin} isPending={pending} />
+                <PinPad pin={pin} setPin={setPin} isPending={pending} disabled={!selected} />
                 {selected && (
                   <div className="text-sm text-muted-foreground text-center">Logging in as <span className="font-medium">{selected.name || selected.username}</span></div>
                 )}
