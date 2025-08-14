@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { users as localUsers } from '@/lib/data';
+import { getAllUsers } from '@/lib/usersRepo';
 
 const adminLoginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -36,12 +36,13 @@ export async function loginAdmin(
   }
 
   const { email, username } = validatedFields.data;
+  const users = await getAllUsers();
 
-  const matched = localUsers.find((u) =>
-    (u.email?.toLowerCase() === email.toLowerCase()) &&
-    (u.username?.toLowerCase() === username.toLowerCase()) &&
-    (u.role.toLowerCase() === 'admin') &&
-    u.active === true
+  const uname = String(username).trim().toLowerCase();
+  const matched = users.find((u) =>
+    (String(u.role).toLowerCase() === 'admin') &&
+    (u.active !== false) &&
+    (String((u as any).id ?? '').toLowerCase() === uname || String((u as any).name ?? '').toLowerCase() === uname)
   );
 
   if (!matched) {
@@ -70,13 +71,14 @@ export async function loginStaff(
     return { error: 'Invalid PIN. Must be 4 digits.' };
   }
 
-  const matched = localUsers.find((u) => u.pin === pin && u.active === true);
+  const users = await getAllUsers();
+  const matched = users.find((u: any) => String(u.pin ?? '') === pin && (u.active !== false));
 
   if (!matched) {
     return { error: 'Invalid PIN or user is inactive.' };
   }
 
-  switch (matched.role.toLowerCase()) {
+  switch (String(matched.role).toLowerCase()) {
     case 'cashier':
       redirect('/dashboard-cashier');
     case 'waiter':
