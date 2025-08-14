@@ -10,28 +10,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { PinPad } from '@/components/pin-pad';
 
+function PinPadWithStatus({ pin, setPin }: { pin: string; setPin: React.Dispatch<React.SetStateAction<string>> }) {
+  const { pending } = useFormStatus();
+  return <PinPad pin={pin} setPin={setPin} isPending={pending} />;
+}
 
 export default function StaffLoginPage() {
   const initialState: StaffLoginState = { error: null };
   const [state, dispatch] = useFormState(loginStaff, initialState);
-  const { pending } = useFormStatus();
 
   const [pin, setPin] = useState('');
   const formRef = useRef<HTMLFormElement>(null);
 
   // Automatically submit the form when PIN is 4 digits
   useEffect(() => {
-    if (pin.length === 4 && formRef.current && !pending) {
-        formRef.current.requestSubmit();
+    if (pin.length === 4 && formRef.current) {
+      formRef.current.requestSubmit();
     }
-  }, [pin, pending]);
+  }, [pin]);
 
   // Clear PIN on error
   useEffect(() => {
     if (state.error) {
-        setPin('');
+      setPin('');
     }
-  }, [state.error])
+  }, [state.error]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
@@ -50,11 +53,11 @@ export default function StaffLoginPage() {
           <CardContent>
             <form ref={formRef} action={dispatch} className="space-y-6">
               <input type="hidden" name="pin" value={pin} />
-              <PinPad pin={pin} setPin={setPin} isPending={pending} />
+              <PinPadWithStatus pin={pin} setPin={setPin} />
               {state.error && (
-                 <Alert variant="destructive">
-                   <AlertDescription>{state.error}</AlertDescription>
-                 </Alert>
+                <Alert variant="destructive">
+                  <AlertDescription>{state.error}</AlertDescription>
+                </Alert>
               )}
             </form>
           </CardContent>
