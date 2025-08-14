@@ -19,7 +19,15 @@ export default function LoginUnifiedPage() {
   const force = useMemo(() => params.get('force') === '1', [params]);
 
   useEffect(() => {
-    fetch('/api/mock-auth/active-users').then(r => r.json()).then(setUsers).catch(()=>setUsers([]));
+    fetch('/api/mock-auth/active-users')
+      .then(r => r.json())
+      .then((list) => {
+        setUsers(list);
+        if (!identifier && Array.isArray(list) && list.length > 0) {
+          setIdentifier(String(list[0].id));
+        }
+      })
+      .catch(()=>setUsers([]));
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
@@ -61,19 +69,18 @@ export default function LoginUnifiedPage() {
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="identifier">User</Label>
-              <Input list="users" id="identifier" value={identifier} onChange={(e)=>setIdentifier(e.target.value)} placeholder="e.g., eugene" required />
-              <datalist id="users">
+              <select id="identifier" className="border h-10 rounded px-2 w-full" value={identifier} onChange={(e)=>setIdentifier(e.target.value)} required>
                 {users.map(u=> (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
-              </datalist>
+              </select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="pin">PIN</Label>
               <Input id="pin" type="password" value={pin} onChange={(e)=>setPin(e.target.value)} maxLength={6} placeholder="••••" required />
             </div>
             {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>{loading ? 'Verifying...' : 'Login'}</Button>
+            <Button type="submit" className="w-full" disabled={loading || !identifier}>{loading ? 'Verifying...' : 'Login'}</Button>
           </form>
           {force && users.length > 0 && (
             <div className="mt-4 text-xs text-muted-foreground">Debug: force mode enabled</div>
