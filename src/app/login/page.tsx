@@ -46,10 +46,10 @@ export default function LoginUnifiedPage() {
         return;
       }
       const role = String(data.role).toLowerCase();
-      if (role === 'admin') router.push('/admin');
-      else if (role === 'cashier') router.push('/dashboard-cashier');
-      else if (role === 'waiter') router.push('/dashboard-waiter');
-      else if (role === 'kitchen') router.push('/dashboard-kitchen');
+      if (role === 'admin') window.location.assign('/admin');
+      else if (role === 'cashier') window.location.assign('/dashboard-cashier');
+      else if (role === 'waiter') window.location.assign('/dashboard-waiter');
+      else if (role === 'kitchen') window.location.assign('/dashboard-kitchen');
       else setError('Unknown role');
     } catch (err) {
       setError('Network error');
