@@ -1,6 +1,41 @@
 [
-  { "id": "eugene", "name": "Eugene", "role": "admin", "active": true, "exposeOnPinLogin": true, "pin": "5245" },
-  { "id": "cash1", "name": "John Cashier", "role": "cashier", "active": true, "exposeOnPinLogin": true, "pin": "1234" },
-  { "id": "wait1", "name": "Jane Waiter", "role": "waiter", "active": true, "exposeOnPinLogin": true, "pin": "5678" },
-  { "id": "kit1", "name": "Chef Mike", "role": "kitchen", "active": true, "exposeOnPinLogin": true, "pin": "9876" }
+  {
+    "id": "eugene",
+    "name": "Eugene",
+    "role": "admin",
+    "active": true,
+    "exposeOnPinLogin": true,
+    "pin": "5245"
+  },
+  {
+    "id": "cash1",
+    "name": "John Cashier",
+    "role": "cashier",
+    "active": true,
+    "exposeOnPinLogin": true,
+    "pin": "1234"
+  },
+  {
+    "id": "wait1",
+    "name": "Jane Waiter",
+    "role": "waiter",
+    "active": true,
+    "exposeOnPinLogin": true,
+    "pin": "5678"
+  },
+  {
+    "id": "kit1",
+    "name": "Chef Mike",
+    "role": "kitchen",
+    "active": true,
+    "exposeOnPinLogin": true,
+    "pin": "9876"
+  },
+  {
+    "id": "cash2",
+    "name": "Second Cashier",
+    "role": "cashier",
+    "active": true,
+    "pin": "2222"
+  }
 ]
