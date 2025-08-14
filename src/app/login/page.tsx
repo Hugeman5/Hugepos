@@ -1,60 +1,57 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { setSession } from '@/lib/session';
+
+const MAX_PIN = 4;
 
 export default function LoginUnifiedPage() {
-  const router = useRouter();
-  const params = useSearchParams();
   const [users, setUsers] = useState<Array<{id:string; name:string; role:string; active:boolean}>>([]);
-  const [identifier, setIdentifier] = useState('');
+  const [selected, setSelected] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string|null>(null);
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const force = useMemo(() => params.get('force') === '1', [params]);
+  const canLogin = !!selected && pin.length === MAX_PIN && !submitting;
 
   useEffect(() => {
     fetch('/api/mock-auth/active-users')
       .then(r => r.json())
       .then((list) => {
         setUsers(list);
-        if (!identifier && Array.isArray(list) && list.length > 0) {
-          setIdentifier(String(list[0].id));
-        }
+        if (!selected && Array.isArray(list) && list.length > 0) setSelected(String(list[0].id));
       })
       .catch(()=>setUsers([]));
   }, []);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function onSubmit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!canLogin) return;
+    setSubmitting(true);
     setError(null);
-    setLoading(true);
     try {
+      console.log('LOGIN submit', { identifier: selected, pin });
       const res = await fetch('/api/mock-auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, pin })
+        body: JSON.stringify({ identifier: selected, pin })
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(String(data?.error ?? 'Login failed'));
+        setError(String(data?.error || 'Invalid PIN'));
+        setPin('');
+        setSubmitting(false);
         return;
       }
-      const role = String(data.role).toLowerCase();
-      if (role === 'admin') window.location.assign('/admin');
-      else if (role === 'cashier') window.location.assign('/dashboard-cashier');
-      else if (role === 'waiter') window.location.assign('/dashboard-waiter');
-      else if (role === 'kitchen') window.location.assign('/dashboard-kitchen');
-      else setError('Unknown role');
+      setSession({ uid: String(data.uid), name: String(data.name), role: String(data.role) });
+      window.location.assign(`/${String(data.role).toLowerCase() === 'admin' ? 'admin' : `dashboard-${String(data.role).toLowerCase()}`}`);
     } catch (err) {
       setError('Network error');
-    } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
@@ -69,7 +66,7 @@ export default function LoginUnifiedPage() {
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="identifier">User</Label>
-              <select id="identifier" className="border h-10 rounded px-2 w-full" value={identifier} onChange={(e)=>setIdentifier(e.target.value)} required>
+              <select id="identifier" className="border h-10 rounded px-2 w-full" value={selected} onChange={(e)=>{ setSelected(e.target.value); setError(null); }} required>
                 {users.map(u=> (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
@@ -77,14 +74,11 @@ export default function LoginUnifiedPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="pin">PIN</Label>
-              <Input id="pin" type="password" value={pin} onChange={(e)=>setPin(e.target.value)} maxLength={6} placeholder="••••" required />
+              <Input id="pin" type="password" value={pin} onChange={(e)=>{ const v=e.target.value.replace(/\D/g,'').slice(0, MAX_PIN); setPin(v); setError(null); }} maxLength={MAX_PIN} placeholder="••••" />
             </div>
             {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading || !identifier}>{loading ? 'Verifying...' : 'Login'}</Button>
+            <Button type="submit" className="w-full" disabled={!canLogin}>{submitting ? 'Verifying...' : 'Login'}</Button>
           </form>
-          {force && users.length > 0 && (
-            <div className="mt-4 text-xs text-muted-foreground">Debug: force mode enabled</div>
-          )}
         </CardContent>
       </Card>
     </main>
