@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useState, useEffect, useRef, useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { loginStaff, type StaffLoginState } from '@/lib/actions';
@@ -13,7 +13,7 @@ import { PinPad } from '@/components/pin-pad';
 
 export default function StaffLoginPage() {
   const initialState: StaffLoginState = { error: null };
-  const [state, dispatch] = useFormState(loginStaff, initialState);
+  const [state, dispatch] = useActionState(loginStaff, initialState);
   const { pending } = useFormStatus();
 
   const [pin, setPin] = useState('');

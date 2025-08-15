@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { ArrowLeft, LogIn } from 'lucide-react';
 import { loginAdmin, type AdminLoginState } from '@/lib/actions';
@@ -21,7 +22,7 @@ function LoginButton() {
 
 export default function AdminLoginPage() {
   const initialState: AdminLoginState = { message: null, errors: {} };
-  const [state, dispatch] = useFormState(loginAdmin, initialState);
+  const [state, dispatch] = useActionState(loginAdmin, initialState);
  
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
