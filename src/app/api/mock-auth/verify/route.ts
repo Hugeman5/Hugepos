@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getAllUsers } from "@/lib/usersRepo";
 const norm = (v:any)=>String(v??"").trim().toLowerCase();
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   const { identifier, id, name, pin } = await req.json();
   const ident = norm(identifier ?? id ?? name);
