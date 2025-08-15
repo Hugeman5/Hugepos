@@ -2,14 +2,17 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { db } from '@/lib/firebaseConfig';
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  limit,
-} from 'firebase/firestore';
+import { users } from '@/lib/data'; // Use local data
+
+// No longer needed for admin login
+// import { db } from '@/lib/firebaseConfig';
+// import {
+//   collection,
+//   query,
+//   where,
+//   getDocs,
+//   limit,
+// } from 'firebase/firestore';
 
 const adminLoginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -44,26 +47,17 @@ export async function loginAdmin(
 
   const { email, username } = validatedFields.data;
 
-  const usersRef = collection(db, 'users');
-  const q = query(
-    usersRef,
-    where('email', '==', email),
-    limit(1)
+  // Use local mock data for authentication
+  const adminUser = users.find(
+    (user) =>
+      user.email === email &&
+      user.username === username &&
+      user.role.toLowerCase() === 'admin' &&
+      user.active
   );
 
-  const snapshot = await getDocs(q);
 
-  if (snapshot.empty) {
-    return { message: 'Invalid credentials or user is inactive.' };
-  }
-
-  const user = snapshot.docs[0].data();
-
-  if (
-    user.username !== username ||
-    user.role.toLowerCase() !== 'admin' ||
-    !user.active
-  ) {
+  if (!adminUser) {
     return { message: 'Invalid credentials or user is inactive.' };
   }
 
@@ -88,24 +82,19 @@ export async function loginStaff(
   if (!pin || pin.length !== 4) {
     return { error: 'Invalid PIN. Must be 4 digits.' };
   }
-
-  const usersRef = collection(db, 'users');
-  const q = query(
-    usersRef,
-    where('pin', '==', pin),
-    where('active', '==', true),
-    limit(1)
+  
+  // Use local mock data for authentication
+  const staffUser = users.find(
+    (user) =>
+      user.pin === pin &&
+      user.active
   );
 
-  const snapshot = await getDocs(q);
-
-  if (snapshot.empty) {
+  if (!staffUser) {
     return { error: 'Invalid PIN or user is inactive.' };
   }
 
-  const user = snapshot.docs[0].data();
-
-  switch (user.role.toLowerCase()) {
+  switch (staffUser.role.toLowerCase()) {
     case 'cashier':
       redirect('/dashboard-cashier');
     case 'waiter':
