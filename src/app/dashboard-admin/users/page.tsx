@@ -107,7 +107,7 @@ export default function UsersPage() {
               <CardDescription>Manage your staff accounts and permissions.</CardDescription>
             </div>
             <Button asChild>
-              <Link href="/dashboard-admin/users/new">
+              <Link href="/dashboard-admin/users/new/edit">
                 <PlusCircle /> Add User
               </Link>
             </Button>
