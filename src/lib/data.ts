@@ -2,6 +2,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -116,6 +117,8 @@ export type OrderLineMod = {
   count?: number;
 };
 
+export type SeatLine = { lineId:string; seatNo:number }
+
 export type OrderLine = {
   id: string; // This is the CartLine ID, not stable across orders
   lineId: string; // This is the stable, unique ID for this line item instance
@@ -141,6 +144,12 @@ export type Order = {
   totals: { subtotal: number; tax: number; total: number };
   notes?: string;
   shiftId?: string;
+  service?: { 
+    type: "dine_in", 
+    tableId: string, 
+    checkId: string, 
+    seatMap?: SeatLine[] 
+  }
 };
 
 // --- PAYMENT ---
@@ -315,4 +324,55 @@ export type RegisterReport = {
   orders: number[];
   payments: Payment[];
   cashMovements: CashMovement[];
+};
+
+
+// --- TABLE SERVICE ---
+export type Area = {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+};
+
+export type TableShape = 'square' | 'round';
+
+export type Table = {
+  id: string;
+  areaId: string;
+  name: string;
+  seats: number;
+  x: number;
+  y: number;
+  shape: TableShape;
+};
+
+export type FloorPlan = {
+  areas: Area[];
+  tables: Table[];
+};
+
+export type TableState = "free"|"seated"|"ordering"|"fired"|"served"|"bill"|"dirty";
+
+export type ServiceCheck = {
+  id:string; 
+  tableId:string; 
+  areaId:string; 
+  guests:number;
+  server:{uid:string;name:string};
+  openedAt:string; 
+  closedAt?:string;
+  orderId:string; // current working draft order id
+  state:TableState;
+  seats:number;
+  seatMap?: SeatLine[];
+  splits?: Array<{ id:string; name:string; orderId:string }>;
+};
+
+export type Transfer = {
+  id: string;
+  ts: string;
+  checkId: string;
+  fromUserId: string;
+  toUserId: string;
 };

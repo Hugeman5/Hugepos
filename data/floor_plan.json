@@ -1,0 +1,45 @@
+{
+  "areas": [
+    {
+      "id": "main",
+      "name": "Main Room",
+      "color": "#6EE7B7",
+      "order": 1
+    },
+    {
+      "id": "patio",
+      "name": "Patio",
+      "color": "#93C5FD",
+      "order": 2
+    }
+  ],
+  "tables": [
+    {
+      "id": "T1",
+      "areaId": "main",
+      "name": "T1",
+      "seats": 4,
+      "x": 80,
+      "y": 120,
+      "shape": "round"
+    },
+    {
+      "id": "T2",
+      "areaId": "main",
+      "name": "T2",
+      "seats": 2,
+      "x": 220,
+      "y": 130,
+      "shape": "square"
+    },
+    {
+      "id": "P1",
+      "areaId": "patio",
+      "name": "P1",
+      "seats": 4,
+      "x": 100,
+      "y": 100,
+      "shape": "square"
+    }
+  ]
+}
