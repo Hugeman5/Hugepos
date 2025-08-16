@@ -5,3 +5,7 @@ export function formatMoney(n:number, currency="ZAR", locale="en-ZA"){
   try { return new Intl.NumberFormat(locale, { style:"currency", currency }).format(n); }
   catch { return `R ${n.toFixed(2)}`; }
 }
+
+export function cashRound(amount:number, step=0.10){ 
+  return Math.round(amount/step)*step; 
+}

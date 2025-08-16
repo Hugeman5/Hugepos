@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import * as ordersRepo from '@/lib/ordersRepo';
@@ -7,6 +8,8 @@ import * as shiftsRepo from '@/lib/shiftsRepo';
 import * as loyaltyRepo from '@/lib/loyaltyRepo';
 import * as customersRepo from '@/lib/customersRepo';
 import * as giftCardsRepo from '@/lib/giftCardsRepo';
+import * as settingsRepo from '@/lib/settingsRepo';
+import { cashRound } from '@/lib/money';
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +39,7 @@ export async function POST(
     const orderId = params.id;
     const body = await req.json();
     const validation = paySchema.safeParse(body);
+    const settings = await settingsRepo.getSettings();
 
     if (!validation.success) {
       return NextResponse.json(validation.error.errors, { status: 400 });
@@ -91,6 +95,9 @@ export async function POST(
 
     // --- Process payments ---
     for (const payment of payments) {
+        let paymentAmount = payment.amount;
+        let paymentRecord: any = {};
+
         if (payment.type === 'gift_card') {
             if (!payment.ref) throw new Error("Gift card code (ref) is required for gift_card payment.");
             await giftCardsRepo.redeem({
@@ -100,15 +107,23 @@ export async function POST(
                 user
             });
         }
+        
+        if (payment.type === 'cash' && settings.rounding.cashRounding) {
+            paymentRecord.amountRounded = cashRound(payment.amount, settings.rounding.cashStep);
+            paymentRecord.cashStep = settings.rounding.cashStep;
+            paymentAmount = paymentRecord.amountRounded; // Use rounded amount for calculations
+        }
+
 
         await paymentsRepo.appendPayment({
             orderId,
             type: payment.type,
             amount: payment.amount,
-            change: payment.type === 'cash' ? (payment.tendered || payment.amount) - payment.amount : 0,
+            change: payment.type === 'cash' ? (payment.tendered || paymentAmount) - paymentAmount : 0,
             last4: payment.last4,
             ref: payment.ref,
-            user
+            user,
+            ...paymentRecord
         });
     }
 

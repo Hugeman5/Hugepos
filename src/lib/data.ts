@@ -30,7 +30,6 @@ export type Tax = {
   id: string;
   name: string;
   rate: number;
-  inclusive: boolean;
 };
 
 export type Category = {
@@ -160,6 +159,8 @@ export type Payment = {
   last4?: string;
   ref?: string; // e.g. gift card code
   user: { uid: string; name: string };
+  amountRounded?: number;
+  cashStep?: number;
 };
 
 
@@ -502,4 +503,14 @@ export type DeviceEvent = {
   deviceId: string;
   type: 'drawer_open' | 'print_ok' | 'print_err' | 'scan';
   payload?: any;
+};
+
+export type EmailOutboxItem = {
+    id: string;
+    ts: string;
+    to: string;
+    subject: string;
+    htmlPath: string;
+    status: 'queued' | 'sent' | 'error';
+    error?: string;
 };

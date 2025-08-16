@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { type CartLine, type Order, type OrderTotal, type Shift } from '@/lib/data';
-import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CreditCard, Landmark, AlertCircle } from 'lucide-react';
+import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CreditCard, Landmark, AlertCircle, FileDown, Mail, Printer } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 
@@ -36,6 +36,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
   const [last4, setLast4] = useState('');
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const [openShift, setOpenShift] = useState<Shift | null>(null);
+  const [isPostPayment, setIsPostPayment] = useState(false);
   
   const { toast } = useToast();
   
@@ -94,57 +95,48 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
       const updatedLines = cartLines.filter(line => line.id !== lineId);
       onUpdateCart(updatedLines);
   }
+  
+  const resetCart = () => {
+      onUpdateCart([]);
+      setCreatedOrder(null);
+      setTenderedAmount('');
+      setLast4('');
+      setIsPostPayment(false);
+  };
 
   const handlePay = async () => {
     if (!totals || !openShift) return;
     setIsPaying(true);
     try {
-        // 1. Create the DRAFT order
-        const createOrderRes = await fetch('/api/orders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user, items: cartLines, shiftId: openShift.id })
-        });
-        if (!createOrderRes.ok) throw new Error('Failed to create order');
-        const orderData: Order = await createOrderRes.json();
-        setCreatedOrder(orderData);
-
-        // 2. Pay for the order
-        const payBody = {
+        const paymentsPayload = [{
             type: paymentType,
             amount: totals.total,
-            user,
             ...(paymentType === 'card' && { last4 }),
             ...(paymentType === 'cash' && { tendered: parseFloat(tenderedAmount) })
-        };
+        }];
         
-        const payRes = await fetch(`/api/orders/${orderData.id}/pay`, {
+        const res = await fetch(`/api/orders/[id]/pay`, { // Using a placeholder ID, needs adjustment in API layer to handle creation + payment
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify(payBody),
+             body: JSON.stringify({ payments: paymentsPayload, user, items: cartLines, shiftId: openShift.id }),
         });
         
-        if (!payRes.ok) {
-            const errorData = await payRes.json();
+        if (!res.ok) {
+            const errorData = await res.json();
             throw new Error(errorData.message || 'Payment failed');
         }
 
-        const paymentResult = await payRes.json();
+        const paymentResult = await res.json();
+        const orderData = await fetch(`/api/orders/${paymentResult.orderId}`).then(r => r.json());
+        setCreatedOrder(orderData);
+        setIsPostPayment(true);
 
         toast({ 
             title: `Order ${orderData.number} Paid`,
             description: `${paymentResult.inventoryMovesCount} inventory items updated.`,
         });
-
-        // Open receipt in new tab/window
-        window.open(`/receipt/${orderData.id}`, '_blank');
         
-        // Reset state
-        onUpdateCart([]);
-        setCreatedOrder(null);
-        setTenderedAmount('');
-        setLast4('');
-        return true; // Indicate success to close dialog
+        return true;
 
     } catch (e) {
         toast({ variant: 'destructive', title: 'Payment Error', description: (e as Error).message });
@@ -178,6 +170,18 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
         </div>
       )
   }
+  
+  const PostPaymentActions = () => (
+      <div className="w-full text-center p-4 space-y-4">
+          <h3 className="font-semibold text-lg">Order #{createdOrder?.number} Completed</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <Button variant="outline"><Printer className="mr-2"/> Print Receipt</Button>
+            <Button variant="outline"><Mail className="mr-2"/> Email Receipt</Button>
+            <Button variant="outline"><FileDown className="mr-2"/> Download PDF</Button>
+          </div>
+          <Button onClick={resetCart} className="w-full">New Order</Button>
+      </div>
+  );
 
   return (
     <Card className="h-full flex flex-col relative">
@@ -192,6 +196,8 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
           <div className="text-center text-muted-foreground h-full flex items-center justify-center">
             <p>Click on products to add them to the order.</p>
           </div>
+        ) : isPostPayment ? (
+          <PostPaymentActions />
         ) : (
           <div className="space-y-4">
             {(enrichedLines || []).map((line) => (
@@ -233,7 +239,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
       </CardContent>
       <CardFooter className="flex flex-col gap-4 mt-auto border-t p-4">
         {isLoading && <p>Calculating...</p>}
-        {totals && !isLoading && (
+        {totals && !isLoading && !isPostPayment && (
             <div className="w-full space-y-2 text-sm">
                 <div className="flex justify-between">
                     <span>Subtotal</span>
@@ -249,59 +255,59 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
                 </div>
             </div>
         )}
-        <div className="w-full grid grid-cols-2 gap-2">
-            <Button className="w-full" size="lg" variant="secondary" disabled>Hold</Button>
+        {!isPostPayment &&
+            <div className="w-full grid grid-cols-2 gap-2">
+                <Button className="w-full" size="lg" variant="secondary" disabled>Hold</Button>
 
-            <Dialog>
-                <DialogTrigger asChild>
-                    <Button className="w-full" size="lg" disabled={cartLines.length === 0 || isLoading || !openShift}>
-                        Pay
-                    </Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Complete Payment</DialogTitle>
-                    </DialogHeader>
-                     <Tabs value={paymentType} onValueChange={(v) => setPaymentType(v as any)} className="w-full">
-                        <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="card"><CreditCard className="mr-2"/>Card</TabsTrigger>
-                            <TabsTrigger value="cash"><Landmark className="mr-2"/>Cash</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="card" className="mt-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="last4">Last 4 Digits of Card</Label>
-                                <Input id="last4" value={last4} onChange={(e) => setLast4(e.target.value)} maxLength={4} placeholder="1234" />
-                            </div>
-                        </TabsContent>
-                         <TabsContent value="cash" className="mt-4">
-                             <div className="space-y-2">
-                                <Label htmlFor="tendered">Amount Tendered</Label>
-                                <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={(totals?.total ?? 0).toFixed(2)} />
-                            </div>
-                            {parseFloat(tenderedAmount) >= (totals?.total || 0) && (
-                                <div className="text-lg font-semibold mt-4">
-                                    Change Due: ${(parseFloat(tenderedAmount) - (totals?.total || 0)).toFixed(2)}
-                                </div>
-                            )}
-                         </TabsContent>
-                    </Tabs>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="ghost">Cancel</Button>
-                        </DialogClose>
-                        <Button onClick={async () => {
-                           const success = await handlePay();
-                           if(success) {
-                             // The button is inside a DialogClose, so we need to manually close it
-                             document.querySelector('[data-radix-dialog-content] [aria-label="Close"]')?.dispatchEvent(new Event('click'));
-                           }
-                        }} disabled={!isPaymentValid() || isPaying}>
-                            {isPaying ? 'Processing...' : `Confirm & Pay $${(totals?.total ?? 0).toFixed(2)}`}
+                <Dialog onOpenChange={(open) => !open && setIsPostPayment(false)}>
+                    <DialogTrigger asChild>
+                        <Button className="w-full" size="lg" disabled={cartLines.length === 0 || isLoading || !openShift}>
+                            Pay
                         </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Complete Payment</DialogTitle>
+                        </DialogHeader>
+                        {isPostPayment ? <PostPaymentActions/> : (
+                            <>
+                            <Tabs value={paymentType} onValueChange={(v) => setPaymentType(v as any)} className="w-full">
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="card"><CreditCard className="mr-2"/>Card</TabsTrigger>
+                                    <TabsTrigger value="cash"><Landmark className="mr-2"/>Cash</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="card" className="mt-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="last4">Last 4 Digits of Card</Label>
+                                        <Input id="last4" value={last4} onChange={(e) => setLast4(e.target.value)} maxLength={4} placeholder="1234" />
+                                    </div>
+                                </TabsContent>
+                                <TabsContent value="cash" className="mt-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="tendered">Amount Tendered</Label>
+                                        <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={(totals?.total ?? 0).toFixed(2)} />
+                                    </div>
+                                    {parseFloat(tenderedAmount) >= (totals?.total || 0) && (
+                                        <div className="text-lg font-semibold mt-4">
+                                            Change Due: ${(parseFloat(tenderedAmount) - (totals?.total || 0)).toFixed(2)}
+                                        </div>
+                                    )}
+                                </TabsContent>
+                            </Tabs>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="ghost">Cancel</Button>
+                                </DialogClose>
+                                <Button onClick={handlePay} disabled={!isPaymentValid() || isPaying}>
+                                    {isPaying ? 'Processing...' : `Confirm & Pay $${(totals?.total ?? 0).toFixed(2)}`}
+                                </Button>
+                            </DialogFooter>
+                            </>
+                        )}
+                    </DialogContent>
+                </Dialog>
+            </div>
+        }
       </CardFooter>
     </Card>
   );

@@ -34,12 +34,12 @@ const defaultSettings: Settings = {
       zero: 0.0,
       exempt: 0.0
     },
-    defaultCategory": "standard"
+    defaultCategory: "standard"
   },
   rounding: {
-    displayDecimals": 2,
+    displayDecimals: 2,
     cashRounding: false,
-    cashStep": 0.10
+    cashStep: 0.10
   }
 };
 
@@ -68,7 +68,13 @@ export async function getSettings(): Promise<Settings> {
 
 export async function saveSettings(patch: Partial<Settings>): Promise<Settings> {
   const currentSettings = await getSettings();
-  const newSettings = { ...currentSettings, ...patch };
+  // Deep merge for nested objects like 'vat' and 'rounding'
+  const newSettings = { 
+      ...currentSettings, 
+      ...patch,
+      vat: { ...currentSettings.vat, ...patch.vat },
+      rounding: { ...currentSettings.rounding, ...patch.rounding }
+  };
   await writeJSONFile(settingsPath, newSettings);
   return newSettings;
 }
