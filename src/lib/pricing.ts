@@ -1,5 +1,4 @@
 
-
 import { 
     type Product, 
     type Modifier, 
@@ -9,6 +8,10 @@ import {
     type CartLineMod,
     type OrderTotal
 } from './data';
+import * as settingsRepo from './settingsRepo';
+import * as taxCatalog from './taxCatalog';
+import * as taxHelper from './tax';
+
 
 export async function getModDelta(mod: CartLineMod, allModifiers: Map<string, Modifier>): Promise<number> {
     const modifierDef = allModifiers.get(mod.id);
@@ -27,25 +30,31 @@ export async function getModDelta(mod: CartLineMod, allModifiers: Map<string, Mo
 export async function computeLine(
     line: CartLine,
     product: Product,
-    allLineModifiers: Modifier[],
-    tax: Tax
+    allLineModifiers: Modifier[]
 ): Promise<CartLine> {
     const allLineModifiersMap = new Map(allLineModifiers.map(m => [m.id, m]));
+    const settings = await settingsRepo.getSettings();
 
     const modsDeltas = await Promise.all(line.mods.map(mod => getModDelta(mod, allLineModifiersMap)));
     const modsTotal = modsDeltas.reduce((sum, delta) => sum + delta, 0);
-
-    const subtotal = (product.price + modsTotal) * line.qty;
-    const taxAmt = tax.inclusive ? 0 : subtotal * tax.rate; // Simplified tax
-    const total = subtotal + taxAmt;
     
+    const unitPriceWithMods = product.price + modsTotal;
+
+    const rate = taxCatalog.getRateForCategory(product.taxId, settings);
+    const totals = taxHelper.lineTotals({
+      unitPrice: unitPriceWithMods,
+      qty: line.qty,
+      rate,
+      priceIncludesVAT: settings.vat.priceIncludesVAT
+    });
+
     const modsSummary = line.mods.map(mod => {
         const modDef = allLineModifiersMap.get(mod.id);
         if (!modDef) return '';
         if (modDef.type === 'choice' && mod.optionId) {
             const opt = modDef.options?.find(o => o.id === mod.optionId);
             if (opt && opt.delta !== 0) {
-                 return `${opt.name} (${opt.delta > 0 ? '+' : ''}$${opt.delta.toFixed(2)})`;
+                 return `${opt.name} (${opt.delta > 0 ? '+' : ''}${settings.currencySymbol}${opt.delta.toFixed(2)})`;
             }
             return opt?.name;
         }
@@ -63,9 +72,9 @@ export async function computeLine(
         ...line,
         productName: product.name,
         modsSummary,
-        subtotal,
-        tax: taxAmt,
-        total,
+        subtotal: totals.net,
+        tax: totals.tax,
+        total: totals.gross,
     }
 }
 
@@ -73,8 +82,7 @@ export async function computeLine(
 export async function computeOrder(
     cart: Cart, 
     productMap: Map<string, Product>,
-    modifierMap: Map<string, Modifier>,
-    taxMap: Map<string, Tax>
+    modifierMap: Map<string, Modifier>
 ): Promise<OrderTotal & { lines: CartLine[] }> {
 
     let subtotal = 0;
@@ -84,13 +92,10 @@ export async function computeOrder(
     const computedLines = await Promise.all(cart.lines.map(async (line) => {
         const product = productMap.get(line.productId);
         if (!product) throw new Error("Product not found");
-
-        const lineTax = taxMap.get(product.taxId);
-        if (!lineTax) throw new Error("Tax not found");
         
         const lineModifiers = product.modifierIds?.map(id => modifierMap.get(id)).filter(Boolean) as Modifier[];
 
-        const computed = await computeLine(line, product, lineModifiers, lineTax);
+        const computed = await computeLine(line, product, lineModifiers);
         
         subtotal += computed.subtotal;
         tax += computed.tax;

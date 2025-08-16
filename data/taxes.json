@@ -1,9 +1,18 @@
 
 [
   {
-    "id": "vat15",
-    "name": "VAT 15%",
-    "rate": 0.15,
-    "inclusive": false
+    "id": "standard",
+    "name": "Standard Rate",
+    "rate": 0.15
+  },
+  {
+    "id": "zero",
+    "name": "Zero-Rated",
+    "rate": 0
+  },
+  {
+    "id": "exempt",
+    "name": "Exempt",
+    "rate": 0
   }
 ]
