@@ -27,11 +27,10 @@ const userFormSchema = z.object({
 });
 
 
-export default function UserEditPage({ params }: { params: { id: string } }) {
+export default function UserEditPage({ params: { id: userId } }: { params: { id: string } }) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const { id: userId } = params;
   const isNewUser = userId === 'new';
 
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<User>({
