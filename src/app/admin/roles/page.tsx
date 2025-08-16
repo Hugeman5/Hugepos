@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import DashboardHeader from '@/components/dashboard-header';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -100,7 +99,7 @@ export default function RolesPage() {
 
     if (typeof value === 'boolean') {
       return (
-        <div key={key} className="flex items-center justify-between p-3 rounded-md bg-muted/50">
+        <div key={key} className="flex items-center justify-between p-3 rounded-md bg-black/20">
           <Label htmlFor={`${role}-${key}`}>{label}</Label>
           <Switch
             id={`${role}-${key}`}
@@ -114,7 +113,7 @@ export default function RolesPage() {
 
     if (typeof value === 'number') {
       return (
-        <div key={key} className="flex items-center justify-between p-3 rounded-md bg-muted/50">
+        <div key={key} className="flex items-center justify-between p-3 rounded-md bg-black/20">
           <Label htmlFor={`${role}-${key}`}>{label} (%)</Label>
           <Input
             id={`${role}-${key}`}
@@ -130,9 +129,9 @@ export default function RolesPage() {
     
      if (typeof value === 'string') {
       return (
-        <div key={key} className="flex items-center justify-between p-3 rounded-md bg-muted/50">
+        <div key={key} className="flex items-center justify-between p-3 rounded-md bg-black/20">
           <Label htmlFor={`${role}-${key}`}>{label}</Label>
-          <span className="text-sm font-medium text-primary capitalize">{value.replace('_', ' ')}</span>
+          <span className="text-sm font-medium text-brand-accent capitalize">{value.replace('_', ' ')}</span>
         </div>
       );
     }
@@ -142,10 +141,10 @@ export default function RolesPage() {
 
   const renderRoleTab = (role: keyof RolesMatrix) => (
     <TabsContent value={role} className="mt-4">
-      <Card>
+      <Card className="bg-brand-card border-brand-line">
         <CardHeader>
           <CardTitle className="capitalize">{role}</CardTitle>
-          <CardDescription>
+          <CardDescription className="text-brand-mute">
             {role === 'admin' ? 'Admins have all permissions. This role cannot be edited.' : `Set permissions for the ${role} role.`}
           </CardDescription>
         </CardHeader>
@@ -164,13 +163,11 @@ export default function RolesPage() {
   );
 
   if (isLoading || !roles) {
-    return <div>Loading roles...</div>;
+    return <AdminLayout title="Roles & Permissions"><div>Loading roles...</div></AdminLayout>;
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <DashboardHeader title="Roles & Permissions" userName="Admin User" userRole="Admin" />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+    <AdminLayout title="Roles & Permissions">
         <Tabs defaultValue="cashier" className="w-full">
           <TabsList>
             <TabsTrigger value="cashier">Cashier</TabsTrigger>
@@ -183,11 +180,10 @@ export default function RolesPage() {
         </Tabs>
         <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setRoles(initialRoles)} disabled={isSaving}>Cancel / Reset</Button>
-            <Button onClick={handleSaveChanges} disabled={isSaving}>
+            <Button onClick={handleSaveChanges} disabled={isSaving} className="bg-brand-accent">
                 {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
         </div>
-      </main>
-    </div>
+    </AdminLayout>
   );
 }

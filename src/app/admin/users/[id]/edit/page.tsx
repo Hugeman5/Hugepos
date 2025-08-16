@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import DashboardHeader from '@/components/dashboard-header';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -27,10 +27,11 @@ const userFormSchema = z.object({
 });
 
 
-export default function UserEditPage({ params: { id: userId } }: { params: { id: string } }) {
+export default function UserEditPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const { id: userId } = params;
   const isNewUser = userId === 'new';
 
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<User>({
@@ -57,7 +58,7 @@ export default function UserEditPage({ params: { id: userId } }: { params: { id:
             reset(user);
           } else {
             toast({ variant: 'destructive', title: 'Error', description: 'User not found.' });
-            router.push('/dashboard-admin/users');
+            router.push('/admin/users');
           }
         } catch (error) {
           toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
@@ -83,32 +84,30 @@ export default function UserEditPage({ params: { id: userId } }: { params: { id:
             throw new Error(errorData.message || 'Failed to save user.');
         }
         toast({ title: 'Success', description: `User ${isNewUser ? 'created' : 'updated'} successfully.` });
-        router.push('/dashboard-admin/users');
+        router.push('/admin/users');
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
     }
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <AdminLayout title={isNewUser ? 'Add New User' : 'Edit User'}><div>Loading...</div></AdminLayout>;
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <DashboardHeader title={isNewUser ? 'Add New User' : 'Edit User'} userName="Admin User" userRole="Admin" />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-         <div className="flex items-center gap-4">
+    <AdminLayout title={isNewUser ? 'Add New User' : 'Edit User'}>
+         <div className="flex items-center gap-4 mb-4">
           <Button variant="outline" size="icon" asChild>
-            <Link href="/dashboard-admin/users">
+            <Link href="/admin/users">
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
           <h1 className="font-semibold text-lg md:text-xl">{isNewUser ? 'Create New User Profile' : 'Edit User Profile'}</h1>
         </div>
-        <Card>
+        <Card className="bg-brand-card border-brand-line">
             <CardHeader>
                 <CardTitle>User Details</CardTitle>
-                <CardDescription>Fill in the details for the user account.</CardDescription>
+                <CardDescription className="text-brand-mute">Fill in the details for the user account.</CardDescription>
             </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -167,14 +166,13 @@ export default function UserEditPage({ params: { id: userId } }: { params: { id:
 
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} className="bg-brand-accent">
                     {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
             </form>
           </CardContent>
         </Card>
-      </main>
-    </div>
+    </AdminLayout>
   );
 }

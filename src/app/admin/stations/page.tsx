@@ -1,14 +1,11 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import DashboardHeader from '@/components/dashboard-header';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { type Station } from '@/lib/data';
 import { PlusCircle, Trash2 } from 'lucide-react';
@@ -79,13 +76,11 @@ export default function StationsPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <DashboardHeader title="KDS Station Management" userName="Admin User" userRole="Admin" />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <Card>
+    <AdminLayout title="KDS Station Management">
+        <Card className="bg-brand-card border-brand-line">
           <CardHeader>
             <CardTitle>Manage Stations</CardTitle>
-            <CardDescription>Add, edit, or remove Kitchen Display System stations.</CardDescription>
+            <CardDescription className="text-brand-mute">Add, edit, or remove Kitchen Display System stations.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -119,17 +114,16 @@ export default function StationsPage() {
                     onChange={(e) => setNewStationName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddStation()}
                  />
-                 <Button onClick={handleAddStation}><PlusCircle className="mr-2"/> Add Station</Button>
+                 <Button onClick={handleAddStation} className="bg-brand-accent"><PlusCircle className="mr-2"/> Add Station</Button>
             </div>
           </CardContent>
         </Card>
         <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={fetchStations}>Cancel</Button>
-            <Button onClick={handleSaveChanges} disabled={isSaving}>
+            <Button onClick={handleSaveChanges} disabled={isSaving} className="bg-brand-accent">
                 {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
         </div>
-      </main>
-    </div>
+    </AdminLayout>
   );
 }

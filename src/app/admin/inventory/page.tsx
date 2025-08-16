@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import DashboardHeader from '@/components/dashboard-header';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -40,6 +40,7 @@ export default function InventoryPage() {
 
   const fetchSummary = async () => {
     try {
+      setIsLoading(true);
       const res = await fetch('/api/inventory/summary');
       const data = await res.json();
       if (res.ok) {
@@ -100,23 +101,21 @@ export default function InventoryPage() {
   const getStatusBadge = (status: 'ok' | 'low' | 'out') => {
     switch (status) {
       case 'ok':
-        return <Badge variant="secondary">In Stock</Badge>;
+        return <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">In Stock</Badge>;
       case 'low':
-        return <Badge variant="destructive">Low Stock</Badge>;
+        return <Badge variant="destructive" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Low Stock</Badge>;
       case 'out':
         return <Badge variant="destructive">Out of Stock</Badge>;
     }
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <DashboardHeader title="Inventory Management" userName="Admin User" userRole="Admin" />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <Card>
+    <AdminLayout title="Inventory Management">
+        <Card className="bg-brand-card border-brand-line">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Inventory Summary</CardTitle>
-              <CardDescription>Current stock levels for all ingredients.</CardDescription>
+              <CardDescription className="text-brand-mute">Current stock levels for all ingredients.</CardDescription>
             </div>
             <div className="flex gap-2">
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -181,7 +180,7 @@ export default function InventoryPage() {
                   </DialogContent>
                 </Dialog>
               <Button variant="outline" asChild>
-                  <Link href="/dashboard-admin/inventory/moves">View History</Link>
+                  <Link href="/admin/inventory/moves">View History</Link>
               </Button>
             </div>
           </CardHeader>
@@ -216,7 +215,6 @@ export default function InventoryPage() {
             </Table>
           </CardContent>
         </Card>
-      </main>
-    </div>
+    </AdminLayout>
   );
 }

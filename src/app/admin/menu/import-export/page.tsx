@@ -1,7 +1,6 @@
-
 'use client';
-import { useState, useRef } from 'react';
-import DashboardHeader from '@/components/dashboard-header';
+import { useState } from 'react';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -78,7 +77,7 @@ function ImportExportTab({ dataType }: { dataType: string }) {
             const result = await res.json();
             if (!res.ok) {
                 if (result.errors) {
-                     toast({ variant: 'destructive', title: 'Import Validation Error', description: result.errors.join('\n') });
+                     toast({ variant: 'destructive', title: 'Import Validation Error', description: result.errors.join('\\n') });
                 } else {
                     throw new Error(result.message || `Failed to import ${dataType}`);
                 }
@@ -94,18 +93,18 @@ function ImportExportTab({ dataType }: { dataType: string }) {
     }
     
     return (
-        <Card>
+        <Card className="bg-brand-card border-brand-line">
             <CardHeader>
                 <CardTitle className="capitalize">{dataType}</CardTitle>
-                <CardDescription>
+                <CardDescription className="text-brand-mute">
                     Export current {dataType} as a CSV file, or import a CSV file to bulk add/update {dataType}.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <Button onClick={handleExport} disabled={isExporting}>
+                <Button onClick={handleExport} disabled={isExporting} variant="outline">
                     <Download className="mr-2" /> {isExporting ? 'Exporting...' : `Export ${dataType}`}
                 </Button>
-                <div className="border-t pt-4 space-y-2">
+                <div className="border-t pt-4 space-y-2 border-brand-line">
                     <Label htmlFor={`${dataType}-textarea`}>CSV Data to Import</Label>
                     <Textarea 
                         id={`${dataType}-textarea`}
@@ -120,7 +119,7 @@ function ImportExportTab({ dataType }: { dataType: string }) {
                     <Checkbox id={`${dataType}-dryrun`} checked={isDryRun} onCheckedChange={(checked) => setIsDryRun(!!checked)} />
                     <Label htmlFor={`${dataType}-dryrun`}>Dry Run (validate without saving)</Label>
                 </div>
-                <Button onClick={handleImport} disabled={isImporting || !csvData}>
+                <Button onClick={handleImport} disabled={isImporting || !csvData} className="bg-brand-accent">
                     <Upload className="mr-2" /> {isImporting ? 'Importing...' : `Import ${dataType}`}
                 </Button>
             </CardContent>
@@ -130,30 +129,18 @@ function ImportExportTab({ dataType }: { dataType: string }) {
 
 export default function ImportExportPage() {
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <DashboardHeader title="Menu Import/Export" userName="Admin User" userRole="Admin" />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+    <AdminLayout title="Menu Import/Export">
         <Tabs defaultValue="items">
           <TabsList>
             <TabsTrigger value="items">Items</TabsTrigger>
-            <TabsTrigger value="modifiers">Modifiers</TabsTrigger>
-            <TabsTrigger value="menu">Menu Screens</TabsTrigger>
-            <TabsTrigger value="price_lists">Price Lists</TabsTrigger>
+            <TabsTrigger value="modifiers" disabled>Modifiers (Coming Soon)</TabsTrigger>
+            <TabsTrigger value="menu" disabled>Menu Screens (Coming Soon)</TabsTrigger>
+            <TabsTrigger value="price_lists" disabled>Price Lists (Coming Soon)</TabsTrigger>
           </TabsList>
           <TabsContent value="items" className="mt-4">
               <ImportExportTab dataType="items" />
           </TabsContent>
-           <TabsContent value="modifiers" className="mt-4">
-               <ImportExportTab dataType="modifiers" />
-           </TabsContent>
-            <TabsContent value="menu" className="mt-4">
-                <ImportExportTab dataType="menu" />
-            </TabsContent>
-             <TabsContent value="price_lists" className="mt-4">
-                <ImportExportTab dataType="price_list" />
-             </TabsContent>
         </Tabs>
-      </main>
-    </div>
+    </AdminLayout>
   );
 }

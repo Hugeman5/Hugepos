@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import DashboardHeader from '@/components/dashboard-header';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,22 +78,18 @@ export default function RoutingPage() {
   
   if (isLoading || !routing) {
       return (
-          <div className="flex min-h-screen w-full flex-col">
-            <DashboardHeader title="KDS Routing Management" userName="Admin User" userRole="Admin" />
+          <AdminLayout title="KDS Routing Management">
             <main className="flex flex-1 items-center justify-center">Loading routing data...</main>
-          </div>
+          </AdminLayout>
       )
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <DashboardHeader title="KDS Routing Management" userName="Admin User" userRole="Admin" />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-
-        <Card>
+    <AdminLayout title="KDS Routing Management">
+        <Card className="bg-brand-card border-brand-line">
           <CardHeader>
             <CardTitle>Default Station</CardTitle>
-            <CardDescription>The station to use when no other rules match.</CardDescription>
+            <CardDescription className="text-brand-mute">The station to use when no other rules match.</CardDescription>
           </CardHeader>
           <CardContent>
             <Select
@@ -111,11 +106,11 @@ export default function RoutingPage() {
           </CardContent>
         </Card>
 
-        <div className="grid md:grid-cols-2 gap-8">
-            <Card>
+        <div className="grid md:grid-cols-2 gap-8 mt-8">
+            <Card className="bg-brand-card border-brand-line">
                 <CardHeader>
                     <CardTitle>Routing by Product</CardTitle>
-                    <CardDescription>Override routing for specific products. This has the highest priority.</CardDescription>
+                    <CardDescription className="text-brand-mute">Override routing for specific products. This has the highest priority.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                    {Object.entries(routing.byProduct).map(([productId, stationId]) => (
@@ -143,10 +138,10 @@ export default function RoutingPage() {
                    </Select>
                 </CardContent>
             </Card>
-             <Card>
+             <Card className="bg-brand-card border-brand-line">
                 <CardHeader>
                     <CardTitle>Routing by Category</CardTitle>
-                    <CardDescription>Set a default station for all items in a category.</CardDescription>
+                    <CardDescription className="text-brand-mute">Set a default station for all items in a category.</CardDescription>
                 </CardHeader>
                  <CardContent className="space-y-4">
                    {Object.entries(routing.byCategory).map(([catId, stationId]) => (
@@ -179,11 +174,10 @@ export default function RoutingPage() {
 
         <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={fetchData}>Cancel</Button>
-            <Button onClick={handleSaveChanges} disabled={isSaving}>
+            <Button onClick={handleSaveChanges} disabled={isSaving} className="bg-brand-accent">
                 {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
         </div>
-      </main>
-    </div>
+    </AdminLayout>
   );
 }

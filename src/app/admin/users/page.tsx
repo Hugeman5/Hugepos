@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import DashboardHeader from '@/components/dashboard-header';
+import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, PlusCircle, Trash2, KeyRound } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { type User } from '@/lib/data';
 import {
@@ -29,13 +28,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { cn } from '@/lib/utils';
 
-const getRoleBadgeVariant = (role: User['role']) => {
+const getRoleBadgeClass = (role: User['role']) => {
   switch (role.toLowerCase()) {
-    case 'admin': return 'destructive';
-    case 'manager': return 'secondary';
+    case 'admin': return 'bg-brand-accent text-white border-transparent';
+    case 'manager': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
     case 'cashier':
-    default: return 'default';
+    default: return 'bg-sky-500/20 text-sky-400 border-sky-500/30';
   }
 }
 
@@ -97,17 +97,15 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <DashboardHeader title="User Management" userName="Admin User" userRole="Admin" />
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <Card>
+    <AdminLayout title="User Management">
+        <Card className="bg-brand-card border-brand-line">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>Staff Members</CardTitle>
-              <CardDescription>Manage your staff accounts and permissions.</CardDescription>
+              <CardDescription className="text-brand-mute">Manage your staff accounts and permissions.</CardDescription>
             </div>
-            <Button asChild>
-              <Link href="/dashboard-admin/users/new/edit">
+            <Button asChild className="bg-brand-accent">
+              <Link href="/admin/users/new/edit">
                 <PlusCircle /> Add User
               </Link>
             </Button>
@@ -130,10 +128,10 @@ export default function UsersPage() {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.name} <span className="text-muted-foreground text-xs">({user.id})</span></TableCell>
                     <TableCell>
-                        <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize">{user.role}</Badge>
+                        <Badge variant="secondary" className={cn('capitalize', getRoleBadgeClass(user.role))}>{user.role}</Badge>
                     </TableCell>
                     <TableCell>
-                        <Badge variant={user.active ? 'default' : 'outline'}>
+                        <Badge variant={user.active ? 'default' : 'outline'} className={user.active ? 'bg-brand-ok/20 text-brand-ok border-brand-ok/30' : ''}>
                             {user.active ? 'Active' : 'Inactive'}
                         </Badge>
                     </TableCell>
@@ -147,7 +145,7 @@ export default function UsersPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onSelect={() => router.push(`/dashboard-admin/users/${user.id}/edit`)}>
+                              <DropdownMenuItem onSelect={() => router.push(`/admin/users/${user.id}/edit`)}>
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => handleToggleActive(user)}>
@@ -180,7 +178,6 @@ export default function UsersPage() {
             </Table>
           </CardContent>
         </Card>
-      </main>
-    </div>
+    </AdminLayout>
   );
 }
