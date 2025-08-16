@@ -1,48 +1,38 @@
-
 'use server';
 
-import { promises as fs } from 'fs';
-import path from 'path';
-import { type User } from './data';
+import { promises as fs } from "fs";
+import path from "path";
+import crypto from "crypto";
+import { type User } from "./data";
 
-const dataDir = path.join(process.cwd(), 'data');
-const usersPath = path.join(dataDir, 'users.json');
-
-async function readJSONFile<T>(filePath: string, defaultValue: T): Promise<T> {
-  try {
-    await fs.mkdir(dataDir, { recursive: true });
-    const data = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(data) as T;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      await writeJSONFile(filePath, defaultValue);
-      return defaultValue;
-    }
-    console.error(`Error reading ${filePath}:`, error);
-    throw error;
-  }
+export type RepoUser = User & {
+  pinHash?: string;
 }
 
-async function writeJSONFile<T>(filePath: string, data: T): Promise<void> {
-  await fs.mkdir(dataDir, { recursive: true });
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+const USERS_PATH = path.join(process.cwd(), "data", "users.json");
+
+async function ensureFile() {
+  await fs.mkdir(path.dirname(USERS_PATH), { recursive: true });
+  try { await fs.access(USERS_PATH); } catch { await fs.writeFile(USERS_PATH, "[]", "utf8"); }
 }
 
-
-export async function getAllUsers(): Promise<User[]> {
-  return readJSONFile<User[]>(usersPath, []);
+export async function getAllUsers(): Promise<RepoUser[]> {
+  await ensureFile();
+  try { return JSON.parse(await fs.readFile(USERS_PATH, "utf8") || "[]"); }
+  catch { return []; }
 }
 
-export async function getUserById(id: string): Promise<User | null> {
+export async function saveAllUsers(users: RepoUser[]) {
+  await ensureFile();
+  await fs.writeFile(USERS_PATH, JSON.stringify(users, null, 2), "utf8");
+}
+
+export async function getUserById(id: string): Promise<RepoUser | null> {
     const users = await getAllUsers();
     return users.find(u => u.id === id) || null;
 }
 
-export async function saveAllUsers(users: User[]): Promise<void> {
-  await writeJSONFile(usersPath, users);
-}
-
-export async function upsertUser(userToUpsert: User): Promise<User> {
+export async function upsertUser(userToUpsert: RepoUser): Promise<RepoUser> {
     const users = await getAllUsers();
     const index = users.findIndex(u => u.id === userToUpsert.id);
 
@@ -79,4 +69,19 @@ export async function resetPin(id: string, newPin: string): Promise<{ success: b
     user.pin = newPin;
     await saveAllUsers(users);
     return { success: true };
+}
+
+const sha256 = (s:string)=> crypto.createHash("sha256").update(s,"utf8").digest("hex");
+
+export async function verifyUserByIdentifierAndPin(identifier: string, pin: string) {
+  const idLower = identifier.trim().toLowerCase();
+  const users = await getAllUsers();
+  const u = users.find(x =>
+    (x.active !== false) &&
+    (String(x.id).toLowerCase() === idLower || String(x.name).trim().toLowerCase() === idLower)
+  );
+  if (!u) return null;
+  const ok = (u.pin && u.pin === pin) || (u.pinHash && u.pinHash === sha256(pin));
+  if (!ok) return null;
+  return { uid: u.id, name: u.name, role: u.role };
 }

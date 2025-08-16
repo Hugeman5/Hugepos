@@ -1,43 +1,48 @@
 'use client';
 
-import { useState, useEffect, useRef, useActionState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { loginStaff, type StaffLoginState } from '@/lib/actions';
 import StaffGrid from "@/components/login/StaffGrid";
 import PinPad from "@/components/login/PinPad";
 import type { User } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
+import { routeForRole } from '@/lib/roles';
 
+// Mock session management
+const setSession = (user: { uid: string, name: string, role: string }) => {
+    if (typeof window !== 'undefined') {
+        sessionStorage.setItem('mockUser', JSON.stringify(user));
+    }
+};
 
 export default function StaffLoginPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  
-  const initialState: StaffLoginState = { error: null };
-  const [state, dispatch] = useActionState(loginStaff, initialState);
+  const [error, setError] = useState<string | null>(null);
   
   const rootRef = useRef<HTMLDivElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
+  const didSubmitRef = useRef(false);
 
   useEffect(() => {
     async function fetchUsers() {
       try {
-        const res = await fetch('/api/admin/users');
+        const res = await fetch('/api/mock-auth/active-users', { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch users');
-        const allUsers: User[] = await res.json();
-        const activeUsers = allUsers.filter(u => u.active && u.exposeOnPinLogin);
+        const activeUsers: User[] = await res.json();
         setUsers(activeUsers);
       } catch (e) {
         console.error("Could not load users for PIN login", e);
-        // In a real app, show a toast.
+        toast({ variant: 'destructive', title: 'Network Error', description: 'Could not load users.'})
       }
       setLoading(false);
     }
     fetchUsers();
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if (rootRef.current) {
@@ -62,33 +67,58 @@ export default function StaffLoginPage() {
     } else if (e.key === 'Backspace') {
       setPin(p => p.slice(0, -1));
     } else if (e.key === 'Enter') {
-      if (formRef.current) {
-          formRef.current.requestSubmit();
-      }
+      handleSubmit();
     }
   };
 
   const handleSelectUser = (user: User) => {
     setSelectedUser(user);
     setPin('');
+    setError(null);
   }
+
+  const handleSubmit = useCallback(async () => {
+    if (!selectedUser || pin.length !== 4 || submitting) {
+      if (!selectedUser) setError("Please select a user.");
+      if (pin.length !== 4) setError("PIN must be 4 digits.");
+      return;
+    }
+
+    setSubmitting(true);
+    didSubmitRef.current = true;
+    setError(null);
+
+    try {
+        const res = await fetch('/api/mock-auth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ identifier: selectedUser.id, pin: pin })
+        });
+        
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || 'Invalid credentials.');
+        }
+        
+        setSession({ uid: data.uid, name: data.name, role: data.role });
+        router.push(routeForRole(data.role));
+
+    } catch (e) {
+        setError((e as Error).message);
+    } finally {
+        setSubmitting(false);
+        setPin('');
+        didSubmitRef.current = false;
+    }
+  }, [pin, router, selectedUser, submitting]);
 
   // Effect to automatically submit when PIN is complete
   useEffect(() => {
-    if (pin.length === 4 && selectedUser && formRef.current && !submitting) {
-        setSubmitting(true);
-        formRef.current.requestSubmit();
+    if (pin.length === 4 && selectedUser && !didSubmitRef.current) {
+        handleSubmit();
     }
-  }, [pin, selectedUser, submitting]);
-
-  // Effect to handle form submission result
-  useEffect(() => {
-    if (state.error) {
-        setPin('');
-        setSubmitting(false);
-    }
-    // Successful login is handled by redirect in server action
-  }, [state.error]);
+  }, [pin, selectedUser, handleSubmit]);
 
 
   return (
@@ -118,33 +148,23 @@ export default function StaffLoginPage() {
               selected={selectedUser?.id.toString() || ''}
               onSelect={(id) => {
                 const user = users.find(u => u.id.toString() === id);
-                if (user) {
-                    handleSelectUser(user);
-                    if (state) state.error = null;
-                }
+                if (user) handleSelectUser(user);
               }}
               disabled={submitting}
             />
           )}
         </section>
         
-        <form action={dispatch} ref={formRef}>
-            <input type="hidden" name="pin" value={pin} />
-            <input type="hidden" name="userId" value={selectedUser?.id || ''} />
-             <PinPad
+        <div>
+            <PinPad
                 pin={pin}
                 maxLen={4}
                 submitting={submitting}
-                err={state.error ?? undefined}
+                err={error ?? undefined}
                 onKey={press}
-                onSubmit={() => {
-                   if (formRef.current && selectedUser) {
-                        setSubmitting(true);
-                        formRef.current.requestSubmit();
-                   }
-                }}
+                onSubmit={handleSubmit}
             />
-        </form>
+        </div>
       </main>
     </div>
   );

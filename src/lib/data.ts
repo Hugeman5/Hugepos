@@ -1,9 +1,10 @@
 
 
+
 export type User = {
   id: string;
   name: string;
-  role: 'admin' | 'manager' | 'cashier';
+  role: 'admin' | 'manager' | 'cashier' | 'waiter' | 'kitchen';
   pin?: string;
   email?: string;
   username?: string;

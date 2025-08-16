@@ -6,9 +6,8 @@
     "active": true,
     "exposeOnPinLogin": true,
     "pin": "5245",
-    "outlets": [
-      "main"
-    ]
+    "email": "admin@hugepos.com",
+    "username": "admin"
   },
   {
     "id": "jcashier",
@@ -16,28 +15,38 @@
     "role": "cashier",
     "active": true,
     "exposeOnPinLogin": true,
-    "pin": "1234",
-    "outlets": [
-      "main"
-    ]
+    "pin": "1234"
   },
   {
     "id": "jwaiter",
     "name": "Jane Waiter",
-    "role": "manager",
+    "role": "waiter",
     "active": true,
     "exposeOnPinLogin": true,
-    "pin": "5678",
-    "outlets": [
-      "main"
-    ]
+    "pin": "5678"
   },
   {
-    "id": "001",
+    "id": "chef",
+    "name": "Chef Mike",
+    "role": "kitchen",
+    "active": true,
+    "exposeOnPinLogin": true,
+    "pin": "9876"
+  },
+  {
+    "id": "manager",
     "name": "Jeanne",
     "role": "manager",
     "active": true,
     "exposeOnPinLogin": true,
-    "pin": "1212"
+    "pin": "1111"
+  },
+  {
+    "id": "inactive",
+    "name": "Inactive User",
+    "role": "cashier",
+    "pin": "0000",
+    "active": false,
+    "exposeOnPinLogin": true
   }
 ]
