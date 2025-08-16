@@ -2,7 +2,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { type FloorPlan, type Table } from './data';
+import { type FloorPlan, type Table, type Area } from './data';
 
 const dataDir = path.join(process.cwd(), 'data');
 const floorPlanPath = path.join(dataDir, 'floor_plan.json');
@@ -69,5 +69,38 @@ export async function updateTable(tableId: string, patch: Partial<Table>): Promi
 export async function removeTable(tableId: string): Promise<void> {
     const floor = await getFloor();
     floor.tables = floor.tables.filter(t => t.id !== tableId);
+    await saveFloor(floor);
+}
+
+export async function addArea(areaData: Omit<Area, 'id'>): Promise<Area> {
+    const floor = await getFloor();
+    const newArea: Area = {
+        ...areaData,
+        id: `area_${Date.now()}`
+    };
+    floor.areas.push(newArea);
+    await saveFloor(floor);
+    return newArea;
+}
+
+export async function updateArea(areaId: string, patch: Partial<Area>): Promise<Area> {
+    const floor = await getFloor();
+    const areaIndex = floor.areas.findIndex(a => a.id === areaId);
+    if (areaIndex === -1) {
+        throw new Error(`Area ${areaId} not found.`);
+    }
+    const updatedArea = { ...floor.areas[areaIndex], ...patch };
+    floor.areas[areaIndex] = updatedArea;
+    await saveFloor(floor);
+    return updatedArea;
+}
+
+export async function removeArea(areaId: string): Promise<void> {
+    const floor = await getFloor();
+    // Prevent deleting an area that still has tables
+    if (floor.tables.some(t => t.areaId === areaId)) {
+        throw new Error("Cannot delete area: it still contains tables.");
+    }
+    floor.areas = floor.areas.filter(a => a.id !== areaId);
     await saveFloor(floor);
 }

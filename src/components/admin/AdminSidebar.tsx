@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, KeyRound, Package, UploadCloud, Warehouse, ChefHat, Route, BarChart3, Settings, Store } from 'lucide-react';
+import { Home, Users, KeyRound, Package, UploadCloud, Warehouse, ChefHat, Route, BarChart3, Settings, Store, Map } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { href: '/admin/inventory', label: 'Inventory', icon: Warehouse },
   { href: '/admin/stations', label: 'Stations', icon: ChefHat },
   { href: '/admin/routing', label: 'Routing', icon: Route },
+  { href: '/admin/floor-plan', label: 'Floor Plan', icon: Map },
   { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
   { href: '/admin/registers', label: 'Registers', icon: Store },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
