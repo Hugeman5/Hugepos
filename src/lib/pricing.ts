@@ -11,7 +11,7 @@ import {
     type OrderTotal
 } from './data';
 
-export function getModDelta(mod: CartLineMod, allModifiers: Map<string, Modifier>): number {
+export async function getModDelta(mod: CartLineMod, allModifiers: Map<string, Modifier>): Promise<number> {
     const modifierDef = allModifiers.get(mod.id);
     if (!modifierDef) return 0;
 
@@ -33,7 +33,9 @@ export async function computeLine(
 ): Promise<CartLine> {
     const allLineModifiersMap = new Map(allLineModifiers.map(m => [m.id, m]));
 
-    const modsTotal = line.mods.reduce((sum, mod) => sum + getModDelta(mod, allLineModifiersMap), 0);
+    const modsDeltas = await Promise.all(line.mods.map(mod => getModDelta(mod, allLineModifiersMap)));
+    const modsTotal = modsDeltas.reduce((sum, delta) => sum + delta, 0);
+
     const subtotal = (product.price + modsTotal) * line.qty;
     const taxAmt = tax.inclusive ? 0 : subtotal * tax.rate; // Simplified tax
     const total = subtotal + taxAmt;

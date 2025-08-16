@@ -72,10 +72,10 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
       name: product.name,
       qty: line.qty,
       unitPrice: product.price,
-      mods: line.mods.map(mod => {
+      mods: (await Promise.all(line.mods.map(async mod => {
         const modDef = modifierMap.get(mod.id);
         if (!modDef) return null;
-        const modDelta = pricing.getModDelta(mod, modifierMap);
+        const modDelta = await pricing.getModDelta(mod, modifierMap);
 
         if (modDef.type === 'choice' && mod.optionId) {
             const opt = modDef.options?.find(o => o.id === mod.optionId);
@@ -85,7 +85,7 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
              return { id: mod.id, name: modDef.name, delta: modDelta, count: mod.count };
         }
         return null;
-      }).filter(Boolean) as any[],
+      }))).filter(Boolean) as any[],
       lineTotal: computedLine.total,
     };
   }));
