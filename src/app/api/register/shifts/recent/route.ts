@@ -1,4 +1,3 @@
-'use server';
 
 import { NextResponse } from 'next/server';
 import { getAllShifts } from '@/lib/shiftsRepo';

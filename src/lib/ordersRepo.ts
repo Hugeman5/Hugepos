@@ -1,5 +1,5 @@
 
-'use server';
+
 import { promises as fs } from 'fs';
 import path from 'path';
 import { type Order, type Cart, type User, type OrderLine, type Product } from './data';

@@ -1,5 +1,4 @@
 
-'use server';
 
 import { parse } from 'csv-parse/sync';
 import { stringify } from 'csv-stringify/sync';

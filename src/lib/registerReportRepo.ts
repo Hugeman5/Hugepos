@@ -1,4 +1,4 @@
-'use server';
+
 
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -39,11 +39,12 @@ export async function generateAndSaveReport(shift: Shift, actualCash: number): P
     throw new Error("Cannot generate report for a shift that is not closed.");
   }
 
-  const [orders, cashMovements, allPayments] = await Promise.all([
+  const [orders, cashMovements] = await Promise.all([
     ordersRepo.listByShift(shift.id),
     cashRepo.listMovementsByShift(shift.id),
-    paymentsRepo.listByShift(shift.id)
   ]);
+  
+  const allPayments = (await Promise.all(orders.map(o => paymentsRepo.listByOrder(o.id)))).flat();
   
   const salesTotal = orders.reduce((sum, order) => sum + order.totals.total, 0);
   const taxTotal = orders.reduce((sum, order) => sum + order.totals.tax, 0);

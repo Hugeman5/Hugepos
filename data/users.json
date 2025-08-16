@@ -48,5 +48,13 @@
     "pin": "0000",
     "active": false,
     "exposeOnPinLogin": true
+  },
+  {
+    "id": "admin@example.com",
+    "name": "Hugeman",
+    "role": "cashier",
+    "active": true,
+    "exposeOnPinLogin": true,
+    "pin": "5245"
   }
 ]

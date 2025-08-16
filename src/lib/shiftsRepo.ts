@@ -1,4 +1,4 @@
-'use server';
+
 
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -95,23 +95,14 @@ export async function closeShift(shiftId: string, cashActual: number, user: {id:
     if (!shift) throw new Error("Shift not found");
     if (shift.status === 'closed') throw new Error("Shift is already closed");
 
-    const [cashMovements, orders] = await Promise.all([
-        cashRepo.listMovementsByShift(shiftId),
-        ordersRepo.listByShift(shiftId)
-    ]);
-    
-    const cashIn = cashMovements.filter(m => m.type === 'payin').reduce((sum, m) => sum + m.amount, 0);
-    const cashOut = cashMovements.filter(m => m.type === 'payout').reduce((sum, m) => sum + m.amount, 0);
-    const cashSales = orders.flatMap(o => o.payments).filter(p => p.type === 'cash').reduce((sum, p) => sum + p.amount, 0);
-
-    shift.cashExpected = shift.floatAmount + cashSales + cashIn - cashOut;
+    // This logic is now handled in the report repo to avoid circular dependencies
+    // and to centralize the calculation logic at the point of report generation.
     
     shift.status = 'closed';
     shift.tsClose = new Date().toISOString();
     shift.userIdClose = user.id;
     shift.userNameClose = user.name;
     shift.cashActual = cashActual;
-    shift.cashDifference = cashActual - shift.cashExpected;
     
     return saveShift(shift);
 }

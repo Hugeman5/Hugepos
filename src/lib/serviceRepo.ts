@@ -1,8 +1,8 @@
-'use server';
+
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { type ServiceCheck, type TableState, type User, type Order } from './data';
+import { type ServiceCheck, type TableState, type User, type Order, type Table } from './data';
 import * as ordersRepo from './ordersRepo';
 
 const dataDir = path.join(process.cwd(), 'data');
@@ -54,7 +54,7 @@ export async function saveCheck(checkToSave: ServiceCheck): Promise<void> {
 }
 
 export async function openCheck(
-    table: { id: string, areaId: string, seats: number }, 
+    table: Table, 
     server: { uid: string, name: string },
     guests: number,
     shiftId?: string
@@ -98,7 +98,7 @@ export async function closeCheck(checkId: string): Promise<ServiceCheck> {
     if (!check) throw new Error("Check not found");
     
     check.closedAt = new Date().toISOString();
-    check.state = 'free';
+    check.state = 'dirty'; // Table is now dirty
     
     // Also mark associated order as completed (if paid)
     const order = await ordersRepo.getOrder(check.orderId);

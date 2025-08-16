@@ -1,5 +1,5 @@
 
-'use server';
+
 import { parseCsv, stringifyCsv } from './csv';
 import * as catalog from './catalogRepo';
 import { type Product, type Category } from './data';

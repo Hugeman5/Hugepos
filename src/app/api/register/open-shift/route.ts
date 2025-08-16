@@ -1,4 +1,4 @@
-'use server';
+
 import { NextResponse } from 'next/server';
 import * as shiftsRepo from '@/lib/shiftsRepo';
 import * as registersRepo from '@/lib/registersRepo';
