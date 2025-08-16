@@ -51,6 +51,7 @@ export type Modifier = {
 
 // --- ORDER ---
 export type OrderStatus = 'DRAFT' | 'PAID' | 'VOID' | 'PENDING' | 'COMPLETED';
+export type PrepStatus = 'queued' | 'in_progress' | 'done';
 
 export type OrderLineMod = {
   id: string;
@@ -61,13 +62,18 @@ export type OrderLineMod = {
 };
 
 export type OrderLine = {
-  id: string;
+  id: string; // This is the CartLine ID, not stable across orders
+  lineId: string; // This is the stable, unique ID for this line item instance
   productId: string;
-  name: string;
+  name:string;
   qty: number;
   unitPrice: number;
   mods?: OrderLineMod[];
   lineTotal: number;
+  prep: {
+      stationId: string;
+      status: PrepStatus;
+  }
 };
 
 export type Order = {
@@ -160,6 +166,34 @@ export type InventoryMove = {
   user?: string;
   ref?: string; // e.g. order.id
 };
+
+// --- KDS ---
+export type Station = {
+  id: string;
+  name: string;
+};
+
+export type RoutingRules = {
+  defaultStation: string;
+  byProduct: Record<string, string>;
+  byCategory: Record<string, string>;
+};
+
+export type KdsTicketItem = {
+  lineId: string;
+  name: string;
+  qty: number;
+  status: PrepStatus;
+  mods: OrderLineMod[];
+};
+
+export type KdsTicket = {
+  orderId: string;
+  number: number;
+  createdAt: string;
+  items: KdsTicketItem[];
+};
+
 
 // --- MOCK DATA (Legacy) ---
 // This is being phased out in favor of /data JSON files

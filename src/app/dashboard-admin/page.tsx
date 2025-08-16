@@ -1,6 +1,7 @@
+
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, Package, BarChart3, Warehouse } from 'lucide-react';
+import { Users, Package, BarChart3, Warehouse, ChefHat, Route } from 'lucide-react';
 import DashboardHeader from '@/components/dashboard-header';
 
 const adminNavItems = [
@@ -27,6 +28,18 @@ const adminNavItems = [
     description: 'Manage stock levels and view inventory history.',
     href: '/dashboard-admin/inventory',
     icon: <Warehouse className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'KDS Stations',
+    description: 'Manage kitchen display stations.',
+    href: '/dashboard-admin/stations',
+    icon: <ChefHat className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'KDS Routing',
+    description: 'Configure order routing to stations.',
+    href: '/dashboard-admin/routing',
+    icon: <Route className="h-8 w-8 text-primary" />,
   },
 ];
 

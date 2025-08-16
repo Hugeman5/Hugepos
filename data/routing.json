@@ -1,0 +1,13 @@
+
+{
+  "defaultStation": "kitchen_hot",
+  "byProduct": {
+    "latte": "barista",
+    "americano": "barista",
+    "croissant": "pastry"
+  },
+  "byCategory": {
+    "coffee": "barista",
+    "bakery": "pastry"
+  }
+}

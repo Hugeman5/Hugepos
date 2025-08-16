@@ -1,9 +1,10 @@
+
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import * as ordersRepo from '@/lib/ordersRepo';
 import * as paymentsRepo from '@/lib/paymentsRepo';
 import * as inventoryRepo from '@/lib/inventoryRepo';
-import { type Order, type Product } from '@/lib/data';
+import { type Order } from '@/lib/data';
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function POST(
     const validation = paySchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json(validation.error, { status: 400 });
+      return NextResponse.json(validation.error.errors, { status: 400 });
     }
 
     const order = await ordersRepo.getOrder(orderId);
@@ -67,18 +68,7 @@ export async function POST(
     order.status = 'PAID';
     await ordersRepo.saveOrder(order);
     
-    // This needs to be converted from the OrderLine structure
-    const products = await inventoryRepo.getProducts();
-    const productMap = new Map(products.map(p => [p.id, p]));
-    const orderForInventory: any = {
-      ...order,
-      items: order.lines.map(line => ({
-        product: productMap.get(line.productId),
-        quantity: line.qty,
-      }))
-    };
-    
-    const inventoryMovesCount = await inventoryRepo.applyUsageFromOrder(orderForInventory);
+    const inventoryMovesCount = await inventoryRepo.applyUsageFromOrder(order);
 
     return NextResponse.json({ ok: true, orderId, inventoryMovesCount });
 

@@ -1,9 +1,11 @@
+
 'use server';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { type Order, type Cart, type User } from './data';
+import { type Order, type Cart, type User, type OrderLine, type Product } from './data';
 import * as catalogRepo from './catalogRepo';
 import * as pricing from './pricing';
+import * as stationsRepo from './stationsRepo';
 
 const dataDir = path.join(process.cwd(), 'data');
 const ordersPath = path.join(dataDir, 'orders.json');
@@ -42,6 +44,37 @@ export async function nextOrderNumber(): Promise<number> {
     }
 }
 
+async function backfillLegacyOrder(order: Order, products: Product[]): Promise<Order> {
+    const productMap = new Map(products.map(p => [p.id, p]));
+    let modified = false;
+
+    const newLines = await Promise.all(order.lines.map(async (line: any) => {
+        if (line.lineId && line.prep) {
+            return line as OrderLine;
+        }
+        modified = true;
+        const product = productMap.get(line.productId);
+        const stationId = await stationsRepo.resolveStationForProduct(line.productId, product?.categoryId);
+
+        return {
+            ...line,
+            lineId: `line_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            prep: {
+                stationId: stationId,
+                status: 'queued'
+            }
+        };
+    }));
+
+    if (modified) {
+        const updatedOrder = { ...order, lines: newLines };
+        await saveOrder(updatedOrder, false); // Avoid recursion
+        return updatedOrder;
+    }
+
+    return order;
+}
+
 export async function createDraft(user: { uid: string, name: string }, cart: Cart): Promise<Order> {
   const [products, allModifiers, taxes] = await Promise.all([
     catalogRepo.getProducts(),
@@ -65,9 +98,12 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
     const lineModifiers = product.modifierIds?.map(id => modifierMap.get(id)).filter(Boolean) as any[];
 
     const computedLine = await pricing.computeLine(line, product, lineModifiers, tax);
+    
+    const stationId = await stationsRepo.resolveStationForProduct(product.id, product.categoryId);
 
     return {
       id: line.id,
+      lineId: `line_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       productId: product.id,
       name: product.name,
       qty: line.qty,
@@ -87,6 +123,10 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
         return null;
       }))).filter(Boolean) as any[],
       lineTotal: computedLine.total,
+      prep: {
+          stationId: stationId,
+          status: 'queued'
+      }
     };
   }));
 
@@ -106,10 +146,20 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
 
 export async function getOrder(id: string): Promise<Order | null> {
     const orders = await listRecent();
-    return orders.find(o => o.id === id) || null;
+    const order = orders.find(o => o.id === id);
+    if (!order) return null;
+
+    // Check for legacy format and backfill if necessary
+    if (order.lines.length > 0 && !(order.lines[0].prep)) {
+        const products = await catalogRepo.getProducts();
+        return backfillLegacyOrder(order, products);
+    }
+    
+    return order;
 }
 
-export async function saveOrder(order: Order): Promise<void> {
+export async function saveOrder(order: Order, write = true): Promise<void> {
+    if (!write) return;
     const orders = await listRecent();
     const index = orders.findIndex(o => o.id === order.id);
     if (index > -1) {
