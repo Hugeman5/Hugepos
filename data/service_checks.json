@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "id": "chk_1755346861622",
+    "tableId": "P1",
+    "areaId": "patio",
+    "guests": 3,
+    "server": {
+      "uid": "jwaiter",
+      "name": "Jane Waiter"
+    },
+    "openedAt": "2025-08-16T12:21:01.622Z",
+    "orderId": "ord_1755346861620",
+    "state": "seated",
+    "seats": 4
+  }
+]

@@ -12,7 +12,7 @@ const navItems = [
   { href: '/admin/inventory', label: 'Inventory', icon: Warehouse },
   { href: '/admin/stations', label: 'Stations', icon: ChefHat },
   { href: '/admin/routing', label: 'Routing', icon: Route },
-  { href: '/admin/floor-plan', label: 'Floor Plan', icon: Map },
+  { href: '/admin/floor', label: 'Floor Plan', icon: Map },
   { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
   { href: '/admin/registers', label: 'Registers', icon: Store },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
