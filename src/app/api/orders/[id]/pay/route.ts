@@ -4,7 +4,7 @@ import { z } from 'zod';
 import * as ordersRepo from '@/lib/ordersRepo';
 import * as paymentsRepo from '@/lib/paymentsRepo';
 import * as inventoryRepo from '@/lib/inventoryRepo';
-import { type Order } from '@/lib/data';
+import * as shiftsRepo from '@/lib/shiftsRepo';
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,6 @@ export async function POST(
 
     const { type, amount, tendered, last4, user } = validation.data;
 
-    // Basic validation
     if (amount < order.totals.total) {
       return NextResponse.json({ message: `Payment amount ${amount} is less than order total ${order.totals.total}.` }, { status: 400 });
     }
@@ -56,7 +55,7 @@ export async function POST(
       change = tendered - amount;
     }
     
-    await paymentsRepo.appendPayment({
+    const payment = await paymentsRepo.appendPayment({
       orderId,
       type,
       amount,
@@ -66,7 +65,30 @@ export async function POST(
     });
 
     order.status = 'PAID';
+    // Shift ID should have been set when the order was created
+    if (!order.shiftId) {
+        console.warn(`Order ${orderId} paid without a shiftId.`);
+        const openShift = await shiftsRepo.getOpenShift();
+        if (openShift) {
+            order.shiftId = openShift.id;
+        } else {
+             return NextResponse.json({ message: `No open shift to associate payment with.` }, { status: 400 });
+        }
+    }
+    
     await ordersRepo.saveOrder(order);
+    
+    // Update shift totals
+    const shift = await shiftsRepo.getShift(order.shiftId);
+    if (shift) {
+        if (type === 'cash') {
+            shift.cashPayments = (shift.cashPayments || 0) + amount;
+            shift.cashExpected = (shift.cashExpected || 0) + amount;
+        } else {
+            shift.cardPayments = (shift.cardPayments || 0) + amount;
+        }
+        await shiftsRepo.saveShift(shift);
+    }
     
     const inventoryMovesCount = await inventoryRepo.applyUsageFromOrder(order);
 

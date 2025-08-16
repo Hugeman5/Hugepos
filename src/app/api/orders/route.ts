@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { type Cart } from '@/lib/data';
+import { type Cart, type Order } from '@/lib/data';
 import * as ordersRepo from '@/lib/ordersRepo';
 import { z } from 'zod';
 
@@ -18,7 +18,8 @@ const createOrderSchema = z.object({
       optionId: z.string().optional(),
       count: z.number().optional(),
     })).optional(),
-  }))
+  })),
+  shiftId: z.string().optional()
 });
 
 
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json(validation.error, { status: 400 });
     }
 
-    const { user, items } = validation.data;
+    const { user, items, shiftId } = validation.data;
 
     // The API expects a Cart object, so we transform the items.
     const cart: Cart = {
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
       }))
     };
 
-    const draftOrder = await ordersRepo.createDraft(user, cart);
+    const draftOrder = await ordersRepo.createDraft(user, cart, shiftId);
     return NextResponse.json(draftOrder);
 
   } catch (error) {

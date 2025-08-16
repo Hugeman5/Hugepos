@@ -1,6 +1,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -86,7 +87,7 @@ export type MenuScreenSection = {
     items: MenuScreenItem[];
 }
 export type MenuScreen = {
-    id: string;
+    id:string;
     name: string;
     sections: MenuScreenSection[];
 }
@@ -139,6 +140,7 @@ export type Order = {
   lines: OrderLine[];
   totals: { subtotal: number; tax: number; total: number };
   notes?: string;
+  shiftId?: string;
 };
 
 // --- PAYMENT ---
@@ -245,4 +247,72 @@ export type KdsTicket = {
   number: number;
   createdAt: string;
   items: KdsTicketItem[];
+};
+
+// --- REGISTERS & SHIFTS ---
+export type Register = {
+  id: string;
+  name: string;
+};
+
+export type ShiftStatus = 'open' | 'closed';
+
+export type Shift = {
+  id: string; // e.g., shift_1
+  registerId: string;
+  userIdOpen: string;
+  userNameOpen: string;
+  tsOpen: string;
+  floatAmount: number;
+  status: ShiftStatus;
+  
+  // These are added on close
+  tsClose?: string;
+  userIdClose?: string;
+  userNameClose?: string;
+  cashPayments?: number;
+  cashExpected?: number;
+  cashActual?: number;
+  cashDifference?: number;
+  cardPayments?: number;
+};
+
+export type CashMovement = {
+  id: string;
+  shiftId: string;
+  type: 'payin' | 'payout';
+  amount: number;
+  reason: string;
+  ts: string;
+  userId: string;
+  userName: string;
+};
+
+export type RegisterReport = {
+  id: string; // report_shift_1
+  shiftId: string;
+  ts: string;
+  
+  // Summary
+  salesTotal: number;
+  taxTotal: number;
+  netSales: number;
+  
+  // Payments
+  cashPaymentsTotal: number;
+  cardPaymentsTotal: number;
+  
+  // Cash Drawer
+  startingFloat: number;
+  cashIn: number;
+  cashOut: number;
+  cashSales: number;
+  expectedInDrawer: number;
+  actualInDrawer: number;
+  difference: number;
+  
+  // Details
+  orders: number[];
+  payments: Payment[];
+  cashMovements: CashMovement[];
 };

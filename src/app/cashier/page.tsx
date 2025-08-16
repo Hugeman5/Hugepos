@@ -9,6 +9,7 @@ import {
   type Modifier,
   type Tax,
   type CartLine,
+  type Shift
 } from '@/lib/data';
 
 type MenuData = {
@@ -23,6 +24,7 @@ export default function CashierDashboardPage() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [qtyBuffer, setQtyBuffer] = useState<number>(1);
   const [user, setUser] = useState({ uid: 'jcashier', name: 'John Cashier' });
+  const [shiftStatus, setShiftStatus] = useState<any>(null);
 
 
   useEffect(() => {
@@ -37,7 +39,21 @@ export default function CashierDashboardPage() {
         // Add toast notification here in a real app
       }
     }
+    
+    async function fetchShiftStatus() {
+        try {
+            const res = await fetch('/api/register/open-shift');
+            if(res.ok) {
+                const data = await res.json();
+                setShiftStatus(data);
+            }
+        } catch(e) {
+            console.error("Could not fetch shift status", e);
+        }
+    }
+    
     fetchMenu();
+    fetchShiftStatus();
   }, []);
 
   // Keyboard listener for quantity
@@ -103,6 +119,7 @@ export default function CashierDashboardPage() {
         title="Cashier POS"
         userName={user.name}
         userRole="Cashier"
+        shiftStatus={shiftStatus}
       />
       <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 lg:gap-8 lg:p-6 overflow-hidden">
         <div className="md:col-span-2 h-full flex flex-col min-h-0">

@@ -35,7 +35,7 @@ export async function nextOrderNumber(): Promise<number> {
     try {
         const seq = await readJSONFile(sequencePath, { order: 1001 });
         const nextNum = seq.order;
-        await writeJSONFile(sequencePath, { order: nextNum + 1 });
+        await writeJSONFile(sequencePath, { ...seq, order: nextNum + 1 });
         return nextNum;
     } catch(e) {
         console.error("Could not get next order number", e);
@@ -75,7 +75,7 @@ async function backfillLegacyOrder(order: Order, products: Product[]): Promise<O
     return order;
 }
 
-export async function createDraft(user: { uid: string, name: string }, cart: Cart): Promise<Order> {
+export async function createDraft(user: { uid: string, name: string }, cart: Cart, shiftId?: string): Promise<Order> {
   const [products, allModifiers, taxes] = await Promise.all([
     catalogRepo.getProducts(),
     catalogRepo.getModifiers(),
@@ -138,6 +138,7 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
     status: 'DRAFT',
     lines: orderLines,
     totals,
+    shiftId: shiftId,
   };
   
   await saveOrder(order);
@@ -173,4 +174,9 @@ export async function saveOrder(order: Order, write = true): Promise<void> {
 export async function listRecent(limit = 50): Promise<Order[]> {
     const orders = await readJSONFile<Order[]>(ordersPath, []);
     return orders.slice(0, limit);
+}
+
+export async function listByShift(shiftId: string): Promise<Order[]> {
+    const orders = await readJSONFile<Order[]>(ordersPath, []);
+    return orders.filter(o => o.shiftId === shiftId && o.status === 'PAID');
 }

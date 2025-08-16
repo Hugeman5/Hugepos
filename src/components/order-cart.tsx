@@ -15,9 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { type CartLine, type Order, type OrderTotal } from '@/lib/data';
-import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CreditCard, Landmark } from 'lucide-react';
+import { type CartLine, type Order, type OrderTotal, type Shift } from '@/lib/data';
+import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CreditCard, Landmark, AlertCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import Link from 'next/link';
 
 type OrderCartProps = {
     cartLines: CartLine[];
@@ -34,8 +35,26 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
   const [tenderedAmount, setTenderedAmount] = useState('');
   const [last4, setLast4] = useState('');
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+  const [openShift, setOpenShift] = useState<Shift | null>(null);
   
   const { toast } = useToast();
+  
+  useEffect(() => {
+    async function checkOpenShift() {
+        try {
+            const res = await fetch('/api/register/open-shift');
+            if (res.ok) {
+                const data = await res.json();
+                setOpenShift(data);
+            } else {
+                setOpenShift(null);
+            }
+        } catch(e) {
+            setOpenShift(null);
+        }
+    }
+    checkOpenShift();
+  }, []);
 
   useEffect(() => {
     const calculateTotals = async () => {
@@ -77,14 +96,14 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
   }
 
   const handlePay = async () => {
-    if (!totals) return;
+    if (!totals || !openShift) return;
     setIsPaying(true);
     try {
         // 1. Create the DRAFT order
         const createOrderRes = await fetch('/api/orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user, items: cartLines })
+            body: JSON.stringify({ user, items: cartLines, shiftId: openShift.id })
         });
         if (!createOrderRes.ok) throw new Error('Failed to create order');
         const orderData: Order = await createOrderRes.json();
@@ -136,6 +155,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
   };
   
   const isPaymentValid = () => {
+      if (!openShift) return false;
       if (paymentType === 'cash') {
           return parseFloat(tenderedAmount) >= (totals?.total || 0);
       }
@@ -144,9 +164,24 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
       }
       return false;
   }
+  
+  const renderNoShiftOverlay = () => {
+      if (openShift) return null;
+      return (
+        <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-center p-4 z-10">
+          <AlertCircle className="h-12 w-12 text-yellow-400 mb-4" />
+          <h3 className="text-xl font-semibold text-white">No Open Register</h3>
+          <p className="text-yellow-200 mt-2 mb-4">A register shift must be opened before processing sales.</p>
+          <Button asChild>
+            <Link href="/register/open">Open Register</Link>
+          </Button>
+        </div>
+      )
+  }
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col relative">
+      {renderNoShiftOverlay()}
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-headline">
           <ShoppingCart className="h-6 w-6" /> Current Order
@@ -164,7 +199,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
                 <div className="flex-1">
                   <p className="font-medium">{line.productName}</p>
                    {line.modsSummary && <p className="text-sm text-muted-foreground">{line.modsSummary}</p>}
-                   {line.total != null && <p className="text-sm font-semibold">${line.total.toFixed(2)}</p>}
+                   {line.total != null && <p className="text-sm font-semibold">${(line.total || 0).toFixed(2)}</p>}
                 </div>
                 <div className="flex items-center gap-2">
                    <span className="font-medium w-6 text-center">{line.qty}x</span>
@@ -219,7 +254,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
 
             <Dialog>
                 <DialogTrigger asChild>
-                    <Button className="w-full" size="lg" disabled={cartLines.length === 0 || isLoading}>
+                    <Button className="w-full" size="lg" disabled={cartLines.length === 0 || isLoading || !openShift}>
                         Pay
                     </Button>
                 </DialogTrigger>
