@@ -34,7 +34,7 @@ export default function StaffGrid({ users, selected, onSelect, disabled=false }:
                  <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <div className="font-semibold text-brand-text truncate">{u.name}</div>
+                <div className="font-semibold text-brand-text">{u.name}</div>
                 <div className="text-xs text-brand-mute capitalize">{u.role}</div>
               </div>
             </div>
