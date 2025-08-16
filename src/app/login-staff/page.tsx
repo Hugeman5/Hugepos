@@ -139,7 +139,7 @@ export default function StaffLoginPage() {
                 err={state.error ?? undefined}
                 onKey={press}
                 onSubmit={() => {
-                   if (formRef.current) {
+                   if (formRef.current && selectedUser) {
                         setSubmitting(true);
                         formRef.current.requestSubmit();
                    }
