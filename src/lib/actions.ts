@@ -8,11 +8,11 @@ import type { User, Order } from '@/lib/data';
 
 // Mock data moved here to avoid client/server module conflicts
 const users: User[] = [
-  { id: 'admin', name: 'Admin User', role: 'admin', email: 'admin@hugepos.com', username: 'admin', active: true },
-  { id: 'jcashier', name: 'John Cashier', role: 'cashier', pin: '1234', active: true },
-  { id: 'jwaiter', name: 'Jane Waiter', role: 'manager', pin: '5678', active: true },
-  { id: 'chef', name: 'Chef Mike', role: 'cashier', pin: '9876', active: true },
-  { id: 'inactive', name: 'Inactive User', role: 'cashier', pin: '0000', active: false },
+  { id: 'admin', name: 'Admin User', role: 'admin', email: 'admin@hugepos.com', username: 'admin', active: true, pin: '5245' },
+  { id: 'jcashier', name: 'John Cashier', role: 'cashier', pin: '1234', active: true, exposeOnPinLogin: true },
+  { id: 'jwaiter', name: 'Jane Waiter', role: 'manager', pin: '5678', active: true, exposeOnPinLogin: true },
+  { id: 'chef', name: 'Chef Mike', role: 'cashier', pin: '9876', active: true, exposeOnPinLogin: true },
+  { id: 'inactive', name: 'Inactive User', role: 'cashier', pin: '0000', active: false, exposeOnPinLogin: true },
 ];
 
 
@@ -49,7 +49,9 @@ export async function loginAdmin(
 
   const { email, username } = validatedFields.data;
 
-  const adminUser = users.find(
+  // In a real app, this would query the DB. We use the local file.
+  const allUsers = (await import('@/lib/usersRepo')).getAllUsers();
+  const adminUser = (await allUsers).find(
     (user) =>
       user.email === email &&
       user.username === username &&
@@ -61,6 +63,9 @@ export async function loginAdmin(
   if (!adminUser) {
     return { message: 'Invalid credentials or user is inactive.' };
   }
+
+  // In a real app, you would set a session cookie here.
+  // We are skipping this for local-only mock auth.
 
   redirect('/admin');
 }
@@ -89,7 +94,8 @@ export async function loginStaff(
       return { error: 'Please select a user.' };
   }
   
-  const staffUser = users.find(
+  const allUsers = (await import('@/lib/usersRepo')).getAllUsers();
+  const staffUser = (await allUsers).find(
     (user) =>
       user.pin === pin &&
       user.id.toString() === userId &&
@@ -109,6 +115,8 @@ export async function loginStaff(
     //   redirect('/dashboard-waiter');
     case 'kitchen':
       redirect('/kds');
+    case 'admin':
+      redirect('/admin');
     default:
       return { error: 'User has an invalid role for PIN login.' };
   }
