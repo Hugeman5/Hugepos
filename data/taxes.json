@@ -1,0 +1,9 @@
+
+[
+  {
+    "id": "vat15",
+    "name": "VAT 15%",
+    "rate": 0.15,
+    "inclusive": false
+  }
+]

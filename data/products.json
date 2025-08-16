@@ -1,0 +1,30 @@
+
+[
+  {
+    "id": "latte",
+    "name": "Latte",
+    "categoryId": "coffee",
+    "price": 3.50,
+    "taxId": "vat15",
+    "active": true,
+    "modifierIds": ["milk-alt", "shots"]
+  },
+  {
+    "id": "americano",
+    "name": "Americano",
+    "categoryId": "coffee",
+    "price": 2.80,
+    "taxId": "vat15",
+    "active": true,
+    "modifierIds": ["shots"]
+  },
+  {
+    "id": "croissant",
+    "name": "Butter Croissant",
+    "categoryId": "bakery",
+    "price": 2.90,
+    "taxId": "vat15",
+    "active": true,
+    "modifierIds": []
+  }
+]

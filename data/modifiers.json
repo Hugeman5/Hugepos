@@ -1,0 +1,20 @@
+
+[
+  {
+    "id": "milk-alt",
+    "name": "Alt Milk",
+    "type": "choice",
+    "options": [
+      { "id": "almond", "name": "Almond", "delta": 0.50 },
+      { "id": "oat", "name": "Oat", "delta": 0.60 }
+    ]
+  },
+  {
+    "id": "shots",
+    "name": "Extra Shot",
+    "type": "count",
+    "step": 1,
+    "deltaPerUnit": 0.80,
+    "max": 3
+  }
+]
