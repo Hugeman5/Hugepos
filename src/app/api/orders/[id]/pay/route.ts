@@ -1,4 +1,5 @@
 
+
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import * as ordersRepo from '@/lib/ordersRepo';
@@ -7,14 +8,18 @@ import * as inventoryRepo from '@/lib/inventoryRepo';
 import * as shiftsRepo from '@/lib/shiftsRepo';
 import * as loyaltyRepo from '@/lib/loyaltyRepo';
 import * as customersRepo from '@/lib/customersRepo';
+import * as giftCardsRepo from '@/lib/giftCardsRepo';
 
 export const dynamic = "force-dynamic";
 
 const paySchema = z.object({
-  type: z.enum(['cash', 'card']),
-  amount: z.number().positive(),
-  tendered: z.number().optional(),
-  last4: z.string().optional(),
+  payments: z.array(z.object({
+    type: z.enum(['cash', 'card', 'gift_card']),
+    amount: z.number().positive(),
+    tendered: z.number().optional(), // For cash
+    last4: z.string().optional(), // For card
+    ref: z.string().optional(), // For gift_card code
+  })),
   user: z.object({
     uid: z.string(),
     name: z.string(),
@@ -45,7 +50,7 @@ export async function POST(
         return NextResponse.json({ message: `Order ${orderId} is already paid.` }, { status: 400 });
     }
 
-    const { type, amount, tendered, last4, user, customerId, pointsToRedeem } = validation.data;
+    const { payments, user, customerId, pointsToRedeem } = validation.data;
     
     // --- Loyalty & Customer Handling ---
     if (customerId) {
@@ -78,26 +83,33 @@ export async function POST(
     }
     // --- End Loyalty ---
 
-    if (amount < order.totals.total) {
-      return NextResponse.json({ message: `Payment amount ${amount} is less than order total ${order.totals.total}.` }, { status: 400 });
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    if (totalPaid < order.totals.total) {
+      return NextResponse.json({ message: `Total payment amount ${totalPaid} is less than order total ${order.totals.total}.` }, { status: 400 });
     }
 
-    let change = 0;
-    if (type === 'cash' && tendered) {
-      if (tendered < amount) {
-        return NextResponse.json({ message: `Tendered amount ${tendered} is less than payment amount ${amount}.` }, { status: 400 });
-      }
-      change = tendered - amount;
+    // --- Process payments ---
+    for (const payment of payments) {
+        if (payment.type === 'gift_card') {
+            if (!payment.ref) throw new Error("Gift card code (ref) is required for gift_card payment.");
+            await giftCardsRepo.redeem({
+                code: payment.ref,
+                amount: payment.amount,
+                orderId,
+                user
+            });
+        }
+
+        await paymentsRepo.appendPayment({
+            orderId,
+            type: payment.type,
+            amount: payment.amount,
+            change: payment.type === 'cash' ? (payment.tendered || payment.amount) - payment.amount : 0,
+            last4: payment.last4,
+            ref: payment.ref,
+            user
+        });
     }
-    
-    const payment = await paymentsRepo.appendPayment({
-      orderId,
-      type,
-      amount,
-      change,
-      last4: last4,
-      user
-    });
 
     order.status = 'PAID';
     if (!order.shiftId) {
@@ -127,11 +139,15 @@ export async function POST(
     
     const shift = await shiftsRepo.getShift(order.shiftId);
     if (shift) {
-        if (type === 'cash') {
-            shift.cashPayments = (shift.cashPayments || 0) + amount;
-            shift.cashExpected = (shift.cashExpected || 0) + amount;
-        } else {
-            shift.cardPayments = (shift.cardPayments || 0) + amount;
+        for (const payment of payments) {
+            if (payment.type === 'cash') {
+                shift.cashPayments = (shift.cashPayments || 0) + payment.amount;
+                shift.cashExpected = (shift.cashExpected || 0) + payment.amount;
+            } else if (payment.type === 'card') {
+                shift.cardPayments = (shift.cardPayments || 0) + payment.amount;
+            } else if (payment.type === 'gift_card') {
+                shift.giftCardPayments = (shift.giftCardPayments || 0) + payment.amount;
+            }
         }
         await shiftsRepo.saveShift(shift);
     }

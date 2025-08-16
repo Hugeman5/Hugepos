@@ -84,6 +84,7 @@ export async function openShift(registerId: string, floatAmount: number, user: {
         status: 'open',
         cashPayments: 0,
         cardPayments: 0,
+        giftCardPayments: 0,
         cashExpected: floatAmount
     };
 

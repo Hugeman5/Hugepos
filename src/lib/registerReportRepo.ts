@@ -52,6 +52,8 @@ export async function generateAndSaveReport(shift: Shift, actualCash: number): P
   
   const cashPaymentsTotal = allPayments.filter(p => p.type === 'cash').reduce((sum, p) => sum + p.amount, 0);
   const cardPaymentsTotal = allPayments.filter(p => p.type === 'card').reduce((sum, p) => sum + p.amount, 0);
+  const giftCardPaymentsTotal = allPayments.filter(p => p.type === 'gift_card').reduce((sum, p) => sum + p.amount, 0);
+
 
   const cashIn = cashMovements.filter(m => m.type === 'payin').reduce((sum, m) => sum + m.amount, 0);
   const cashOut = cashMovements.filter(m => m.type === 'payout').reduce((sum, m) => sum + m.amount, 0);
@@ -68,6 +70,7 @@ export async function generateAndSaveReport(shift: Shift, actualCash: number): P
     netSales,
     cashPaymentsTotal,
     cardPaymentsTotal,
+    giftCardPaymentsTotal,
     startingFloat: shift.floatAmount,
     cashIn,
     cashOut,

@@ -4,6 +4,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -142,7 +143,7 @@ export type Order = {
   user: { uid: string; name: string };
   status: OrderStatus;
   lines: OrderLine[];
-  totals: { subtotal: number; tax: number; total: number };
+  totals: { subtotal: number; tax: number; total: number; discount?: number };
   notes?: string;
   shiftId?: string;
   customer?: { id: string; name: string; groupId?: string };
@@ -159,10 +160,11 @@ export type Payment = {
   id: string;
   ts: string;
   orderId: string;
-  type: 'cash' | 'card';
+  type: 'cash' | 'card' | 'gift_card';
   amount: number;
   change?: number;
   last4?: string;
+  ref?: string; // e.g. gift card code
   user: { uid: string; name: string };
 };
 
@@ -289,6 +291,7 @@ export type Shift = {
   cashActual?: number;
   cashDifference?: number;
   cardPayments?: number;
+  giftCardPayments?: number;
 };
 
 export type CashMovement = {
@@ -315,6 +318,7 @@ export type RegisterReport = {
   // Payments
   cashPaymentsTotal: number;
   cardPaymentsTotal: number;
+  giftCardPaymentsTotal: number;
   
   // Cash Drawer
   startingFloat: number;
@@ -417,5 +421,40 @@ export type LedgerEntry = {
   points: number; // positive for earn, negative for redeem
   orderId?: string;
   value?: number; // monetary value of redemption
+  note?: string;
+};
+
+
+// --- GIFT CARDS ---
+export type GiftCardSettings = {
+  prefix: string;
+  codeLength: number;
+  expiryMonths: number;
+  allowManualCode: boolean;
+  currency: string;
+};
+
+export type GiftCard = {
+  code: string;
+  status: "active" | "inactive" | "suspended";
+  balance: number;
+  currency: string;
+  issuedAt: string;
+  expiresAt?: string;
+  customerId?: string;
+  orderId?: string; // Original order ID where it was issued
+  notes?: string;
+  lastTxAt?: string;
+};
+
+export type GiftCardTxn = {
+  id: string;
+  code: string;
+  ts: string;
+  type: "issue" | "redeem" | "refund" | "void" | "adjust";
+  amount: number; // Can be positive or negative
+  orderId?: string;
+  lineId?: string;
+  user?: { uid: string, name: string };
   note?: string;
 };
