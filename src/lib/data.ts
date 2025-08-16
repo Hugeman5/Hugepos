@@ -50,18 +50,48 @@ export type Modifier = {
 };
 
 // --- ORDER ---
-export type OrderItem = {
-  product: Product;
-  quantity: number;
+export type OrderStatus = 'DRAFT' | 'PAID' | 'VOID' | 'PENDING' | 'COMPLETED';
+
+export type OrderLineMod = {
+  id: string;
+  name: string;
+  delta: number;
+  optionId?: string;
+  count?: number;
+};
+
+export type OrderLine = {
+  id: string;
+  productId: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  mods?: OrderLineMod[];
+  lineTotal: number;
 };
 
 export type Order = {
   id: string;
-  tableNumber?: number;
-  status: 'pending' | 'completed' | 'paid';
-  items: OrderItem[];
-  createdAt: Date;
-  total: number;
+  number: number;
+  ts: string;
+  user: { uid: string; name: string };
+  status: OrderStatus;
+  lines: OrderLine[];
+  totals: { subtotal: number; tax: number; total: number };
+  notes?: string;
+  tableNumber?: number; // Keep for KDS compatibility
+};
+
+// --- PAYMENT ---
+export type Payment = {
+  id: string;
+  ts: string;
+  orderId: string;
+  type: 'cash' | 'card';
+  amount: number;
+  change?: number;
+  last4?: string;
+  user: { uid: string; name: string };
 };
 
 
@@ -133,7 +163,7 @@ export type InventoryMove = {
 
 // --- MOCK DATA (Legacy) ---
 // This is being phased out in favor of /data JSON files
-export const orders: Order[] = [
+export const orders: { id: string, tableNumber: number, status: 'pending' | 'completed' | 'paid', items: any[], createdAt: Date, total: number }[] = [
   {
     id: 'ORD001',
     tableNumber: 5,

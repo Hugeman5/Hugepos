@@ -23,6 +23,8 @@ export default function CashierDashboardPage() {
   const [menuData, setMenuData] = useState<MenuData | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [qtyBuffer, setQtyBuffer] = useState<number>(1);
+  const [user, setUser] = useState({ uid: 'jcashier', name: 'John Cashier' });
+
 
   useEffect(() => {
     async function fetchMenu() {
@@ -58,20 +60,29 @@ export default function CashierDashboardPage() {
   }, []);
 
   const handleAddToCart = (product: Product, mods: CartLine['mods']) => {
-    // This is a simplified add to cart, a real one would handle merging lines
     setCart((prevCart) => {
-      // For simplicity, we add as a new line each time.
-      // A more robust implementation would check for an identical existing line
-      // and increment its quantity.
-      const newLine: CartLine = {
-        id: `${product.id}-${Date.now()}`, // unique id for the line
-        productId: product.id,
-        qty: qtyBuffer,
-        mods,
-      };
-      return [...prevCart, newLine];
+      const existingLine = prevCart.find(line => 
+        line.productId === product.id &&
+        JSON.stringify(line.mods) === JSON.stringify(mods)
+      );
+
+      if (existingLine) {
+        return prevCart.map(line =>
+            line.id === existingLine.id ? { ...line, qty: line.qty + qtyBuffer } : line
+        );
+      } else {
+         const newLine: CartLine = {
+            id: `${product.id}-${Date.now()}`,
+            productId: product.id,
+            qty: qtyBuffer,
+            mods,
+            subtotal: 0,
+            tax: 0,
+            total: 0
+        };
+        return [...prevCart, newLine];
+      }
     });
-    // Reset qty buffer after adding to cart
     setQtyBuffer(1);
   };
 
@@ -91,7 +102,7 @@ export default function CashierDashboardPage() {
     <div className="flex h-screen w-full flex-col bg-muted/40">
       <DashboardHeader
         title="Cashier POS"
-        userName="John Cashier"
+        userName={user.name}
         userRole="Cashier"
       />
       <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 lg:gap-8 lg:p-6 overflow-hidden">
@@ -105,7 +116,7 @@ export default function CashierDashboardPage() {
           />
         </div>
         <div className="md:col-span-1 h-full flex flex-col min-h-0">
-          <OrderCart cartLines={cart} onUpdateCart={handleUpdateCart} />
+          <OrderCart cartLines={cart} onUpdateCart={handleUpdateCart} user={user} />
         </div>
       </main>
     </div>

@@ -2,9 +2,9 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { orders } from '@/lib/data';
 import { applyUsageFromOrder } from '@/lib/inventoryRepo';
-import type { User } from '@/lib/data';
+import type { User, Order } from '@/lib/data';
+import { orders as mockOrders } from '@/lib/data';
 
 
 // Mock data moved here to avoid client/server module conflicts
@@ -107,15 +107,15 @@ export async function loginStaff(
   }
 }
 
-export async function payOrder(orderId: string) {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) {
+export async function payOrder(order: Order) {
+    const mockOrder = mockOrders.find(o => o.id === order.id);
+    if (!mockOrder) {
         throw new Error("Order not found");
     }
-    order.status = 'paid';
+    mockOrder.status = 'paid';
     const inventoryMovesCount = await applyUsageFromOrder(order);
     return {
-        ...order,
+        ...mockOrder,
         inventoryMovesCount
     }
 }

@@ -7,24 +7,24 @@ import {
   type Ingredient,
   type Order,
   type Recipe,
+  type Product
 } from './data';
 
-const inventoryPath = path.join(process.cwd(), 'src', 'lib', 'data', 'inventory.json');
-const movesPath = path.join(process.cwd(), 'src', 'lib', 'data', 'inventory_moves.json');
-const ingredientsPath = path.join(process.cwd(), 'src', 'lib', 'data', 'ingredients.json');
-const recipesPath = path.join(process.cwd(), 'src', 'lib', 'data', 'recipes.json');
+const dataDir = path.join(process.cwd(), 'data');
+const inventoryPath = path.join(dataDir, 'inventory.json');
+const movesPath = path.join(dataDir, 'inventory_moves.json');
+const ingredientsPath = path.join(dataDir, 'ingredients.json');
+const recipesPath = path.join(dataDir, 'recipes.json');
+const productsPath = path.join(dataDir, 'products.json');
 
 
-async function readJSONFile<T>(filePath: string): Promise<T> {
+async function readJSONFile<T>(filePath: string, defaultValue: T): Promise<T> {
   try {
     const data = await fs.readFile(filePath, 'utf-8');
     return JSON.parse(data) as T;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      // If the file doesn't exist, return a default value
-      if (filePath.endsWith('inventory.json') || filePath.endsWith('inventory_moves.json') || filePath.endsWith('ingredients.json') || filePath.endsWith('recipes.json')) {
-        return [] as T;
-      }
+      return defaultValue;
     }
     throw error;
   }
@@ -36,7 +36,11 @@ async function writeJSONFile<T>(filePath: string, data: T): Promise<void> {
 
 
 export async function getLevels(): Promise<InventoryItem[]> {
-  return readJSONFile<InventoryItem[]>(inventoryPath);
+  return readJSONFile<InventoryItem[]>(inventoryPath, []);
+}
+
+export async function getProducts(): Promise<Product[]> {
+    return readJSONFile<Product[]>(productsPath, []);
 }
 
 export async function saveLevels(levels: InventoryItem[]): Promise<void> {
@@ -44,7 +48,7 @@ export async function saveLevels(levels: InventoryItem[]): Promise<void> {
 }
 
 export async function getMoves(): Promise<InventoryMove[]> {
-    return readJSONFile<InventoryMove[]>(movesPath);
+    return readJSONFile<InventoryMove[]>(movesPath, []);
 }
 
 export async function appendMove(move: Omit<InventoryMove, 'id' | 'timestamp'>): Promise<InventoryMove> {
@@ -91,8 +95,6 @@ export async function adjustStock(data: { ingredientId: string; delta: number; n
 
     item.onHand += data.delta;
      if (item.onHand < 0) {
-        // Decide on business logic: prevent going negative or allow it?
-        // For now, let's just note it. Production system might throw error.
         console.warn(`Ingredient ${data.ingredientId} has negative stock: ${item.onHand}`);
     }
 
@@ -111,14 +113,14 @@ export async function adjustStock(data: { ingredientId: string; delta: number; n
 
 export async function applyUsageFromOrder(order: Order): Promise<number> {
     const levels = await getLevels();
-    const recipes = await readJSONFile<Recipe[]>(recipesPath);
+    const recipes = await readJSONFile<Recipe[]>(recipesPath, []);
     const usage: Record<string, number> = {};
 
-    for (const orderItem of order.items) {
-        const recipe = recipes.find(r => r.productId === orderItem.product.id);
+    for (const orderItem of order.lines) {
+        const recipe = recipes.find(r => r.productId === orderItem.productId);
         if (recipe) {
             for (const recipeItem of recipe.items) {
-                const totalQuantity = recipeItem.quantity * orderItem.quantity;
+                const totalQuantity = recipeItem.quantity * orderItem.qty;
                 usage[recipeItem.ingredientId] = (usage[recipeItem.ingredientId] || 0) + totalQuantity;
             }
         }
@@ -135,8 +137,8 @@ export async function applyUsageFromOrder(order: Order): Promise<number> {
                 ingredientId: ingredientId,
                 quantity: -quantityUsed,
                 type: 'sale',
-                ref: order.id,
-                user: 'system', // Or pass in current user
+                ref: String(order.number),
+                user: 'system',
             });
             movesCount++;
         } else {
@@ -150,7 +152,7 @@ export async function applyUsageFromOrder(order: Order): Promise<number> {
 
 export async function getSummary() {
     const levels = await getLevels();
-    const ingredients = await readJSONFile<Ingredient[]>(ingredientsPath);
+    const ingredients = await readJSONFile<Ingredient[]>(ingredientsPath, []);
 
     const summary = ingredients.map(ing => {
         const level = levels.find(l => l.ingredientId === ing.id);

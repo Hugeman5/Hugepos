@@ -11,7 +11,7 @@ import {
     type OrderTotal
 } from './data';
 
-function getModDelta(mod: CartLineMod, allModifiers: Map<string, Modifier>): number {
+export function getModDelta(mod: CartLineMod, allModifiers: Map<string, Modifier>): number {
     const modifierDef = allModifiers.get(mod.id);
     if (!modifierDef) return 0;
 
@@ -42,9 +42,17 @@ export async function computeLine(
         const modDef = allLineModifiersMap.get(mod.id);
         if (!modDef) return '';
         if (modDef.type === 'choice' && mod.optionId) {
-            return modDef.options?.find(o => o.id === mod.optionId)?.name;
+            const opt = modDef.options?.find(o => o.id === mod.optionId);
+            if (opt && opt.delta !== 0) {
+                 return `${opt.name} (${opt.delta > 0 ? '+' : ''}$${opt.delta.toFixed(2)})`;
+            }
+            return opt?.name;
         }
         if (modDef.type === 'count' && mod.count) {
+            const delta = (modDef.deltaPerUnit || 0);
+             if (delta !== 0) {
+                 return `${mod.count}x ${modDef.name} (+${(delta * mod.count).toFixed(2)})`;
+            }
             return `${mod.count}x ${modDef.name}`;
         }
         return '';
@@ -66,18 +74,18 @@ export async function computeOrder(
     productMap: Map<string, Product>,
     modifierMap: Map<string, Modifier>,
     taxMap: Map<string, Tax>
-): Promise<OrderTotal> {
+): Promise<OrderTotal & { lines: CartLine[] }> {
 
     let subtotal = 0;
     let tax = 0;
     let total = 0;
-
-    for (const line of cart.lines) {
+    
+    const computedLines = await Promise.all(cart.lines.map(async (line) => {
         const product = productMap.get(line.productId);
-        if (!product) continue;
+        if (!product) throw new Error("Product not found");
 
         const lineTax = taxMap.get(product.taxId);
-        if (!lineTax) continue;
+        if (!lineTax) throw new Error("Tax not found");
         
         const lineModifiers = product.modifierIds?.map(id => modifierMap.get(id)).filter(Boolean) as Modifier[];
 
@@ -86,7 +94,9 @@ export async function computeOrder(
         subtotal += computed.subtotal;
         tax += computed.tax;
         total += computed.total;
-    }
 
-    return { subtotal, tax, total };
+        return computed;
+    }));
+
+    return { subtotal, tax, total, lines: computedLines };
 }
