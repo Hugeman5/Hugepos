@@ -54,7 +54,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
         if (!res.ok) throw new Error('Failed to calculate totals');
         const data = await res.json();
         setTotals(data);
-        setEnrichedLines(data.lines);
+        setEnrichedLines(data.lines || []);
       } catch (e) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not calculate order totals.' });
       } finally {
