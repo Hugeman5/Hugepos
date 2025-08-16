@@ -80,9 +80,9 @@ export type CartLine = {
     // These fields are calculated by the backend for display
     productName?: string;
     modsSummary?: string;
-    subtotal?: number;
-    tax?: number;
-    total?: number;
+    subtotal: number;
+    tax: number;
+    total: number;
 };
 
 export type Cart = {
@@ -110,7 +110,7 @@ export type RecipeItem = {
 };
 
 export type Recipe = {
-  productId: number;
+  productId: string;
   items: RecipeItem[];
 };
 

@@ -83,9 +83,9 @@ export async function computeOrder(
 
         const computed = await computeLine(line, product, lineModifiers, lineTax);
         
-        subtotal += computed.subtotal || 0;
-        tax += computed.tax || 0;
-        total += computed.total || 0;
+        subtotal += computed.subtotal;
+        tax += computed.tax;
+        total += computed.total;
     }
 
     return { subtotal, tax, total };
