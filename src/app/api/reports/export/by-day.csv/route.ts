@@ -1,3 +1,4 @@
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { salesByDay } from '@/lib/reportingRepo';
 import { stringify } from 'csv-stringify/sync';
