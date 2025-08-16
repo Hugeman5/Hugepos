@@ -24,17 +24,16 @@ export default function StaffLoginPage() {
 
   useEffect(() => {
     async function fetchUsers() {
-      // In a real app, this would be an API call.
-      // We are mocking it for local-only auth.
-      // This is using the mock from actions.ts which is intended
-      const mockUsers: User[] = [
-        { id: 2, name: 'John Cashier', role: 'Cashier', pin: '1234', active: true },
-        { id: 3, name: 'Jane Waiter', role: 'Waiter', pin: '5678', active: true },
-        { id: 4, name: 'Chef Mike', role: 'Kitchen', pin: '9876', active: true },
-        { id: 5, name: 'Inactive User', role: 'Cashier', pin: '0000', active: false },
-      ];
-      const activeUsers = mockUsers.filter(u => u.active);
-      setUsers(activeUsers);
+      try {
+        const res = await fetch('/api/admin/users');
+        if (!res.ok) throw new Error('Failed to fetch users');
+        const allUsers: User[] = await res.json();
+        const activeUsers = allUsers.filter(u => u.active && u.exposeOnPinLogin);
+        setUsers(activeUsers);
+      } catch (e) {
+        console.error("Could not load users for PIN login", e);
+        // In a real app, show a toast.
+      }
       setLoading(false);
     }
     fetchUsers();
@@ -131,7 +130,7 @@ export default function StaffLoginPage() {
         
         <form action={dispatch} ref={formRef}>
             <input type="hidden" name="pin" value={pin} />
-            <input type="hidden" name="userId" value={selectedUser?.id} />
+            <input type="hidden" name="userId" value={selectedUser?.id || ''} />
              <PinPad
                 pin={pin}
                 maxLen={4}
