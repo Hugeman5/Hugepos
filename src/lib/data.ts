@@ -3,6 +3,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -144,6 +145,7 @@ export type Order = {
   totals: { subtotal: number; tax: number; total: number };
   notes?: string;
   shiftId?: string;
+  customer?: { id: string; name: string; groupId?: string };
   service?: { 
     type: "dine_in", 
     tableId: string, 
@@ -187,12 +189,15 @@ export type CartLine = {
 
 export type Cart = {
     lines: CartLine[];
+    customerId?: string;
+    pointsToRedeem?: number;
 };
 
 export type OrderTotal = {
     subtotal: number;
     tax: number;
     total: number;
+    discount?: number;
 }
 
 
@@ -375,4 +380,42 @@ export type Transfer = {
   checkId: string;
   fromUserId: string;
   toUserId: string;
+};
+
+// --- CUSTOMERS & LOYALTY ---
+export type Customer = {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  groupId?: string;
+  points?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  active: boolean;
+};
+
+export type CustomerGroup = {
+  id: string;
+  name: string;
+  discountPct?: number;
+};
+
+export type LoyaltyRules = {
+  earn: { pointsPerCurrency: number };
+  redeem: { pointsPerCurrency: number };
+  maxRedeemPct: number;
+  autoEnroll: boolean;
+};
+
+export type LedgerEntry = {
+  id: string;
+  ts: string;
+  customerId: string;
+  type: 'earn' | 'redeem' | 'adjust';
+  points: number; // positive for earn, negative for redeem
+  orderId?: string;
+  value?: number; // monetary value of redemption
+  note?: string;
 };

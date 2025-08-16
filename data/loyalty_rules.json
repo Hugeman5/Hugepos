@@ -1,0 +1,11 @@
+
+{
+    "earn": {
+        "pointsPerCurrency": 1
+    },
+    "redeem": {
+        "pointsPerCurrency": 20
+    },
+    "maxRedeemPct": 50,
+    "autoEnroll": true
+}

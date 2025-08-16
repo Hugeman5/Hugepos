@@ -1,0 +1,13 @@
+
+[
+    {
+        "id": "vip",
+        "name": "VIP",
+        "discountPct": 10
+    },
+    {
+        "id": "staff",
+        "name": "Staff",
+        "discountPct": 50
+    }
+]
