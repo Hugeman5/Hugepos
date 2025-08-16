@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{font-family:ui-monospace,Menlo,monospace;white-space:pre;line-height:1.25}
+hr{border:none;border-top:1px dashed #999;margin:.5rem 0}
+.center{text-align:center}
+</style></head><body>
+<div class="center">KITCHEN TICKET ({{station}})</div>
+TABLE: {{table}}   CHECK: {{checkId}}
+SERVER: {{server}}   AT: {{ts}}
+<hr/>
+{{#each items}}
+[{{seat}}] {{qty}}x {{name}}   ({{mods}})
+{{/each}}
+<hr/>
+NOTES: {{notes}}
+</body></html>

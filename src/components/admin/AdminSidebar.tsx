@@ -1,20 +1,23 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, KeyRound, Package, UploadCloud, Warehouse, ChefHat, Route, BarChart3, Settings, Store, Map } from 'lucide-react';
+import { Home, Users, KeyRound, Package, UploadCloud, Warehouse, ChefHat, Route, BarChart3, Settings, Store, Map, HardDrive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/admin', label: 'Overview', icon: Home },
-  { href: '/admin/users', label: 'Users', icon: Users },
-  { href: '/admin/roles', label: 'Roles', icon: KeyRound },
-  { href: '/admin/menu', label: 'Menu', icon: Package },
-  { href: '/admin/inventory', label: 'Inventory', icon: Warehouse },
-  { href: '/admin/stations', label: 'Stations', icon: ChefHat },
-  { href: '/admin/routing', label: 'Routing', icon: Route },
-  { href: '/admin/floor', label: 'Floor Plan', icon: Map },
   { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/admin/orders', label: 'Orders', icon: Package },
+  { href: '/admin/menu', label: 'Menu Items', icon: Package },
+  { href: '/admin/inventory', label: 'Inventory', icon: Warehouse },
+  { href: '/admin/customers', label: 'Customers', icon: Users },
+  { href: '/admin/users', label: 'Staff Users', icon: Users },
+  { href: '/admin/roles', label: 'Roles', icon: KeyRound },
+  { href: '/admin/floor', label: 'Floor Plan', icon: Map },
+  { href: '/admin/stations', label: 'KDS Stations', icon: ChefHat },
+  { href: '/admin/routing', label: 'KDS Routing', icon: Route },
   { href: '/admin/registers', label: 'Registers', icon: Store },
+  { href: '/admin/hardware', label: 'Hardware', icon: HardDrive },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 

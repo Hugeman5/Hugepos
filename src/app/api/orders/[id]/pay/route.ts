@@ -1,5 +1,3 @@
-
-
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import * as ordersRepo from '@/lib/ordersRepo';
@@ -12,14 +10,16 @@ import * as giftCardsRepo from '@/lib/giftCardsRepo';
 
 export const dynamic = "force-dynamic";
 
+const paymentSchema = z.object({
+  type: z.enum(['cash', 'card', 'gift_card']),
+  amount: z.number().positive(),
+  tendered: z.number().optional(), // For cash
+  last4: z.string().optional(), // For card
+  ref: z.string().optional(), // For gift_card code
+});
+
 const paySchema = z.object({
-  payments: z.array(z.object({
-    type: z.enum(['cash', 'card', 'gift_card']),
-    amount: z.number().positive(),
-    tendered: z.number().optional(), // For cash
-    last4: z.string().optional(), // For card
-    ref: z.string().optional(), // For gift_card code
-  })),
+  payments: z.array(paymentSchema),
   user: z.object({
     uid: z.string(),
     name: z.string(),
@@ -84,8 +84,9 @@ export async function POST(
     // --- End Loyalty ---
 
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    if (totalPaid < order.totals.total) {
-      return NextResponse.json({ message: `Total payment amount ${totalPaid} is less than order total ${order.totals.total}.` }, { status: 400 });
+    const orderTotalDue = order.totals.total || 0;
+    if (totalPaid < orderTotalDue) {
+      return NextResponse.json({ message: `Total payment amount ${totalPaid} is less than order total ${orderTotalDue}.` }, { status: 400 });
     }
 
     // --- Process payments ---

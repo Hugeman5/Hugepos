@@ -1,0 +1,12 @@
+{
+    "printers":[
+      {"id":"rcpt1","name":"Front Receipt","kind":"receipt","driver":"html","enabled":true,"widthChars":42},
+      {"id":"kit1","name":"Kitchen A","kind":"kitchen","driver":"html","enabled":true,"widthChars":42,"stations":["barista","pastry"]}
+    ],
+    "drawers":[
+      {"id":"drawer1","name":"Front Drawer","registerId":"front","driver":"mock","enabled":true}
+    ],
+    "scanners":[
+      {"id":"scan1","name":"Counter Scanner","mode":"keyboard","enabled":true}
+    ]
+  }

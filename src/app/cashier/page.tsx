@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import DashboardHeader from '@/components/dashboard-header';
 import ProductGrid from '@/components/product-grid';
 import OrderCart from '@/components/order-cart';
@@ -11,6 +11,7 @@ import {
   type CartLine,
   type Shift
 } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
 
 type MenuData = {
   categories: Category[];
@@ -25,7 +26,9 @@ export default function CashierDashboardPage() {
   const [qtyBuffer, setQtyBuffer] = useState<number>(1);
   const [user, setUser] = useState({ uid: 'jcashier', name: 'John Cashier' });
   const [shiftStatus, setShiftStatus] = useState<any>(null);
-
+  const { toast } = useToast();
+  const scanBuffer = useRef('');
+  const scanTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     async function fetchMenu() {
@@ -36,7 +39,7 @@ export default function CashierDashboardPage() {
         setMenuData(data);
       } catch (e) {
         console.error(e);
-        // Add toast notification here in a real app
+        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
       }
     }
     
@@ -54,25 +57,62 @@ export default function CashierDashboardPage() {
     
     fetchMenu();
     fetchShiftStatus();
-  }, []);
+  }, [toast]);
 
-  // Keyboard listener for quantity
+  const handleBarcodeScan = useCallback(async (barcode: string) => {
+    try {
+        // This endpoint doesn't exist, we will need a lookup mechanism.
+        // For now, let's assume we can search the products we have.
+        const allProducts = Object.values(menuData?.productsByCategory || {}).flat();
+        const product = allProducts.find(p => p.barcode === barcode);
+
+        if (product) {
+            handleAddToCart(product, []);
+            toast({ title: 'Item Added', description: `Scanned: ${product.name}` });
+        } else {
+            toast({ variant: 'destructive', title: 'Not Found', description: `No product found for barcode: ${barcode}` });
+        }
+    } catch (error) {
+        toast({ variant: 'destructive', title: 'Scan Error', description: (error as Error).message });
+    }
+  }, [menuData, toast]);
+
+  // Keyboard listener for quantity and barcode scanner
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+          if (scanBuffer.current.length > 3) { // Simple heuristic for a barcode
+              handleBarcodeScan(scanBuffer.current);
+          }
+          scanBuffer.current = '';
+          return;
+      }
+
+      if (e.key.length === 1) { // Alphanumeric or symbol
+          scanBuffer.current += e.key;
+      } else if (e.key === 'Backspace') {
+           scanBuffer.current = scanBuffer.current.slice(0, -1);
+      }
+      
+      if (scanTimeout.current) clearTimeout(scanTimeout.current);
+      scanTimeout.current = setTimeout(() => {
+          scanBuffer.current = '';
+      }, 150);
+
+
       if (!isNaN(parseInt(e.key))) {
         const num = parseInt(e.key);
         setQtyBuffer((prev) => {
-          // A simple way to handle multi-digit quantities
           const newQty = prev === 1 ? num : parseInt(`${prev}${num}`);
-          return newQty > 99 ? 99 : newQty; // Cap at 99
+          return newQty > 99 ? 99 : newQty;
         });
-      } else if (e.key === 'Escape' || e.key === 'Backspace') {
+      } else if (e.key === 'Escape') {
         setQtyBuffer(1);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [handleBarcodeScan]);
 
   const handleAddToCart = (product: Product, mods: CartLine['mods']) => {
     setCart((prevCart) => {

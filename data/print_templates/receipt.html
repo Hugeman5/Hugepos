@@ -1,0 +1,21 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{font-family:ui-monospace,Menlo,monospace;white-space:pre;line-height:1.25}
+hr{border:none;border-top:1px dashed #999;margin:.5rem 0}
+.right{text-align:right}
+.center{text-align:center}
+</style></head><body>
+<div class="center">HUGEPOS RECEIPT</div>
+{{outlet}}  {{register}}  {{ts}}
+{{orderNumber}}  {{server}}
+<hr/>
+{{#each lines}}
+{{name}} x{{qty}}   {{total}}
+{{/each}}
+<hr/>
+SUBTOTAL: {{subtotal}}
+DISCOUNT: {{discount}}
+TAX:      {{tax}}
+TOTAL:    {{total}}
+<hr/>
+THANK YOU!
+</body></html>

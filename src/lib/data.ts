@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 export type User = {
   id: string;
   name: string;
@@ -457,4 +451,55 @@ export type GiftCardTxn = {
   lineId?: string;
   user?: { uid: string, name: string };
   note?: string;
+};
+
+// --- HARDWARE ---
+export type Printer = {
+  id: string;
+  name: string;
+  kind: 'receipt' | 'kitchen';
+  driver: 'html' | 'escpos'; // for now, only html
+  enabled: boolean;
+  widthChars?: number;
+  stations?: string[]; // for kitchen printers
+};
+
+export type CashDrawer = {
+  id: string;
+  name: string;
+  registerId: string;
+  driver: 'mock' | 'serial';
+  enabled: boolean;
+};
+
+export type Scanner = {
+  id: string;
+  name: string;
+  mode: 'keyboard' | 'serial';
+  enabled: boolean;
+};
+
+export type DeviceConfig = {
+  printers: Printer[];
+  drawers: CashDrawer[];
+  scanners: Scanner[];
+};
+
+export type PrintJob = {
+  id: string;
+  ts: string;
+  type: 'receipt' | 'kitchen' | 'test';
+  status: 'queued' | 'rendered' | 'error';
+  deviceId: string;
+  payload: Record<string, any>;
+  outputPath?: string;
+  error?: string;
+};
+
+export type DeviceEvent = {
+  id: string;
+  ts: string;
+  deviceId: string;
+  type: 'drawer_open' | 'print_ok' | 'print_err' | 'scan';
+  payload?: any;
 };
