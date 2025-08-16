@@ -8,11 +8,11 @@ import type { User, Order } from '@/lib/data';
 
 // Mock data moved here to avoid client/server module conflicts
 const users: User[] = [
-  { id: 1, name: 'Admin User', role: 'Admin', email: 'admin@hugepos.com', username: 'admin', active: true },
-  { id: 2, name: 'John Cashier', role: 'Cashier', pin: '1234', active: true },
-  { id: 3, name: 'Jane Waiter', role: 'Waiter', pin: '5678', active: true },
-  { id: 4, name: 'Chef Mike', role: 'Kitchen', pin: '9876', active: true },
-  { id: 5, name: 'Inactive User', role: 'Cashier', pin: '0000', active: false },
+  { id: 'admin', name: 'Admin User', role: 'admin', email: 'admin@hugepos.com', username: 'admin', active: true },
+  { id: 'jcashier', name: 'John Cashier', role: 'cashier', pin: '1234', active: true },
+  { id: 'jwaiter', name: 'Jane Waiter', role: 'manager', pin: '5678', active: true },
+  { id: 'chef', name: 'Chef Mike', role: 'cashier', pin: '9876', active: true },
+  { id: 'inactive', name: 'Inactive User', role: 'cashier', pin: '0000', active: false },
 ];
 
 
@@ -62,7 +62,7 @@ export async function loginAdmin(
     return { message: 'Invalid credentials or user is inactive.' };
   }
 
-  redirect('/dashboard-admin');
+  redirect('/admin');
 }
 
 // ---------------------------
@@ -103,11 +103,13 @@ export async function loginStaff(
   switch (staffUser.role.toLowerCase()) {
     case 'cashier':
       redirect('/dashboard-cashier');
-    case 'waiter':
-      redirect('/dashboard-waiter');
+    case 'manager':
+       redirect('/dashboard-waiter');
+    // case 'waiter':
+    //   redirect('/dashboard-waiter');
     case 'kitchen':
       redirect('/kds');
     default:
-      return { error: 'User has an invalid role.' };
+      return { error: 'User has an invalid role for PIN login.' };
   }
 }
