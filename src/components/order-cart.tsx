@@ -6,6 +6,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { type OrderItem, type Product } from '@/lib/data';
 import { PlusCircle, MinusCircle, ShoppingCart } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { payOrder } from '@/lib/actions';
+
 
 export default function OrderCart() {
   const [items, setItems] = useState<OrderItem[]>([]);
@@ -49,7 +51,7 @@ export default function OrderCart() {
   
   const total = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
-  const submitOrder = () => {
+  const submitOrder = async () => {
     if (items.length === 0) {
       toast({
         variant: "destructive",
@@ -58,12 +60,30 @@ export default function OrderCart() {
       });
       return;
     }
-    console.log("Submitting order:", { items, total });
-    toast({
-        title: "Order Submitted!",
-        description: `Total: $${total.toFixed(2)}.`,
-    });
-    setItems([]);
+    
+    const newOrder = {
+        id: `ORD${Date.now()}`,
+        items,
+        total,
+        status: 'pending',
+        createdAt: new Date(),
+    }
+
+    try {
+        const paidOrder = await payOrder(newOrder.id);
+        toast({
+            title: "Order Submitted!",
+            description: `Total: $${total.toFixed(2)}. ${paidOrder.inventoryMovesCount} inventory items updated.`,
+        });
+        setItems([]);
+
+    } catch (e: any) {
+         toast({
+            variant: "destructive",
+            title: "Order Submission Failed",
+            description: e.message || "An unknown error occurred.",
+        });
+    }
   };
 
   return (

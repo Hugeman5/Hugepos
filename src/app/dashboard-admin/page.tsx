@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, Package, BarChart3 } from 'lucide-react';
+import { Users, Package, BarChart3, Warehouse } from 'lucide-react';
 import DashboardHeader from '@/components/dashboard-header';
 
 const adminNavItems = [
@@ -21,6 +21,12 @@ const adminNavItems = [
     description: 'View sales reports and performance data.',
     href: '#',
     icon: <BarChart3 className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'Inventory',
+    description: 'Manage stock levels and view inventory history.',
+    href: '/dashboard-admin/inventory',
+    icon: <Warehouse className="h-8 w-8 text-primary" />,
   },
 ];
 

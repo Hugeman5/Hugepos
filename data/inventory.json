@@ -1,0 +1,8 @@
+
+[
+    { "ingredientId": "coffee-beans", "onHand": 1000, "reorderPoint": 200 },
+    { "ingredientId": "milk", "onHand": 5000, "reorderPoint": 1000 },
+    { "ingredientId": "vanilla-syrup", "onHand": 2000, "reorderPoint": 500 },
+    { "ingredientId": "dough-croissant", "onHand": 50, "reorderPoint": 12 },
+    { "ingredientId": "butter", "onHand": 1000, "reorderPoint": 250 }
+]

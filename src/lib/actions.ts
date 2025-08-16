@@ -3,6 +3,8 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { users } from '@/lib/data'; // Use local data
+import { inventory, orders } from '@/lib/data';
+import { applyUsageFromOrder } from '@/lib/inventoryRepo';
 
 // No longer needed for admin login
 // import { db } from '@/lib/firebaseConfig';
@@ -104,4 +106,17 @@ export async function loginStaff(
     default:
       return { error: 'User has an invalid role.' };
   }
+}
+
+export async function payOrder(orderId: string) {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) {
+        throw new Error("Order not found");
+    }
+    order.status = 'paid';
+    const inventoryMovesCount = await applyUsageFromOrder(order);
+    return {
+        ...order,
+        inventoryMovesCount
+    }
 }

@@ -1,3 +1,4 @@
+'use client';
 export type User = {
   id: number;
   name: string;
@@ -36,6 +37,41 @@ export type Order = {
   createdAt: Date;
   total: number;
 };
+
+export type Ingredient = {
+    id: string; // e.g. "coffee-beans"
+    name: string; // e.g. "Coffee Beans"
+    unit: 'g' | 'ml' | 'ea';
+    costPerUnit: number; // cost for 1 'unit'
+};
+
+export type RecipeItem = {
+    ingredientId: string;
+    quantity: number;
+}
+
+export type Recipe = {
+    productId: number;
+    items: RecipeItem[];
+}
+
+export type InventoryItem = {
+    ingredientId: string;
+    onHand: number;
+    reorderPoint: number;
+};
+
+export type InventoryMove = {
+    id: string;
+    timestamp: string;
+    ingredientId: string;
+    quantity: number; // can be negative
+    type: 'sale' | 'receive' | 'adjust';
+    note?: string;
+    user?: string;
+    ref?: string; // e.g. order.id
+}
+
 
 export const users: User[] = [
   { id: 1, name: 'Admin User', role: 'Admin', email: 'admin@hugepos.com', username: 'admin', active: true },
@@ -100,3 +136,31 @@ export const orders: Order[] = [
         total: 7.99
     },
 ];
+
+export const ingredients: Ingredient[] = [
+    { id: 'coffee-beans', name: 'Coffee Beans', unit: 'g', costPerUnit: 0.05 },
+    { id: 'milk', name: 'Milk', unit: 'ml', costPerUnit: 0.002 },
+    { id: 'vanilla-syrup', name: 'Vanilla Syrup', unit: 'ml', costPerUnit: 0.01 },
+    { id: 'flour', name: 'Flour', unit: 'g', costPerUnit: 0.001 },
+    { id: 'butter', name: 'Butter', unit: 'g', costPerUnit: 0.02 },
+    { id: 'sugar', name: 'Sugar', unit: 'g', costPerUnit: 0.0015 },
+    { id: 'dough-croissant', name: 'Croissant Dough', unit: 'ea', costPerUnit: 0.50 },
+    { id: 'chocolate-chips', name: 'Chocolate Chips', unit: 'g', costPerUnit: 0.03 }
+];
+
+export const recipes: Recipe[] = [
+    { productId: 1, items: [{ ingredientId: 'coffee-beans', quantity: 18 }, { ingredientId: 'milk', quantity: 220 }] },
+    { productId: 2, items: [{ ingredientId: 'coffee-beans', quantity: 18 }] },
+    { productId: 9, items: [{ ingredientId: 'dough-croissant', quantity: 1 }, { ingredientId: 'butter', quantity: 10 }] }
+];
+
+
+export const inventory: InventoryItem[] = [
+    { ingredientId: "coffee-beans", onHand: 1000, reorderPoint: 200 },
+    { ingredientId: "milk", onHand: 5000, reorderPoint: 1000 },
+    { ingredientId: "vanilla-syrup", onHand: 2000, reorderPoint: 500 },
+    { ingredientId: "dough-croissant", onHand: 50, reorderPoint: 12 },
+    { ingredientId: "butter", onHand: 1000, reorderPoint: 250 }
+]
+
+export const inventoryMoves: InventoryMove[] = [];
