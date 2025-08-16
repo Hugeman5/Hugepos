@@ -1,15 +1,21 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, Package, BarChart3, Warehouse, ChefHat, Route } from 'lucide-react';
+import { Users, Package, BarChart3, Warehouse, ChefHat, Route, KeyRound } from 'lucide-react';
 import DashboardHeader from '@/components/dashboard-header';
 
 const adminNavItems = [
   {
     title: 'User Management',
     description: 'Add, edit, or remove staff members.',
-    href: '#',
+    href: '/dashboard-admin/users',
     icon: <Users className="h-8 w-8 text-primary" />,
+  },
+  {
+    title: 'Roles & Permissions',
+    description: 'Configure permissions for user roles.',
+    href: '/dashboard-admin/roles',
+    icon: <KeyRound className="h-8 w-8 text-primary" />,
   },
   {
     title: 'Product Management',

@@ -1,13 +1,30 @@
 
+
 export type User = {
-  id: number;
+  id: string;
   name: string;
-  role: 'Admin' | 'Cashier' | 'Waiter' | 'Kitchen';
+  role: 'Admin' | 'Manager' | 'Cashier';
   pin?: string;
   email?: string;
   username?: string;
   active: boolean;
+  exposeOnPinLogin: boolean;
+  outlets?: string[];
 };
+
+export type RolePermissionValue = boolean | string | number;
+
+export type Role = {
+  editable: boolean;
+  permissions: Record<string, RolePermissionValue>;
+};
+
+export type RolesMatrix = {
+  admin: Role;
+  manager: Role;
+  cashier: Role;
+};
+
 
 // --- CATALOG ---
 export type Tax = {
@@ -85,7 +102,6 @@ export type Order = {
   lines: OrderLine[];
   totals: { subtotal: number; tax: number; total: number };
   notes?: string;
-  tableNumber?: number; // Keep for KDS compatibility
 };
 
 // --- PAYMENT ---
@@ -193,19 +209,3 @@ export type KdsTicket = {
   createdAt: string;
   items: KdsTicketItem[];
 };
-
-
-// --- MOCK DATA (Legacy) ---
-// This is being phased out in favor of /data JSON files
-export const orders: { id: string, tableNumber: number, status: 'pending' | 'completed' | 'paid', items: any[], createdAt: Date, total: number }[] = [
-  {
-    id: 'ORD001',
-    tableNumber: 5,
-    status: 'pending',
-    items: [
-      { product: { id: 'latte', name: 'Latte', categoryId: 'coffee', price: 3.50, taxId: 'vat15', active: true }, quantity: 1 },
-    ],
-    createdAt: new Date(Date.now() - 5 * 60 * 1000), // 5 mins ago
-    total: 3.50
-  },
-];

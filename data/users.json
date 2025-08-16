@@ -1,0 +1,36 @@
+
+[
+  {
+    "id": "eugene",
+    "name": "Eugene",
+    "role": "admin",
+    "active": true,
+    "exposeOnPinLogin": true,
+    "pin": "5245",
+    "outlets": [
+      "main"
+    ]
+  },
+  {
+    "id": "jcashier",
+    "name": "John Cashier",
+    "role": "cashier",
+    "active": true,
+    "exposeOnPinLogin": true,
+    "pin": "1234",
+    "outlets": [
+      "main"
+    ]
+  },
+  {
+    "id": "jwaiter",
+    "name": "Jane Waiter",
+    "role": "manager",
+    "active": true,
+    "exposeOnPinLogin": true,
+    "pin": "5678",
+    "outlets": [
+      "main"
+    ]
+  }
+]
