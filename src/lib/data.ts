@@ -3,7 +3,7 @@
 export type User = {
   id: string;
   name: string;
-  role: 'Admin' | 'Manager' | 'Cashier';
+  role: 'admin' | 'manager' | 'cashier';
   pin?: string;
   email?: string;
   username?: string;
