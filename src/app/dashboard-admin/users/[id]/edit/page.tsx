@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -32,7 +31,8 @@ export default function UserEditPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
-  const isNewUser = params.id === 'new';
+  const { id: userId } = params;
+  const isNewUser = userId === 'new';
 
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<User>({
     resolver: zodResolver(userFormSchema),
@@ -53,7 +53,7 @@ export default function UserEditPage({ params }: { params: { id: string } }) {
           const res = await fetch('/api/admin/users');
           if (!res.ok) throw new Error('Failed to fetch users');
           const users: User[] = await res.json();
-          const user = users.find(u => u.id === params.id);
+          const user = users.find(u => u.id === userId);
           if (user) {
             reset(user);
           } else {
@@ -70,7 +70,7 @@ export default function UserEditPage({ params }: { params: { id: string } }) {
     } else {
         setIsLoading(false);
     }
-  }, [params.id, isNewUser, reset, router, toast]);
+  }, [userId, isNewUser, reset, router, toast]);
   
   const onSubmit = async (data: User) => {
     try {
