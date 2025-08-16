@@ -1,65 +1,148 @@
 'use client';
 
 import { useState, useEffect, useRef, useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { loginStaff, type StaffLoginState } from '@/lib/actions';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { PinPad } from '@/components/pin-pad';
+import StaffGrid from "@/components/login/StaffGrid";
+import PinPad from "@/components/login/PinPad";
+import type { User } from '@/lib/data';
 
 
 export default function StaffLoginPage() {
+  const router = useRouter();
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [pin, setPin] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  
   const initialState: StaffLoginState = { error: null };
   const [state, dispatch] = useActionState(loginStaff, initialState);
-  const { pending } = useFormStatus();
-
-  const [pin, setPin] = useState('');
+  
+  const rootRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // Automatically submit the form when PIN is 4 digits
   useEffect(() => {
-    if (pin.length === 4 && formRef.current && !pending) {
+    async function fetchUsers() {
+      // In a real app, this would be an API call.
+      // We are mocking it for local-only auth.
+      const mockUsers: User[] = [
+        { id: 2, name: 'John Cashier', role: 'Cashier', pin: '1234', active: true },
+        { id: 3, name: 'Jane Waiter', role: 'Waiter', pin: '5678', active: true },
+        { id: 4, name: 'Chef Mike', role: 'Kitchen', pin: '9876', active: true },
+        { id: 5, name: 'Inactive User', role: 'Cashier', pin: '0000', active: false },
+      ];
+      const activeUsers = mockUsers.filter(u => u.active);
+      setUsers(activeUsers);
+      setLoading(false);
+    }
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    if (rootRef.current) {
+      rootRef.current.focus();
+    }
+  }, []);
+
+  const press = (key: string) => {
+    if (submitting) return;
+    if (key === 'C') {
+      setPin('');
+      return;
+    }
+    if (pin.length < 4) {
+      setPin(p => p + key);
+    }
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key >= '0' && e.key <= '9') {
+      press(e.key);
+    } else if (e.key === 'Backspace') {
+      setPin(p => p.slice(0, -1));
+    } else if (e.key === 'Enter') {
+      if (formRef.current) {
+          formRef.current.requestSubmit();
+      }
+    }
+  };
+
+  const handleSelectUser = (user: User) => {
+    setSelectedUser(user);
+    setPin('');
+  }
+
+  // Effect to automatically submit when PIN is complete
+  useEffect(() => {
+    if (pin.length === 4 && selectedUser && formRef.current && !submitting) {
+        setSubmitting(true);
         formRef.current.requestSubmit();
     }
-  }, [pin, pending]);
+  }, [pin, selectedUser, submitting]);
 
-  // Clear PIN on error
+  // Effect to handle form submission result
   useEffect(() => {
     if (state.error) {
         setPin('');
+        setSubmitting(false);
     }
-  }, [state.error])
+    // Successful login is handled by redirect in server action
+  }, [state.error]);
+
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-sm">
-        <Button variant="ghost" asChild className="absolute top-4 left-4">
-          <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
-          </Link>
-        </Button>
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-headline text-primary">Staff Login</CardTitle>
-            <CardDescription>Enter your 4-digit PIN to continue.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form ref={formRef} action={dispatch} className="space-y-6">
-              <input type="hidden" name="pin" value={pin} />
-              <PinPad pin={pin} setPin={setPin} isPending={pending} />
-              {state.error && (
-                 <Alert variant="destructive">
-                   <AlertDescription>{state.error}</AlertDescription>
-                 </Alert>
-              )}
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+    <div
+      ref={rootRef}
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+      className="min-h-screen bg-brand-bg text-brand-text focus:outline-none"
+    >
+      <header className="max-w-6xl mx-auto px-6 py-6 flex items-center gap-3">
+        <img src="/logo-hugepos.svg" alt="HugePOS" className="h-8 w-auto hidden sm:block" />
+        <h1 className="text-2xl font-bold tracking-tight">HugePOS</h1>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-6 pb-10 grid gap-8 md:grid-cols-2">
+        <section className="rounded-2xl border border-brand-line bg-brand-card p-5">
+          <h2 className="text-lg font-semibold mb-3">Select user</h2>
+          {loading ? (
+            <div className="text-sm text-brand-mute">Loading users…</div>
+          ) : users.length === 0 ? (
+            <div className="text-sm text-brand-mute">
+              No users found.
+            </div>
+          ) : (
+            <StaffGrid
+              users={users}
+              selected={selectedUser?.id.toString() || ''}
+              onSelect={(id) => {
+                const user = users.find(u => u.id.toString() === id);
+                if (user) handleSelectUser(user);
+              }}
+              disabled={submitting}
+            />
+          )}
+        </section>
+        
+        <form action={dispatch} ref={formRef}>
+            <input type="hidden" name="pin" value={pin} />
+            <PinPad
+                pin={pin}
+                maxLen={4}
+                submitting={submitting}
+                err={state.error ?? undefined}
+                onKey={press}
+                onSubmit={() => {
+                   if (formRef.current) {
+                        setSubmitting(true);
+                        formRef.current.requestSubmit();
+                   }
+                }}
+            />
+        </form>
+
+      </main>
+    </div>
   );
 }

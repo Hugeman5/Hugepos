@@ -55,11 +55,24 @@ export default {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
+        brand: {
+            bg:   '#0B0B0F',
+            card: '#121319',
+            line: '#1E212B',
+            text: '#EDEEF1',
+            mute: '#A6A7AC',
+            accent: '#FF4D4F',
+            accent2: '#FDBA74'
+        }
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        xl2: '1.25rem'
+      },
+      boxShadow: {
+        soft: '0 8px 24px rgba(0,0,0,0.35)'
       },
       keyframes: {
         'accordion-down': {
