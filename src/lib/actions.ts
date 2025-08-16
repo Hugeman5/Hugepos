@@ -2,19 +2,20 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { users } from '@/lib/data'; // Use local data
-import { inventory, orders } from '@/lib/data';
+import { orders } from '@/lib/data';
 import { applyUsageFromOrder } from '@/lib/inventoryRepo';
+import type { User } from '@/lib/data';
 
-// No longer needed for admin login
-// import { db } from '@/lib/firebaseConfig';
-// import {
-//   collection,
-//   query,
-//   where,
-//   getDocs,
-//   limit,
-// } from 'firebase/firestore';
+
+// Mock data moved here to avoid client/server module conflicts
+const users: User[] = [
+  { id: 1, name: 'Admin User', role: 'Admin', email: 'admin@hugepos.com', username: 'admin', active: true },
+  { id: 2, name: 'John Cashier', role: 'Cashier', pin: '1234', active: true },
+  { id: 3, name: 'Jane Waiter', role: 'Waiter', pin: '5678', active: true },
+  { id: 4, name: 'Chef Mike', role: 'Kitchen', pin: '9876', active: true },
+  { id: 5, name: 'Inactive User', role: 'Cashier', pin: '0000', active: false },
+];
+
 
 const adminLoginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -49,7 +50,6 @@ export async function loginAdmin(
 
   const { email, username } = validatedFields.data;
 
-  // Use local mock data for authentication
   const adminUser = users.find(
     (user) =>
       user.email === email &&
@@ -85,7 +85,6 @@ export async function loginStaff(
     return { error: 'Invalid PIN. Must be 4 digits.' };
   }
   
-  // Use local mock data for authentication
   const staffUser = users.find(
     (user) =>
       user.pin === pin &&
