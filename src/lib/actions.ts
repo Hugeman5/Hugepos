@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { applyUsageFromOrder } from '@/lib/inventoryRepo';
 import type { User, Order } from '@/lib/data';
-import { orders as mockOrders } from '@/lib/data';
 
 
 // Mock data moved here to avoid client/server module conflicts
@@ -80,14 +79,20 @@ export async function loginStaff(
 ): Promise<StaffLoginState> {
   await new Promise((resolve) => setTimeout(resolve, 500));
   const pin = formData.get('pin') as string;
+  const userId = formData.get('userId') as string;
 
   if (!pin || pin.length !== 4) {
     return { error: 'Invalid PIN. Must be 4 digits.' };
   }
   
+  if (!userId) {
+      return { error: 'Please select a user.' };
+  }
+  
   const staffUser = users.find(
     (user) =>
       user.pin === pin &&
+      user.id.toString() === userId &&
       user.active
   );
 
@@ -101,21 +106,8 @@ export async function loginStaff(
     case 'waiter':
       redirect('/dashboard-waiter');
     case 'kitchen':
-      redirect('/dashboard-kitchen');
+      redirect('/kds');
     default:
       return { error: 'User has an invalid role.' };
   }
-}
-
-export async function payOrder(order: Order) {
-    const mockOrder = mockOrders.find(o => o.id === order.id);
-    if (!mockOrder) {
-        throw new Error("Order not found");
-    }
-    mockOrder.status = 'paid';
-    const inventoryMovesCount = await applyUsageFromOrder(order);
-    return {
-        ...mockOrder,
-        inventoryMovesCount
-    }
 }

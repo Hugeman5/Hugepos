@@ -23,8 +23,8 @@ export default function StaffGrid({ users, selected, onSelect, disabled=false }:
             disabled={disabled}
             className={[
               "group rounded-2xl border p-4 text-left transition-all duration-150",
-              "bg-brand-card border-brand-line hover:border-brand-text/30 focus:outline-none",
-              isSel ? "ring-2 ring-brand-accent/80 border-brand-accent/90" : "",
+              "bg-brand-card border-brand-line hover:border-brand-text/30 focus:outline-none focus:ring-2 focus:ring-transparent focus:ring-brand-accent/60",
+              isSel ? "ring-brand-accent/80 border-brand-accent/90" : "",
               disabled ? "opacity-60 cursor-not-allowed" : "hover:shadow-soft hover:-translate-y-1"
             ].join(" ")}
           >

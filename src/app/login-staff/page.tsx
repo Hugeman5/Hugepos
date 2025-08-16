@@ -26,6 +26,7 @@ export default function StaffLoginPage() {
     async function fetchUsers() {
       // In a real app, this would be an API call.
       // We are mocking it for local-only auth.
+      // This is using the mock from actions.ts which is intended
       const mockUsers: User[] = [
         { id: 2, name: 'John Cashier', role: 'Cashier', pin: '1234', active: true },
         { id: 3, name: 'Jane Waiter', role: 'Waiter', pin: '5678', active: true },
@@ -118,7 +119,10 @@ export default function StaffLoginPage() {
               selected={selectedUser?.id.toString() || ''}
               onSelect={(id) => {
                 const user = users.find(u => u.id.toString() === id);
-                if (user) handleSelectUser(user);
+                if (user) {
+                    handleSelectUser(user);
+                    if (state) state.error = null;
+                }
               }}
               disabled={submitting}
             />
@@ -127,7 +131,8 @@ export default function StaffLoginPage() {
         
         <form action={dispatch} ref={formRef}>
             <input type="hidden" name="pin" value={pin} />
-            <PinPad
+            <input type="hidden" name="userId" value={selectedUser?.id} />
+             <PinPad
                 pin={pin}
                 maxLen={4}
                 submitting={submitting}
@@ -141,7 +146,6 @@ export default function StaffLoginPage() {
                 }}
             />
         </form>
-
       </main>
     </div>
   );
