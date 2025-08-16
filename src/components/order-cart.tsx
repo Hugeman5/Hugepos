@@ -159,7 +159,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
           </div>
         ) : (
           <div className="space-y-4">
-            {enrichedLines.map((line) => (
+            {(enrichedLines || []).map((line) => (
               <div key={line.id} className="flex items-start gap-4">
                 <div className="flex-1">
                   <p className="font-medium">{line.productName}</p>
@@ -202,15 +202,15 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
             <div className="w-full space-y-2 text-sm">
                 <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${totals.subtotal.toFixed(2)}</span>
+                    <span>${(totals?.subtotal ?? 0).toFixed(2)}</span>
                 </div>
                  <div className="flex justify-between">
                     <span>Tax</span>
-                    <span>${totals.tax.toFixed(2)}</span>
+                    <span>${(totals?.tax ?? 0).toFixed(2)}</span>
                 </div>
                 <div className="w-full flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total</span>
-                    <span>${totals.total.toFixed(2)}</span>
+                    <span>${(totals?.total ?? 0).toFixed(2)}</span>
                 </div>
             </div>
         )}
@@ -241,7 +241,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
                          <TabsContent value="cash" className="mt-4">
                              <div className="space-y-2">
                                 <Label htmlFor="tendered">Amount Tendered</Label>
-                                <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={totals?.total.toFixed(2)} />
+                                <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={(totals?.total ?? 0).toFixed(2)} />
                             </div>
                             {parseFloat(tenderedAmount) >= (totals?.total || 0) && (
                                 <div className="text-lg font-semibold mt-4">
@@ -261,7 +261,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
                              document.querySelector('[data-radix-dialog-content] [aria-label="Close"]')?.dispatchEvent(new Event('click'));
                            }
                         }} disabled={!isPaymentValid() || isPaying}>
-                            {isPaying ? 'Processing...' : `Confirm & Pay $${totals?.total.toFixed(2)}`}
+                            {isPaying ? 'Processing...' : `Confirm & Pay $${(totals?.total ?? 0).toFixed(2)}`}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
