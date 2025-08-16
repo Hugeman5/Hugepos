@@ -1,21 +1,26 @@
 <!doctype html><html><head><meta charset="utf-8"><style>
-body{font-family:ui-monospace,Menlo,monospace;white-space:pre;line-height:1.25}
+body{font-family:ui-monospace,Menlo,monospace;white-space:pre;line-height:1.25;margin:12px}
 hr{border:none;border-top:1px dashed #999;margin:.5rem 0}
 .right{text-align:right}
 .center{text-align:center}
+.row{display:flex;justify-content:space-between}
 </style></head><body>
 <div class="center">HUGEPOS RECEIPT</div>
-{{outlet}}  {{register}}  {{ts}}
-{{orderNumber}}  {{server}}
+<div class="row"><div>{{outlet}}</div><div>{{register}}</div></div>
+<div class="row"><div>Order {{orderNumber}}</div><div>{{ts}}</div></div>
+<div class="row"><div>Server</div><div>{{server}}</div></div>
 <hr/>
 {{#each lines}}
-{{name}} x{{qty}}   {{total}}
+<div class="row"><div>{{qty}}x {{name}}</div><div>{{priceEach}}</div></div>
 {{/each}}
 <hr/>
-SUBTOTAL: {{subtotal}}
-DISCOUNT: {{discount}}
-TAX:      {{tax}}
-TOTAL:    {{total}}
+<div class="row"><div>Subtotal</div><div>{{subtotal}}</div></div>
+<div class="row"><div>Discounts</div><div>{{discount}}</div></div>
+<div class="row"><div>VAT ({{vatRatePct}}%)</div><div>{{vat}}</div></div>
+<div class="row"><div>Total</div><div>{{total}}</div></div>
+{{#priceIncludesVAT}}
+<div class="center" style="font-size:0.8em;padding-top:8px;">Prices include VAT</div>
+{{/priceIncludesVAT}}
 <hr/>
-THANK YOU!
+<div class="center">THANK YOU!</div>
 </body></html>

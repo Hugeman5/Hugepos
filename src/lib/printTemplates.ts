@@ -1,4 +1,3 @@
-
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -22,20 +21,34 @@ export async function saveTemplate(kind: 'receipt' | 'kitchen', html: string): P
 }
 
 // Simple mustache-like renderer
-export function render(template: string, data: Record<string, any>): string {
+export async function render(kind: 'receipt' | 'kitchen', data: Record<string, any>): Promise<string> {
+    let template = await getTemplate(kind);
     let output = template;
 
     // Handle {{#each}} blocks
     output = output.replace(/\{\{#each (\w+)\}\}([\s\S]*?)\{\{\/each\}\}/g, (match, key, block) => {
         const items = data[key];
         if (!Array.isArray(items)) return '';
-        return items.map(item => render(block, { ...data, ...item })).join('');
+        // This is a simplified version; doesn't support nested each or complex context
+        return items.map(item => {
+            let renderedBlock = block;
+            for (const itemKey in item) {
+                renderedBlock = renderedBlock.replace(new RegExp(`\\{\\{${itemKey}\\}\\}`, 'g'), item[itemKey]);
+            }
+            return renderedBlock;
+        }).join('');
     });
+    
+    // Handle {{#if}} blocks (basic existence check)
+    output = output.replace(/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (match, key, block) => {
+        return data[key] ? block : '';
+    });
+
 
     // Handle simple {{key}} replacements
     output = output.replace(/\{\{([\w.]+)\}\}/g, (match, key) => {
         const keys = key.split('.');
-        let value = data;
+        let value: any = data;
         for (const k of keys) {
             if (value && typeof value === 'object' && k in value) {
                 value = value[k];
