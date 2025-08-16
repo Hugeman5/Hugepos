@@ -25,12 +25,12 @@ function getModDelta(mod: CartLineMod, allModifiers: Map<string, Modifier>): num
 }
 
 
-export function computeLine(
+export async function computeLine(
     line: CartLine,
     product: Product,
     allLineModifiers: Modifier[],
     tax: Tax
-): CartLine {
+): Promise<CartLine> {
     const allLineModifiersMap = new Map(allLineModifiers.map(m => [m.id, m]));
 
     const modsTotal = line.mods.reduce((sum, mod) => sum + getModDelta(mod, allLineModifiersMap), 0);
@@ -61,12 +61,12 @@ export function computeLine(
 }
 
 
-export function computeOrder(
+export async function computeOrder(
     cart: Cart, 
     productMap: Map<string, Product>,
     modifierMap: Map<string, Modifier>,
     taxMap: Map<string, Tax>
-): OrderTotal {
+): Promise<OrderTotal> {
 
     let subtotal = 0;
     let tax = 0;
@@ -81,7 +81,7 @@ export function computeOrder(
         
         const lineModifiers = product.modifierIds?.map(id => modifierMap.get(id)).filter(Boolean) as Modifier[];
 
-        const computed = computeLine(line, product, lineModifiers, lineTax);
+        const computed = await computeLine(line, product, lineModifiers, lineTax);
         
         subtotal += computed.subtotal || 0;
         tax += computed.tax || 0;
