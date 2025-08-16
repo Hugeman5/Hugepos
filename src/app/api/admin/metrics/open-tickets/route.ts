@@ -1,6 +1,7 @@
+
 import { NextResponse } from 'next/server';
-import { getStations } from '@/lib/stationsRepo';
 import { listRecent } from '@/lib/ordersRepo';
+
 export const dynamic="force-dynamic";
 
 export async function GET(){
@@ -11,15 +12,16 @@ export async function GET(){
     let openLines = 0;
     for (const order of paidOrders) {
         for (const line of order.lines) {
-            if (line.prep.status !== 'done') {
+            // A line is considered open if it's not done and not part of a completed order
+            if (line.prep.status !== 'done' && order.status !== 'COMPLETED') {
                 openLines++;
             }
         }
     }
 
     return NextResponse.json({ count: openLines });
-  }catch(e) { 
-    console.error("Failed to get open tickets metric", e);
-    return NextResponse.json({ count:0 }); 
+  } catch(e) { 
+    console.error(`[API] /api/admin/metrics/open-tickets Error:`, e);
+    return NextResponse.json({ message: "Failed to get open tickets metric", error: (e as Error).message }, { status: 500 });
   }
 }

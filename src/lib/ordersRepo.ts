@@ -1,5 +1,4 @@
 
-
 import { promises as fs } from 'fs';
 import path from 'path';
 import { type Order, type Cart, type User, type OrderLine, type Product } from './data';
@@ -19,21 +18,35 @@ async function readJSONFile<T>(filePath: string, defaultValue: T): Promise<T> {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       console.warn(`File not found: ${filePath}, returning default value.`);
+      // Try to create the directory and file
+      try {
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
+        await fs.writeFile(filePath, JSON.stringify(defaultValue, null, 2), 'utf-8');
+      } catch (writeError) {
+        console.error(`Failed to create default file ${filePath}:`, writeError);
+      }
       return defaultValue;
     }
     console.error(`Error reading ${filePath}:`, error);
-    throw error;
+    // If parsing fails, it might be an empty or corrupted file.
+    return defaultValue;
   }
 }
 
 async function writeJSONFile<T>(filePath: string, data: T): Promise<void> {
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    try {
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
+        await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (error) {
+        console.error(`Failed to write to ${filePath}:`, error);
+        throw error;
+    }
 }
 
 
 export async function nextOrderNumber(): Promise<number> {
     try {
-        const seq = await readJSONFile(sequencePath, { order: 1001 });
+        const seq = await readJSONFile(sequencePath, { order: 1001, shift: 1 });
         const nextNum = seq.order;
         await writeJSONFile(sequencePath, { ...seq, order: nextNum + 1 });
         return nextNum;
@@ -146,7 +159,7 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
 }
 
 export async function getOrder(id: string): Promise<Order | null> {
-    const orders = await listRecent();
+    const orders = await listRecent(1000); // search more deeply for a specific order
     const order = orders.find(o => o.id === id);
     if (!order) return null;
 
@@ -161,7 +174,7 @@ export async function getOrder(id: string): Promise<Order | null> {
 
 export async function saveOrder(order: Order, write = true): Promise<void> {
     if (!write) return;
-    const orders = await listRecent();
+    const orders = await listRecent(1000); // Use a larger limit to prevent data loss
     const index = orders.findIndex(o => o.id === order.id);
     if (index > -1) {
         orders[index] = order;
@@ -173,10 +186,13 @@ export async function saveOrder(order: Order, write = true): Promise<void> {
 
 export async function listRecent(limit = 50): Promise<Order[]> {
     const orders = await readJSONFile<Order[]>(ordersPath, []);
-    return orders.slice(0, limit);
+    // Ensure sorting by timestamp descending
+    return orders
+        .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+        .slice(0, limit);
 }
 
 export async function listByShift(shiftId: string): Promise<Order[]> {
     const orders = await readJSONFile<Order[]>(ordersPath, []);
-    return orders.filter(o => o.shiftId === shiftId && o.status === 'PAID');
+    return orders.filter(o => o.shiftId === shiftId && (o.status === 'PAID' || o.status === 'COMPLETED'));
 }
