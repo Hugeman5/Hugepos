@@ -4,9 +4,12 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { type Product, type Category, type Modifier, type Tax } from './data';
 
+const dataDir = path.join(process.cwd(), 'data');
+
 async function readJSONFile<T>(filePath: string, defaultValue: T): Promise<T> {
   try {
-    const data = await fs.readFile(path.join(process.cwd(), 'data', filePath), 'utf-8');
+    await fs.mkdir(dataDir, { recursive: true });
+    const data = await fs.readFile(path.join(dataDir, filePath), 'utf-8');
     return JSON.parse(data) as T;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -17,6 +20,12 @@ async function readJSONFile<T>(filePath: string, defaultValue: T): Promise<T> {
     return defaultValue;
   }
 }
+
+async function writeJSONFile<T>(filePath: string, data: T): Promise<void> {
+  await fs.mkdir(dataDir, { recursive: true });
+  await fs.writeFile(path.join(dataDir, filePath), JSON.stringify(data, null, 2), 'utf-8');
+}
+
 
 export async function getTaxes(): Promise<Tax[]> {
   return readJSONFile<Tax[]>('taxes.json', []);
@@ -61,4 +70,17 @@ export async function getModifiers(): Promise<Modifier[]> {
 export async function getModifiersByIds(ids: string[]): Promise<Modifier[]> {
     const allModifiers = await getModifiers();
     return allModifiers.filter(m => ids.includes(m.id));
+}
+
+// --- New functions for import/export ---
+export async function saveProducts(products: Product[]): Promise<void> {
+    await writeJSONFile('products.json', products);
+}
+
+export async function saveCategories(categories: Category[]): Promise<void> {
+    await writeJSONFile('categories.json', categories);
+}
+
+export async function saveModifiers(modifiers: Modifier[]): Promise<void> {
+    await writeJSONFile('modifiers.json', modifiers);
 }

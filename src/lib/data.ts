@@ -40,7 +40,7 @@ export type Category = {
 };
 
 export type Product = {
-  id: string;
+  id: string; // SKU
   name: string;
   categoryId: string;
   price: number;
@@ -48,6 +48,12 @@ export type Product = {
   active: boolean;
   modifierIds?: string[];
   imageUrl?: string;
+  // New fields for import/export
+  barcode?: string;
+  plu?: string;
+  stationId?: string; // Prep station override
+  cost?: number;
+  cogsGroup?: string;
 };
 
 export type ModifierOption = {
@@ -60,11 +66,41 @@ export type Modifier = {
   id: string;
   name: string;
   type: 'choice' | 'count';
+  required?: boolean;
+  min?: number;
+  max?: number;
   options?: ModifierOption[]; // For 'choice'
   step?: number; // For 'count'
   deltaPerUnit?: number; // For 'count'
-  max?: number; // For 'count'
 };
+
+// --- MENU SCREENS ---
+export type MenuScreenItem = {
+    productId: string; // SKU
+    position: number;
+}
+export type MenuScreenSection = {
+    id: string;
+    name: string;
+    items: MenuScreenItem[];
+}
+export type MenuScreen = {
+    id: string;
+    name: string;
+    sections: MenuScreenSection[];
+}
+export type MenuLayout = MenuScreen[];
+
+// --- PRICE LISTS ---
+export type PriceListInstruction = {
+    productId: string; // SKU
+    price: number;
+}
+export type PriceList = {
+    id: string;
+    name: string;
+    instructions: PriceListInstruction[];
+}
 
 // --- ORDER ---
 export type OrderStatus = 'DRAFT' | 'PAID' | 'VOID' | 'PENDING' | 'COMPLETED';

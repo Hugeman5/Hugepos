@@ -1,7 +1,7 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, Package, BarChart3, Warehouse, ChefHat, Route, KeyRound } from 'lucide-react';
+import { Users, Package, BarChart3, Warehouse, ChefHat, Route, KeyRound, UploadCloud } from 'lucide-react';
 import DashboardHeader from '@/components/dashboard-header';
 
 const adminNavItems = [
@@ -22,6 +22,12 @@ const adminNavItems = [
     description: 'Manage categories, products, and modifiers.',
     href: '#',
     icon: <Package className="h-8 w-8 text-primary" />,
+  },
+   {
+    title: 'Menu Import/Export',
+    description: 'Bulk manage menu data using CSV files.',
+    href: '/dashboard-admin/menu/import-export',
+    icon: <UploadCloud className="h-8 w-8 text-primary" />,
   },
   {
     title: 'Reports & Analytics',
@@ -54,7 +60,7 @@ export default function AdminDashboardPage() {
     <div className="flex min-h-screen w-full flex-col">
       <DashboardHeader title="Admin Dashboard" userName="Admin User" userRole="Admin" />
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
           {adminNavItems.map((item) => (
             <Link href={item.href} key={item.title}>
               <Card className="hover:bg-muted/50 transition-colors h-full hover:shadow-lg">
