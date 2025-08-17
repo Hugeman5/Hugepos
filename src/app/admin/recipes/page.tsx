@@ -85,7 +85,10 @@ const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
               <span className="text-zinc-400 col-span-2 border-b border-zinc-700 my-1"></span>
 
               <span className="text-zinc-400">Target GP</span>
-              <span className="font-mono text-right">{cost.gpPct.toFixed(0)}%</span>
+              <span className="font-mono text-right">{(cost.gpPct * 100).toFixed(0)}%</span>
+
+              <span className="text-zinc-400">GP / Portion</span>
+              <span className="font-mono text-right">{formatMoney(cost.gp, cost.currency)}</span>
 
               <span className="text-zinc-400">Ex-VAT RSP</span>
               <span className="font-mono text-right">{formatMoney(cost.exVatRSP, cost.currency)}</span>
