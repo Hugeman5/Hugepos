@@ -1,1 +1,6 @@
-[]
+[
+  {
+    "id": "checkout_counter",
+    "name": "Checkout Counter"
+  }
+]

@@ -7,12 +7,11 @@ import DashboardHeader from '@/components/dashboard-header';
 import ProductGrid from '@/components/product-grid';
 import OrderCart from '@/components/order-cart';
 import {
-  type CartLineMod,
   type ServiceCheck,
   type Order,
 } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
-import { type Menu, type MenuItem } from '@/lib/menuRepo';
+import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
 import { SplitView } from '@/components/waiter/SplitView';
 import { Button } from '@/components/ui/Button';
 import { GitCommitHorizontal } from 'lucide-react';

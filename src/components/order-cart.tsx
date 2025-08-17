@@ -23,10 +23,10 @@ import { formatMoney } from '@/lib/money';
 
 type OrderCartProps = {
     order: Order;
-    check: ServiceCheck;
+    check?: ServiceCheck;
     onOrderUpdate: (order: Order) => void;
     user: { uid: string, name: string };
-    onSplitClick: () => void;
+    onSplitClick?: () => void;
 };
 
 export default function OrderCart({ order, check, onOrderUpdate, user, onSplitClick }: OrderCartProps) {
@@ -96,12 +96,23 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
     }
   }
   
-  const resetCart = () => {
-      onOrderUpdate({ ...order, lines: [], totals: { subtotal: 0, tax: 0, total: 0 } });
-      setCreatedOrder(null);
-      setTenderedAmount('');
-      setLast4('');
-      setIsPostPayment(false);
+  const resetCart = async () => {
+    try {
+       const res = await fetch('/api/orders', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ user, items: [] }),
+       });
+       if (!res.ok) throw new Error('Failed to create a new order.');
+       const newOrder = await res.json();
+       onOrderUpdate(newOrder);
+       setCreatedOrder(null);
+       setTenderedAmount('');
+       setLast4('');
+       setIsPostPayment(false);
+    } catch(e) {
+        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+    }
   };
 
   const handlePay = async () => {
@@ -222,7 +233,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
                 <div className="flex-1">
                   <p className="font-medium">{line.qty}x {line.name}</p>
                    {line.mods && line.mods.length > 0 && <p className="text-sm text-muted-foreground">{line.mods.map(m => m.optionName).join(', ')}</p>}
-                   {line.lineTotal != null && <p className="text-sm font-semibold">{formatMoney(line.lineTotal / 100, 'ZAR', 'en-ZA')}</p>}
+                   {line.lineTotal != null && <p className="text-sm font-semibold">{formatMoney(line.lineTotal, 'ZAR', 'en-ZA')}</p>}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -258,23 +269,25 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
             <div className="w-full space-y-2 text-sm">
                 <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>{formatMoney(order.totals?.subtotal / 100, 'ZAR', 'en-ZA')}</span>
+                    <span>{formatMoney(order.totals?.subtotal, 'ZAR', 'en-ZA')}</span>
                 </div>
                  <div className="flex justify-between">
                     <span>Tax</span>
-                    <span>{formatMoney(order.totals?.tax / 100, 'ZAR', 'en-ZA')}</span>
+                    <span>{formatMoney(order.totals?.tax, 'ZAR', 'en-ZA')}</span>
                 </div>
                 <div className="w-full flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total</span>
-                    <span>{formatMoney(order.totals?.total / 100, 'ZAR', 'en-ZA')}</span>
+                    <span>{formatMoney(order.totals?.total, 'ZAR', 'en-ZA')}</span>
                 </div>
             </div>
         )}
         {!isPostPayment &&
             <div className="w-full grid grid-cols-2 gap-2">
+                {onSplitClick && 
                 <Button className="w-full" size="lg" variant="secondary" onClick={onSplitClick} disabled={order.lines.length === 0}>
                     <GitCommitHorizontal className="mr-2"/> Split
                 </Button>
+                }
                 <Button className="w-full" size="lg" variant="secondary" onClick={handleSendToKitchen} disabled={order.lines.length === 0}>Send</Button>
                 <Dialog onOpenChange={(open) => !open && setIsPostPayment(false)}>
                     <DialogTrigger asChild>
@@ -302,7 +315,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
                                 <TabsContent value="cash" className="mt-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="tendered">Amount Tendered</Label>
-                                        <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={(order.totals?.total ?? 0).toFixed(2)} />
+                                        <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={order.totals?.total.toFixed(2) ?? '0.00'} />
                                     </div>
                                     {parseFloat(tenderedAmount) >= (order.totals?.total || 0) && (
                                         <div className="text-lg font-semibold mt-4">
@@ -316,7 +329,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
                                     <Button variant="ghost">Cancel</Button>
                                 </DialogClose>
                                 <Button onClick={handlePay} disabled={!isPaymentValid() || isPaying}>
-                                    {isPaying ? 'Processing...' : `Confirm & Pay ${formatMoney(order.totals?.total / 100, 'ZAR', 'en-ZA')}`}
+                                    {isPaying ? 'Processing...' : `Confirm & Pay ${formatMoney(order.totals?.total, 'ZAR', 'en-ZA')}`}
                                 </Button>
                             </DialogFooter>
                             </>
@@ -329,3 +342,4 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
     </Card>
   );
 }
+

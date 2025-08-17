@@ -5,25 +5,36 @@ import DashboardHeader from '@/components/dashboard-header';
 import ProductGrid from '@/components/product-grid';
 import OrderCart from '@/components/order-cart';
 import {
-  type Category,
-  type MenuItem as Product,
-  type Modifier,
-  type Tax,
-  type CartLine,
-  type Shift
+  type Order,
+  type Shift,
 } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import { type Menu } from '@/lib/menuRepo';
+import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
 
 export default function CashierDashboardPage() {
   const [menuData, setMenuData] = useState<Menu | null>(null);
-  const [cart, setCart] = useState<CartLine[]>([]);
+  const [order, setOrder] = useState<Order | null>(null);
   const [qtyBuffer, setQtyBuffer] = useState<number>(1);
   const [user, setUser] = useState({ uid: 'jcashier', name: 'John Cashier' });
   const [shiftStatus, setShiftStatus] = useState<any>(null);
   const { toast } = useToast();
   const scanBuffer = useRef('');
   const scanTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const createNewOrder = async () => {
+     try {
+       const res = await fetch('/api/orders', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ user, items: [] }),
+       });
+       if (!res.ok) throw new Error('Failed to create a new order.');
+       const newOrder = await res.json();
+       setOrder(newOrder);
+     } catch(e) {
+        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+     }
+  }
 
   useEffect(() => {
     async function fetchMenu() {
@@ -52,6 +63,7 @@ export default function CashierDashboardPage() {
     
     fetchMenu();
     fetchShiftStatus();
+    createNewOrder();
   }, [toast]);
 
   const handleBarcodeScan = useCallback(async (barcode: string) => {
@@ -66,7 +78,7 @@ export default function CashierDashboardPage() {
             toast({ variant: 'destructive', title: 'Not Found', description: `No product found for barcode: ${barcode}` });
         }
     } catch (error) {
-        toast({ variant: 'destructive', title: 'Scan Error', description: (error as Error).message });
+        toast({ variant: 'destructive', title: 'ScanError', description: (error as Error).message });
     }
   }, [menuData, toast]);
 
@@ -106,51 +118,42 @@ export default function CashierDashboardPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleBarcodeScan]);
 
-  const handleAddToCart = (product: Product, mods: CartLine['mods']) => {
-    setCart((prevCart) => {
-      const existingLine = prevCart.find(line => 
-        line.productId === product.id &&
-        JSON.stringify(line.mods) === JSON.stringify(mods)
-      );
-
-      if (existingLine) {
-        return prevCart.map(line =>
-            line.id === existingLine.id ? { ...line, qty: line.qty + qtyBuffer } : line
-        );
-      } else {
-         const newLine: CartLine = {
-            id: `${product.id}-${Date.now()}`,
-            productId: product.id,
-            qty: qtyBuffer,
-            mods,
-            subtotal: 0,
-            tax: 0,
-            total: 0
-        };
-        return [...prevCart, newLine];
+  const handleAddToCart = async (product: MenuItem, mods: CartLineMod[]) => {
+    if (!order) return;
+    try {
+      const res = await fetch('/api/orders/add-line', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          productId: product.id,
+          qty: qtyBuffer,
+          mods: mods
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to add item to order.');
       }
-    });
+      const updatedOrder = await res.json();
+      setOrder(updatedOrder);
+    } catch(e) {
+      toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+    }
     setQtyBuffer(1);
   };
+  
+  const handleOrderUpdate = (updatedOrder: Order) => {
+    setOrder(updatedOrder);
+  }
 
-  const handleUpdateCart = (lines: CartLine[]) => {
-    setCart(lines);
-  };
-
-  if (!menuData) {
+  if (!menuData || !order) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         Loading POS...
       </div>
     );
   }
-  
-  const productsByCategory = menuData.items.reduce((acc, item) => {
-    const catId = item.catId || 'uncategorized';
-    if (!acc[catId]) acc[catId] = [];
-    acc[catId].push(item);
-    return acc;
-  }, {} as Record<string, Product[]>);
 
   return (
     <div className="flex h-screen w-full flex-col bg-muted/40">
@@ -163,19 +166,19 @@ export default function CashierDashboardPage() {
       <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 lg:gap-8 lg:p-6 overflow-hidden">
         <div className="md:col-span-2 h-full flex flex-col min-h-0">
           <ProductGrid
-            categories={menuData.categories.filter(c=>c.active)}
-            productsByCategory={productsByCategory}
-            allModifiers={[]}
+            menu={menuData}
             onAddToCart={handleAddToCart}
             qtyBuffer={qtyBuffer}
           />
         </div>
         <div className="md:col-span-1 h-full flex flex-col min-h-0">
-          <OrderCart cartLines={cart} onUpdateCart={handleUpdateCart} user={user} />
+          <OrderCart
+            order={order}
+            onOrderUpdate={handleOrderUpdate}
+            user={user}
+          />
         </div>
       </main>
     </div>
   );
 }
-
-    
