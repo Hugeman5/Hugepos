@@ -1,11 +1,13 @@
 
 
+
 import { promises as fs } from 'fs';
 import path from 'path';
-import { type Order, type Cart, type User, type OrderLine, type Product, type CartLineMod } from './data';
+import { type Order, type Cart, type User, type OrderLine, type CartLineMod } from './data';
 import * as menuRepo from './menuRepo';
 import * as pricing from './pricing';
 import * as stationsRepo from './stationsRepo';
+import * as kdsRepo from './kdsRepo';
 
 const dataDir = path.join(process.cwd(), 'data');
 const ordersPath = path.join(dataDir, 'orders.json');
@@ -56,36 +58,6 @@ export async function nextOrderNumber(): Promise<number> {
         // Fallback to a random high number to avoid collisions
         return Math.floor(Date.now() / 1000);
     }
-}
-
-async function backfillLegacyOrder(order: Order, menu: menuRepo.Menu): Promise<Order> {
-    let modified = false;
-
-    const newLines = await Promise.all(order.lines.map(async (line: any) => {
-        if (line.lineId && line.prep) {
-            return line as OrderLine;
-        }
-        modified = true;
-        const product = menu.items.find(i => i.id === line.productId);
-        const stationId = await stationsRepo.resolveStationForProduct(line.productId, product?.catId);
-
-        return {
-            ...line,
-            lineId: `line_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-            prep: {
-                stationId: stationId,
-                status: 'queued'
-            }
-        };
-    }));
-
-    if (modified) {
-        const updatedOrder = { ...order, lines: newLines };
-        await saveOrder(updatedOrder, false); // Avoid recursion
-        return updatedOrder;
-    }
-
-    return order;
 }
 
 export async function createDraft(user: { uid: string, name: string }, cart: Cart, shiftId?: string): Promise<Order> {
@@ -152,13 +124,6 @@ export async function getOrder(id: string): Promise<Order | null> {
     const orders = await listRecent(1000); // search more deeply for a specific order
     const order = orders.find(o => o.id === id);
     if (!order) return null;
-
-    // Check for legacy format and backfill if necessary
-    if (order.lines.length > 0 && !(order.lines[0].prep)) {
-        const menu = await menuRepo.getMenu();
-        return backfillLegacyOrder(order, menu);
-    }
-    
     return order;
 }
 
@@ -185,4 +150,42 @@ export async function listRecent(limit = 50): Promise<Order[]> {
 export async function listByShift(shiftId: string): Promise<Order[]> {
     const orders = await readJSONFile<Order[]>(ordersPath, []);
     return orders.filter(o => o.shiftId === shiftId && (o.status === 'PAID' || o.status === 'COMPLETED'));
+}
+
+
+export async function sendToKitchen(orderId: string): Promise<void> {
+    const order = await getOrder(orderId);
+    if (!order) {
+        throw new Error("Order not found");
+    }
+
+    const linesByStation: Record<string, OrderLine[]> = {};
+
+    for (const line of order.lines) {
+        // Only send lines that are still queued
+        if (line.prep.status === 'queued') {
+            const stationId = line.prep.stationId;
+            if (!linesByStation[stationId]) {
+                linesByStation[stationId] = [];
+            }
+            linesByStation[stationId].push(line);
+            line.prep.status = 'in_progress'; // Mark as sent
+        }
+    }
+
+    for (const stationId in linesByStation) {
+        const stationLines = linesByStation[stationId];
+        await kdsRepo.addTicket({
+            orderId: order.id,
+            table: order.service?.tableId || `Order #${order.number}`,
+            station: stationId,
+            lines: stationLines.map(l => ({
+                name: l.name,
+                qty: l.qty,
+                mods: l.mods.map(m => m.optionName).join(', '),
+            })),
+        });
+    }
+
+    await saveOrder(order);
 }

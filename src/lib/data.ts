@@ -1,5 +1,6 @@
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -33,47 +34,6 @@ export type Tax = {
   rate: number;
 };
 
-export type Category = {
-  id: string;
-  name: string;
-};
-
-export type Product = {
-  id: string; // SKU
-  name: string;
-  categoryId: string;
-  price: number;
-  taxId: string;
-  active: boolean;
-  modifierIds?: string[];
-  imageUrl?: string;
-  // New fields for import/export
-  barcode?: string;
-  plu?: string;
-  stationId?: string; // Prep station override
-  cost?: number;
-  cogsGroup?: string;
-};
-
-export type ModifierOption = {
-  id: string;
-  name: string;
-  delta: number;
-};
-
-export type Modifier = {
-  id: string;
-  name: string;
-  type: 'choice' | 'count';
-  required?: boolean;
-  min?: number;
-  max?: number;
-  options?: ModifierOption[]; // For 'choice'
-  step?: number; // For 'count'
-  deltaPerUnit?: number; // For 'count'
-};
-
-
 // --- ORDER ---
 export type OrderStatus = 'DRAFT' | 'PAID' | 'VOID' | 'PENDING' | 'COMPLETED';
 export type PrepStatus = 'queued' | 'in_progress' | 'done';
@@ -95,7 +55,7 @@ export type OrderLine = {
   name:string;
   qty: number;
   unitPrice: number; // in cents
-  mods?: OrderLineMod[];
+  mods: OrderLineMod[];
   lineTotal: number; // in cents
   prep: {
       stationId: string;
@@ -218,20 +178,24 @@ export type RoutingRules = {
   byCategory: Record<string, string>;
 };
 
-export type KdsTicketItem = {
-  lineId: string;
+export type KdsTicketLine = {
   name: string;
   qty: number;
-  status: PrepStatus;
-  mods: OrderLineMod[];
+  mods?: string;
 };
 
 export type KdsTicket = {
+  id: string;
   orderId: string;
-  number: number;
+  table: string;
+  station: string;
   createdAt: string;
-  items: KdsTicketItem[];
+  expedite: boolean;
+  status: 'queued' | 'done';
+  doneAt?: string;
+  lines: KdsTicketLine[];
 };
+
 
 // --- REGISTERS & SHIFTS ---
 export type Register = {
@@ -487,3 +451,4 @@ export type EmailOutboxItem = {
     status: 'queued' | 'sent' | 'error';
     error?: string;
 };
+
