@@ -1,12 +1,13 @@
+
 import { NextResponse } from "next/server";
-import { readRecipes, upsertRecipe, deleteRecipe } from "@/lib/repos/recipesRepo";
+import { getRecipesFile, upsertRecipe, deleteRecipe } from "@/lib/repos/recipesRepo";
 
 export const dynamic = "force-dynamic";
 
 export async function PATCH(_req:Request,{params}:{params:{id:string}}){
   try {
     const body = await _req.json();
-    const file = await readRecipes();
+    const file = await getRecipesFile();
     const current = file.recipes.find(r=>r.id===params.id);
     if (!current) return NextResponse.json({error:"Not found"}, {status:404});
     await upsertRecipe({ ...current, ...body, id: params.id });

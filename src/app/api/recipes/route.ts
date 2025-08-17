@@ -1,10 +1,11 @@
+
 import { NextResponse } from "next/server";
-import { readRecipes, upsertRecipe } from "@/lib/repos/recipesRepo";
+import { getRecipesFile, upsertRecipe } from "@/lib/repos/recipesRepo";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const file = await readRecipes();
+  const file = await getRecipesFile();
   return NextResponse.json(file);
 }
 
