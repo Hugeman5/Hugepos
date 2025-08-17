@@ -1,10 +1,25 @@
+
 import { promises as fs } from "fs";
 import path from "path";
 
-export type Settings = { currency:string; vatRate:number; rounding:"none"|"99c"|"95c" };
-const P = path.join(process.cwd(), "data", "settings.json");
+export type AppSettings = {
+  currency: string;        // "ZAR"
+  locale: string;          // "en-ZA"
+  currencySymbol: string;  // "R"
+  defaultVatRate: number;  // 0.15
+};
 
-export async function getSettings(): Promise<Settings> {
-  try { return JSON.parse(await fs.readFile(P,"utf8")); }
-  catch { return { currency:"ZAR", vatRate:0.15, rounding:"99c" }; }
+const SETTINGS_PATH = path.join(process.cwd(), "data", "settings.json");
+
+let cached: AppSettings | null = null;
+
+export async function getSettings(): Promise<AppSettings> {
+  if (cached) return cached;
+  try {
+    const raw = await fs.readFile(SETTINGS_PATH, "utf8");
+    cached = JSON.parse(raw) as AppSettings;
+  } catch {
+    cached = { currency: "ZAR", locale: "en-ZA", currencySymbol: "R", defaultVatRate: 0.15 };
+  }
+  return cached!;
 }

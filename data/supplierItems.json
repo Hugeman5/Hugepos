@@ -1,0 +1,14 @@
+
+[
+  {
+    "id": "si_flour12_5kg",
+    "supplierId": "sup_checkers",
+    "sku": "FLOUR12.5",
+    "name": "Flour 12.5kg",
+    "uom": "kg",
+    "packSize": 12.5,
+    "priceExVat": 250,
+    "vatRate": 0.15,
+    "lastUpdated": "2025-08-01"
+  }
+]

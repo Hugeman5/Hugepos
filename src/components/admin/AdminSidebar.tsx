@@ -2,7 +2,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, KeyRound, Package, UploadCloud, Warehouse, ChefHat, Route, BarChart3, Settings, Store, Map, HardDrive, SwatchBook, TicketPercent, Combine } from 'lucide-react';
+import { Home, Users, KeyRound, Package, UploadCloud, Warehouse, ChefHat, Route, BarChart3, Settings, Store, Map, HardDrive, SwatchBook, TicketPercent, Combine, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/admin/promotions', label: 'Promotions', icon: TicketPercent },
   { href: '/admin/inventory', label: 'Inventory', icon: Warehouse },
   { href: '/admin/recipes', label: 'Recipes', icon: Combine },
+  { href: '/admin/purchasing/orders', label: 'Purchasing', icon: ShoppingCart },
   { href: '/admin/customers', label: 'Customers', icon: Users },
   { href: '/admin/users', label: 'Staff Users', icon: Users },
   { href: '/admin/roles', label: 'Roles', icon: KeyRound },

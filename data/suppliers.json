@@ -1,0 +1,12 @@
+
+[
+  {
+    "id": "sup_checkers",
+    "name": "Checkers",
+    "email": "orders@checkers.co.za",
+    "phone": "+27 21 555 0000",
+    "address": "1 Supply Rd, Cape Town",
+    "vatRate": 0.15,
+    "notes": ""
+  }
+]
