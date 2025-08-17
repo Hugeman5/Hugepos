@@ -96,7 +96,7 @@ export default function RegistersPage() {
   return (
     <AdminLayout title="Register Management">
         <div className="grid md:grid-cols-2 gap-8">
-            <Card className="bg-brand-card border-brand-line">
+            <Card>
               <div className="p-4 border-b border-brand-line">
                 <h2 className="text-xl font-semibold">Manage Registers</h2>
                 <p className="text-brand-mute">Add or remove cash registers for your outlets.</p>
@@ -118,7 +118,7 @@ export default function RegistersPage() {
                         <TableCell className="font-medium">{register.name}</TableCell>
                         <TableCell className="font-mono text-muted-foreground">{register.id}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="secondary" size="icon" onClick={() => handleRemoveRegister(register.id)}>
+                          <Button variant="ghost" onClick={() => handleRemoveRegister(register.id)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </TableCell>
@@ -133,18 +133,18 @@ export default function RegistersPage() {
                         onChange={(e) => setNewRegisterName(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleAddRegister()}
                      />
-                     <Button onClick={handleAddRegister} className="bg-brand-accent"><PlusCircle className="mr-2"/> Add</Button>
+                     <Button onClick={handleAddRegister}><PlusCircle className="mr-2"/> Add</Button>
                 </div>
                  <div className="flex justify-end gap-2 mt-4">
                     <Button variant="secondary" onClick={fetchData}>Cancel</Button>
-                    <Button onClick={handleSaveChanges} disabled={isSaving} className="bg-brand-accent">
+                    <Button onClick={handleSaveChanges} disabled={isSaving}>
                         {isSaving ? 'Saving...' : 'Save Changes'}
                     </Button>
                 </div>
               </div>
             </Card>
 
-            <Card className="bg-brand-card border-brand-line">
+            <Card>
                 <div className="p-4 border-b border-brand-line">
                     <h2 className="text-xl font-semibold">Recent Shifts</h2>
                     <p className="text-brand-mute">A log of the most recent register shifts.</p>
@@ -169,7 +169,7 @@ export default function RegistersPage() {
                                     <TableCell>{timeSince(s.tsOpen)} by {s.userNameOpen}</TableCell>
                                     <TableCell className="text-right">
                                         {s.status === 'closed' ? (
-                                            <Button asChild variant="link" size="sm">
+                                            <Button variant="ghost" size="sm" asChild>
                                                 <Link href={`/admin/reports/register/${s.id}`}>View</Link>
                                             </Button>
                                         ) : 'N/A'}
