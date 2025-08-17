@@ -76,7 +76,7 @@ export default function RecipeDialog({
   }
 
   function addRow() {
-    setForm(f => ({ ...f, bom: [...f.bom, { ingredientId: ingredients[0]?.id ?? "", qty: "", uom: "g", wastePct: 0 }] }));
+    setForm(f => ({ ...f, bom: [...f.bom, { ingredientId: "", qty: "", uom: "g", wastePct: 0 }] }));
   }
 
   function removeRow(i:number){
@@ -212,7 +212,7 @@ export default function RecipeDialog({
             {form.bom.map((row, i) => {
               const ingredient = ingredientsPricing[row.ingredientId];
               const costs = { ex: 0, inc: 0 };
-              if (ingredient) {
+              if (ingredient && row.uom) {
                   costs.inc = lineCostIncVat({
                       ingredient: ingredient,
                       qty: Number(row.qty || 0),
@@ -293,3 +293,6 @@ function cryptoRandId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return (crypto as any).randomUUID();
   return "r_" + Math.random().toString(36).slice(2,9);
 }
+
+
+    
