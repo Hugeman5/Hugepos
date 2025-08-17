@@ -4,6 +4,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -66,6 +67,14 @@ export type OrderLine = {
   }
 };
 
+export type AppliedDiscount = {
+    ruleId: string;
+    name: string;
+    scope: 'item' | 'category' | 'order';
+    amountCents: number;
+    lines: string[]; // lineIds this discount applies to
+}
+
 export type Order = {
   id: string;
   number: number;
@@ -74,6 +83,7 @@ export type Order = {
   status: OrderStatus;
   lines: OrderLine[];
   totals: OrderTotal;
+  discounts?: AppliedDiscount[];
   notes?: string;
   shiftId?: string;
   customer?: { id: string; name: string; groupId?: string };
@@ -464,3 +474,32 @@ export type EmailOutboxItem = {
     status: 'queued' | 'sent' | 'error';
     error?: string;
 };
+
+
+// --- PROMOTIONS ---
+export type PromotionRule = {
+    id: string;
+    name: string;
+    type: 'percent' | 'amount' | 'bxgy';
+    value: number; // For percent or fixed amount in cents
+    scope: 'item' | 'category' | 'order';
+    targetIds: string[]; // Product or Category IDs
+    bxgy: {
+        buyQty: number;
+        getQty: number;
+        appliesTo: 'same' | 'different'; // For BxGy, specifies if the free item is the same or a different one
+    };
+    active: boolean;
+    time: {
+        days: number[]; // 0=Sun, 1=Mon, ...
+        start: string; // "HH:MM"
+        end: string; // "HH:MM"
+        tz: string; // Timezone e.g., "Africa/Johannesburg"
+    };
+    eligibility: {
+        roles: Array<User['role']>;
+        minSpendCents: number;
+        minQty: number;
+    };
+    stacking: 'exclusive' | 'compatible';
+}

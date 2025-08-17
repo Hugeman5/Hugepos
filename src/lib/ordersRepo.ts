@@ -3,6 +3,7 @@
 
 
 
+
 import { promises as fs } from 'fs';
 import path from 'path';
 import { type Order, type Cart, type User, type OrderLine, type CartLineMod, OrderTotal } from './data';
@@ -223,6 +224,16 @@ export async function recalculateTotals(orderId: string): Promise<Order> {
       total: newTotals.total,
       discount: newTotals.discount,
     }
+    
+    // Apply promotions
+    const { promotionsRepo } = await import('./promotionsRepo');
+    const promoResult = await promotionsRepo.evaluateOrder(order);
+    
+    order.discounts = promoResult.discounts;
+    // Update totals with promotion discounts
+    order.totals.discount = (order.totals.discount || 0) + promoResult.totalDiscount;
+    order.totals.total = Math.max(0, order.totals.total - promoResult.totalDiscount);
+
 
     await saveOrder(order);
     return order;
@@ -259,4 +270,3 @@ export async function createOrderFromLines(originalOrder: Order, lines: OrderLin
     await saveOrder(newOrder, false); // Save without recalculating totals yet
     return recalculateTotals(newOrder.id);
 }
-
