@@ -43,6 +43,12 @@ function CsvUploadDialog({ supplier, open, onClose, onImported }: { supplier: Su
             setError('');
             setVatRate(supplier.vatRate?.toString() || '');
             setHeaders([]);
+            setColName('');
+            setColSku('');
+            setColUom('');
+            setColPackSize('');
+            setColPriceEx('');
+            setColPriceInc('');
         }
     }, [open, supplier]);
 
@@ -99,7 +105,6 @@ function CsvUploadDialog({ supplier, open, onClose, onImported }: { supplier: Su
             <Select value={value} onValueChange={setter}>
                 <SelectTrigger className="col-span-2"><SelectValue placeholder="Auto-detect" /></SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">Auto-detect</SelectItem>
                     {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
                 </SelectContent>
             </Select>
