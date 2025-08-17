@@ -1,0 +1,20 @@
+
+{ 
+  "recipes":[
+    {
+        "id":"rec_croissant",
+        "name":"Croissant",
+        "yield":"ea",
+        "bom":[
+            {"ingredientId":"ing_flour","qty":0.09,"uom":"kg"},
+            {"ingredientId":"ing_eggs","qty":0.20,"uom":"ea"}
+        ]
+    }
+  ], 
+  "links":[
+    {"itemId":"it_croissant","recipeId":"rec_croissant"}
+  ], 
+  "settings":{
+      "decrementOn":"send"
+  } 
+}

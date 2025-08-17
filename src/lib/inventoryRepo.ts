@@ -5,21 +5,19 @@ import {
   type InventoryItem,
   type InventoryMove,
   type Ingredient,
-  type Order,
-  type Recipe,
-  type Product
+  type Order
 } from './data';
+import * as recipesRepo from './recipesRepo';
 
 const dataDir = path.join(process.cwd(), 'data');
 const inventoryPath = path.join(dataDir, 'inventory.json');
 const movesPath = path.join(dataDir, 'inventory_moves.json');
 const ingredientsPath = path.join(dataDir, 'ingredients.json');
-const recipesPath = path.join(dataDir, 'recipes.json');
-const productsPath = path.join(dataDir, 'products.json');
 
 
 async function readJSONFile<T>(filePath: string, defaultValue: T): Promise<T> {
   try {
+    await fs.access(filePath);
     const data = await fs.readFile(filePath, 'utf-8');
     return JSON.parse(data) as T;
   } catch (error) {
@@ -31,16 +29,13 @@ async function readJSONFile<T>(filePath: string, defaultValue: T): Promise<T> {
 }
 
 async function writeJSONFile<T>(filePath: string, data: T): Promise<void> {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
 }
 
 
 export async function getLevels(): Promise<InventoryItem[]> {
   return readJSONFile<InventoryItem[]>(inventoryPath, []);
-}
-
-export async function getProducts(): Promise<Product[]> {
-    return readJSONFile<Product[]>(productsPath, []);
 }
 
 export async function saveLevels(levels: InventoryItem[]): Promise<void> {
@@ -61,28 +56,6 @@ export async function appendMove(move: Omit<InventoryMove, 'id' | 'timestamp'>):
     moves.unshift(newMove); // Add to the beginning
     await writeJSONFile(movesPath, moves);
     return newMove;
-}
-
-export async function receiveStock(data: { ingredientId: string; quantity: number; note?: string; user?: string }): Promise<InventoryItem> {
-    const levels = await getLevels();
-    const item = levels.find(l => l.ingredientId === data.ingredientId);
-
-    if (!item) {
-        throw new Error(`Ingredient ${data.ingredientId} not found in inventory.`);
-    }
-
-    item.onHand += data.quantity;
-
-    await appendMove({
-        ingredientId: data.ingredientId,
-        quantity: data.quantity,
-        type: 'receive',
-        note: data.note,
-        user: data.user,
-    });
-
-    await saveLevels(levels);
-    return item;
 }
 
 export async function adjustStock(data: { ingredientId: string; delta: number; note?: string; user?: string }): Promise<InventoryItem> {
@@ -113,15 +86,18 @@ export async function adjustStock(data: { ingredientId: string; delta: number; n
 
 export async function applyUsageFromOrder(order: Order): Promise<number> {
     const levels = await getLevels();
-    const recipes = await readJSONFile<Recipe[]>(recipesPath, []);
+    const recipes = await recipesRepo.getRecipes();
     const usage: Record<string, number> = {};
 
     for (const orderItem of order.lines) {
-        const recipe = recipes.find(r => r.productId === orderItem.productId);
-        if (recipe) {
-            for (const recipeItem of recipe.items) {
-                const totalQuantity = recipeItem.quantity * orderItem.qty;
-                usage[recipeItem.ingredientId] = (usage[recipeItem.ingredientId] || 0) + totalQuantity;
+        const recipeId = await recipesRepo.getRecipeIdForItem(orderItem.productId);
+        if (recipeId) {
+            const recipe = recipes.recipes.find(r => r.id === recipeId);
+            if (recipe) {
+                for (const recipeItem of recipe.bom) {
+                    const totalQuantity = recipeItem.qty * orderItem.qty;
+                    usage[recipeItem.ingredientId] = (usage[recipeItem.ingredientId] || 0) + totalQuantity;
+                }
             }
         }
     }
@@ -146,13 +122,15 @@ export async function applyUsageFromOrder(order: Order): Promise<number> {
         }
     }
 
-    await saveLevels(levels);
+    if (movesCount > 0) {
+      await saveLevels(levels);
+    }
     return movesCount;
 }
 
 export async function getSummary() {
     const levels = await getLevels();
-    const ingredients = await readJSONFile<Ingredient[]>(ingredientsPath, []);
+    const ingredients = await getIngredients();
 
     const summary = ingredients.map(ing => {
         const level = levels.find(l => l.ingredientId === ing.id);
@@ -167,4 +145,13 @@ export async function getSummary() {
     });
 
     return summary;
+}
+
+// Ingredient Definitions
+export async function getIngredients(): Promise<Ingredient[]> {
+    return readJSONFile<Ingredient[]>(ingredientsPath, []);
+}
+
+export async function saveIngredients(ingredients: Ingredient[]): Promise<void> {
+    await writeJSONFile(ingredientsPath, ingredients);
 }

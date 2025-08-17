@@ -4,6 +4,7 @@
 
 
 
+
 import { promises as fs } from 'fs';
 import path from 'path';
 import { type Order, type Cart, type User, type OrderLine, type CartLineMod, OrderTotal } from './data';
@@ -11,6 +12,8 @@ import * as menuRepo from './menuRepo';
 import * as pricing from './pricing';
 import * as stationsRepo from './stationsRepo';
 import * as kdsRepo from './kdsRepo';
+import * as inventoryRepo from './inventoryRepo';
+import * as recipesRepo from './recipesRepo';
 
 const dataDir = path.join(process.cwd(), 'data');
 const ordersPath = path.join(dataDir, 'orders.json');
@@ -188,6 +191,11 @@ export async function sendToKitchen(orderId: string): Promise<void> {
                 mods: l.mods.map(m => m.optionName).join(', '),
             })),
         });
+    }
+
+    const recipeSettings = await recipesRepo.getSettings();
+    if(recipeSettings.decrementOn === 'send'){
+      await inventoryRepo.applyUsageFromOrder(order);
     }
 
     await saveOrder(order);

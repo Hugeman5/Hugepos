@@ -5,6 +5,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -146,20 +147,37 @@ export type OrderTotal = {
 
 // --- INVENTORY ---
 export type Ingredient = {
-  id: string; // e.g. "coffee-beans"
-  name: string; // e.g. "Coffee Beans"
-  unit: 'g' | 'ml' | 'ea';
-  costPerUnit: number; // cost for 1 'unit'
+  id: string;
+  name: string;
+  uom: 'kg' | 'g' | 'l' | 'ml' | 'ea';
+  packSize: number;
+  costCents: number;
 };
 
 export type RecipeItem = {
   ingredientId: string;
-  quantity: number;
+  qty: number;
+  uom: string;
 };
 
 export type Recipe = {
-  productId: string;
-  items: RecipeItem[];
+  id: string;
+  name: string;
+  yield: string;
+  bom: RecipeItem[];
+};
+
+export type RecipeLink = {
+  itemId: string;
+  recipeId: string;
+};
+
+export type RecipesFile = {
+  recipes: Recipe[];
+  links: RecipeLink[];
+  settings: {
+    decrementOn: 'send' | 'pay';
+  };
 };
 
 export type InventoryItem = {

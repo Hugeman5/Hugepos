@@ -1,0 +1,5 @@
+
+[
+    {"id":"ing_flour","name":"Flour 12.5kg","uom":"kg","packSize":12.5,"costCents":25000},
+    {"id":"ing_eggs","name":"Eggs tray 30","uom":"ea","packSize":30,"costCents":6500}
+]
