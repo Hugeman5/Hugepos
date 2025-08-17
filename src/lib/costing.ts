@@ -1,5 +1,4 @@
 
-
 import { toBase } from "@/lib/uom";
 import type { Ingredient } from "@/lib/repos/ingredientsRepo";
 
@@ -19,10 +18,12 @@ export function lineCostIncVat(args: {
   const rowUom = (args.uom ?? ingredient.purchaseUom) as string;
 
   if (!rowUom) {
-    throw new Error(`Missing UoM for "${ingredient.name}".`);
+    console.warn(`Missing UoM for "${ingredient.name}". Cost will be 0.`);
+    return 0;
   }
   if (!ingredient.purchaseUom || !ingredient.purchaseSize) {
-    throw new Error(`Ingredient "${ingredient.name}" missing purchase info.`);
+    console.warn(`Ingredient "${ingredient.name}" missing purchase info. Cost will be 0.`);
+    return 0;
   }
 
   const effQty = qty * (1 + waste); // qty including waste
@@ -36,6 +37,7 @@ export function lineCostIncVat(args: {
   }
 
   const packPriceInc = Number(ingredient.priceIncVat ?? 0);
+  if(packBase.base === 0) return 0; // Avoid division by zero
   const unitPriceInc = packPriceInc / packBase.base;             // price per base unit
   return unitPriceInc * recipeBase.base;                         // line cost (Inc VAT)
 }
