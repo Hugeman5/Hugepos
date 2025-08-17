@@ -30,6 +30,15 @@
       "overheadPct": 0,
       "packagingCost": 0,
       "targetGpPct": 0.6
+    },
+    {
+      "id": "rec_1755428237167",
+      "name": "New Recipe",
+      "bom": [],
+      "yieldPortions": 1,
+      "overheadPct": 0,
+      "packagingCost": 0,
+      "targetGpPct": 0.6
     }
   ],
   "links": [

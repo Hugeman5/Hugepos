@@ -1,47 +1,20 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/Button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import {
-  type Recipe,
-  type RecipeLink,
-  type RecipesFile,
-} from "@/lib/repos/recipesRepo";
-import {
-  type Ingredient,
-} from "@/lib/repos/ingredientsRepo";
-import {
-    type MenuItem, type Menu
-} from "@/lib/menuRepo";
+import { type Recipe, type RecipesFile } from "@/lib/repos/recipesRepo";
+import { type Ingredient } from "@/lib/repos/ingredientsRepo";
+import { type MenuItem, type Menu } from "@/lib/menuRepo";
+import RecipeDialog, { type RecipeEdit, type IngredientLite } from "@/components/recipes/RecipeDialog";
+import ConfirmDialog from "@/components/ConfirmDialog";
+
 
 import { PlusCircle, Trash2, Edit, ChevronDown, ChevronUp } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatMoney } from "@/lib/money";
 
 type CostingResult = {
@@ -118,6 +91,14 @@ export default function RecipesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeEdit | null>(null);
+  
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [recipeToDelete, setRecipeToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -153,36 +134,49 @@ export default function RecipesPage() {
     fetchData();
   }, [fetchData]);
 
-  async function handleSaveRecipe(recipe: Partial<Recipe>) {
-    const newId = `rec_${Date.now()}`;
-    const fullRecipe: Recipe = {
-      id: recipe.id || newId,
-      name: recipe.name || "New Recipe",
-      bom: recipe.bom || [],
-      yieldPortions: recipe.yieldPortions || 1,
-      overheadPct: recipe.overheadPct || 0,
-      packagingCost: recipe.packagingCost || 0,
-      targetGpPct: recipe.targetGpPct || 0.6,
-    };
-    const res = await fetch("/api/recipes", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(fullRecipe) });
-    if(!res.ok) throw new Error("Save failed");
-    toast({ title: "Success", description: "Recipe saved." });
-    await fetchData();
-  };
+  const ingredientsLite: IngredientLite[] = useMemo(() => ingredients.map(i => ({ id: i.id, name: i.name })), [ingredients]);
+  
+  const handleOpenNewDialog = () => {
+      setSelectedRecipe({ id: `rec_${Date.now()}`, name: 'New Recipe', yieldPortions: 1, overheadPct: 0.1, packagingCost: 0, targetGpPct: 0.6, bom: [] });
+      setDialogMode('create');
+  }
+  
+  const handleOpenEditDialog = (recipe: Recipe) => {
+      setSelectedRecipe({ ...recipe, yieldPortions: recipe.yieldPortions || 1, overheadPct: recipe.overheadPct || 0, packagingCost: recipe.packagingCost || 0, targetGpPct: recipe.targetGpPct || 0.6, bom: recipe.bom.map(b => ({ ...b, qty: b.qty || "", wastePct: b.wastePct || 0 })) });
+      setDialogMode('edit');
+  }
 
-  async function handleDeleteRecipe(id: string) {
-    if (!window.confirm("Are you sure?")) return;
-    const res = await fetch(`/api/recipes/${id}`, { method:"DELETE" });
-    if(!res.ok) throw new Error("Delete failed");
-    toast({ title: "Success", description: "Recipe deleted." });
-    await fetchData();
-  };
+  const handleOpenDeleteDialog = (recipeId: string) => {
+    setRecipeToDelete(recipeId);
+    setIsConfirmDeleteOpen(true);
+  }
+  
+  const handleConfirmDelete = async () => {
+    if (!recipeToDelete) return;
+    setIsDeleting(true);
+    try {
+        const res = await fetch(`/api/recipes/${recipeToDelete}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Delete failed");
+        toast({ title: "Success", description: "Recipe deleted." });
+        await fetchData();
+    } catch(e) {
+        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+    } finally {
+        setIsDeleting(false);
+        setIsConfirmDeleteOpen(false);
+        setRecipeToDelete(null);
+    }
+  }
 
   async function handleLinkItem(itemId: string, recipeId: string) {
-    const res = await fetch("/api/recipes/link", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ itemId, recipeId }) });
-    if(!res.ok) throw new Error("Link failed");
-    toast({ title: "Linked", description: "Item linked to recipe." });
-    await fetchData();
+    try {
+        const res = await fetch("/api/recipes/link", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ itemId, recipeId }) });
+        if(!res.ok) throw new Error("Link failed");
+        toast({ title: "Linked", description: "Item linked to recipe." });
+        await fetchData();
+    } catch (e) {
+         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+    }
   };
   
 
@@ -210,7 +204,7 @@ export default function RecipesPage() {
 
         <CardContent>
           <div className="flex justify-end mb-4">
-            <Button onClick={() => handleSaveRecipe({name: 'New Recipe', id: `rec_${Date.now()}`})}>
+            <Button onClick={handleOpenNewDialog}>
               <PlusCircle className="mr-2" />
               New Recipe
             </Button>
@@ -244,13 +238,13 @@ export default function RecipesPage() {
                       </SelectContent>
                     </Select>
 
-                    <Button size="sm" variant="secondary" onClick={() => { /* open edit dialog */ }}>
+                    <Button size="sm" variant="secondary" onClick={() => handleOpenEditDialog(recipe) }>
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleDeleteRecipe(recipe.id)}
+                      onClick={() => handleOpenDeleteDialog(recipe.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -276,6 +270,24 @@ export default function RecipesPage() {
           </div>
         </CardContent>
       </Card>
+
+      <RecipeDialog
+        open={!!dialogMode}
+        mode={dialogMode || 'create'}
+        initial={selectedRecipe ?? undefined}
+        ingredients={ingredientsLite}
+        onClose={() => setDialogMode(null)}
+        onSaved={fetchData}
+      />
+      
+      <ConfirmDialog
+        open={isConfirmDeleteOpen}
+        title="Delete Recipe"
+        message="Are you sure you want to delete this recipe? This action cannot be undone."
+        onCancel={() => setIsConfirmDeleteOpen(false)}
+        onConfirm={handleConfirmDelete}
+        busy={isDeleting}
+      />
     </AdminLayout>
   );
 }
