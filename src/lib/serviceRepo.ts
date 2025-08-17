@@ -1,5 +1,6 @@
 
 
+
 import { promises as fs } from 'fs';
 import path from 'path';
 import { type ServiceCheck, type TableState, type User, type Order, type Table } from './data';
@@ -76,6 +77,7 @@ export async function openCheck(
         orderId: draftOrder.id,
         state: "seated",
         seats: table.seats,
+        splits: [],
     };
     
     draftOrder.service = { type: 'dine_in', tableId: table.id, checkId: newCheck.id };
@@ -107,6 +109,30 @@ export async function closeCheck(checkId: string): Promise<ServiceCheck> {
         await ordersRepo.saveOrder(order);
     }
     
+    await saveCheck(check);
+    return check;
+}
+
+export async function createSplit(checkId: string): Promise<ServiceCheck> {
+    const check = await getCheck(checkId);
+    if (!check) throw new Error("Check not found");
+
+    const newSplitOrder = await ordersRepo.createOrderFromLines(
+      await ordersRepo.getOrder(check.orderId) as Order,
+      []
+    );
+
+    if (!check.splits) {
+        check.splits = [];
+    }
+
+    const newSplit = {
+        id: `spl_${Date.now()}`,
+        name: `Check ${check.splits.length + 2}`,
+        orderId: newSplitOrder.id,
+    };
+
+    check.splits.push(newSplit);
     await saveCheck(check);
     return check;
 }

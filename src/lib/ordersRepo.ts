@@ -1,9 +1,10 @@
 
 
 
+
 import { promises as fs } from 'fs';
 import path from 'path';
-import { type Order, type Cart, type User, type OrderLine, type CartLineMod } from './data';
+import { type Order, type Cart, type User, type OrderLine, type CartLineMod, OrderTotal } from './data';
 import * as menuRepo from './menuRepo';
 import * as pricing from './pricing';
 import * as stationsRepo from './stationsRepo';
@@ -129,7 +130,7 @@ export async function getOrder(id: string): Promise<Order | null> {
 
 export async function saveOrder(order: Order, write = true): Promise<void> {
     if (!write) return;
-    const orders = await listRecent(1000); // Use a larger limit to prevent data loss
+    const orders = await readJSONFile<Order[]>(ordersPath, []);
     const index = orders.findIndex(o => o.id === order.id);
     if (index > -1) {
         orders[index] = order;
@@ -188,4 +189,72 @@ export async function sendToKitchen(orderId: string): Promise<void> {
     }
 
     await saveOrder(order);
+}
+
+export async function recalculateTotals(orderId: string): Promise<Order> {
+    const order = await getOrder(orderId);
+    if (!order) throw new Error("Order not found");
+
+    const menu = await menuRepo.getMenu();
+    // Map order lines to cart lines for pricing engine
+    const cart: Cart = {
+        lines: order.lines.map(l => ({
+            id: l.id,
+            productId: l.productId,
+            qty: l.qty,
+            subtotal: 0, tax: 0, total: 0,
+            mods: l.mods.reduce((acc, mod) => {
+                let found = acc.find(m => m.setId === mod.setId);
+                if (!found) {
+                    found = { setId: mod.setId, optionIds: [] };
+                    acc.push(found);
+                }
+                found.optionIds.push(mod.optionId);
+                return acc;
+            }, [] as CartLineMod[])
+        }))
+    };
+
+    const newTotals = await pricing.computeOrder(cart, menu);
+    order.totals = {
+      subtotal: newTotals.subtotal,
+      tax: newTotals.tax,
+      total: newTotals.total,
+      discount: newTotals.discount,
+    }
+
+    await saveOrder(order);
+    return order;
+}
+
+export async function moveLine(lineId: string, fromOrderId: string, toOrderId: string): Promise<void> {
+    const fromOrder = await getOrder(fromOrderId);
+    const toOrder = await getOrder(toOrderId);
+
+    if (!fromOrder || !toOrder) {
+        throw new Error("One or both orders not found.");
+    }
+
+    const lineIndex = fromOrder.lines.findIndex(l => l.lineId === lineId);
+    if (lineIndex === -1) {
+        throw new Error("Line not found in the source order.");
+    }
+
+    const [lineToMove] = fromOrder.lines.splice(lineIndex, 1);
+    toOrder.lines.push(lineToMove);
+
+    await recalculateTotals(fromOrderId);
+    await recalculateTotals(toOrderId);
+}
+
+export async function createOrderFromLines(originalOrder: Order, lines: OrderLine[]): Promise<Order> {
+    const newOrder: Order = {
+        ...originalOrder,
+        id: `ord_${Date.now()}`,
+        number: await nextOrderNumber(),
+        lines: lines,
+        totals: { subtotal: 0, tax: 0, total: 0 }
+    };
+    await saveOrder(newOrder, false); // Save without recalculating totals yet
+    return recalculateTotals(newOrder.id);
 }

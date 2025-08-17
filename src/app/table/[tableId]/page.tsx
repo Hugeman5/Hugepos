@@ -7,14 +7,16 @@ import DashboardHeader from '@/components/dashboard-header';
 import ProductGrid from '@/components/product-grid';
 import OrderCart from '@/components/order-cart';
 import {
-  type Category,
-  type MenuItem as Product,
-  type Modifier,
-  type CartLine,
+  type CartLineMod,
   type ServiceCheck,
+  type Order,
 } from '@/lib/data';
-import { useToast } from '@/hooks/use-toast';
-import { type Menu } from '@/lib/menuRepo';
+import { useToast } from "@/hooks/use-toast";
+import { type Menu, type MenuItem } from '@/lib/menuRepo';
+import { SplitView } from '@/components/waiter/SplitView';
+import { Button } from '@/components/ui/Button';
+import { GitCommitHorizontal } from 'lucide-react';
+
 
 export default function TableOrderPage() {
   const params = useParams();
@@ -22,15 +24,18 @@ export default function TableOrderPage() {
   const tableId = params.tableId as string;
 
   const [menuData, setMenuData] = useState<Menu | null>(null);
-  const [cart, setCart] = useState<CartLine[]>([]);
+  const [order, setOrder] = useState<Order | null>(null);
   const [check, setCheck] = useState<ServiceCheck | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [qtyBuffer, setQtyBuffer] = useState<number>(1);
+  const [isSplitView, setIsSplitView] = useState(false);
   const { toast } = useToast();
   
   const user = { uid: 'jwaiter', name: 'Jane Waiter' }; // Mock user
 
   const fetchCheckAndOrder = useCallback(async () => {
     if (!tableId) return;
+    setIsLoading(true);
     try {
       const res = await fetch(`/api/service/check/by-table/${tableId}`);
       if (!res.ok) {
@@ -48,10 +53,12 @@ export default function TableOrderPage() {
       const orderRes = await fetch(`/api/orders/${checkData.orderId}`);
       if (!orderRes.ok) throw new Error('Failed to fetch order details');
       const orderData = await orderRes.json();
-      setCart(orderData.lines || []);
+      setOrder(orderData);
 
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+    } finally {
+      setIsLoading(false);
     }
   }, [tableId, toast, router]);
 
@@ -88,51 +95,42 @@ export default function TableOrderPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleAddToCart = (product: Product, mods: CartLine['mods']) => {
-    setCart((prevCart) => {
-      const existingLine = prevCart.find(line => 
-        line.productId === product.id &&
-        JSON.stringify(line.mods) === JSON.stringify(mods)
-      );
-
-      if (existingLine) {
-        return prevCart.map(line =>
-            line.id === existingLine.id ? { ...line, qty: line.qty + qtyBuffer } : line
-        );
-      } else {
-         const newLine: CartLine = {
-            id: `${product.id}-${Date.now()}`,
-            productId: product.id,
-            qty: qtyBuffer,
-            mods,
-            subtotal: 0,
-            tax: 0,
-            total: 0
-        };
-        return [...prevCart, newLine];
+  const handleAddToCart = async (product: MenuItem, mods: CartLineMod[]) => {
+    if (!order) return;
+    try {
+      const res = await fetch('/api/orders/add-line', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          productId: product.id,
+          qty: qtyBuffer,
+          mods: mods
+        }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to add item to order.');
       }
-    });
+      const updatedOrder = await res.json();
+      setOrder(updatedOrder);
+    } catch(e) {
+      toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+    }
     setQtyBuffer(1);
   };
 
-  const handleUpdateCart = (lines: CartLine[]) => {
-    setCart(lines);
+  const handleOrderUpdate = (updatedOrder: Order) => {
+    setOrder(updatedOrder);
   };
   
-  if (!menuData || !check) {
+  if (isLoading || !menuData || !check || !order) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         Loading Table {tableId} Order...
       </div>
     );
   }
-  
-  const productsByCategory = menuData.items.reduce((acc, item) => {
-    const catId = item.catId || 'uncategorized';
-    if (!acc[catId]) acc[catId] = [];
-    acc[catId].push(item);
-    return acc;
-  }, {} as Record<string, Product[]>);
 
   return (
     <div className="flex h-screen w-full flex-col bg-muted/40">
@@ -141,20 +139,32 @@ export default function TableOrderPage() {
         userName={user.name}
         userRole="Waiter"
       />
-      <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 lg:gap-8 lg:p-6 overflow-hidden">
-        <div className="md:col-span-2 h-full flex flex-col min-h-0">
-          <ProductGrid
-            categories={menuData.categories.filter(c=>c.active)}
-            productsByCategory={productsByCategory}
-            allModifiers={[]}
-            onAddToCart={handleAddToCart}
-            qtyBuffer={qtyBuffer}
-          />
-        </div>
-        <div className="md:col-span-1 h-full flex flex-col min-h-0">
-          <OrderCart cartLines={cart} onUpdateCart={handleUpdateCart} user={user} />
-        </div>
-      </main>
+      
+      {isSplitView ? (
+        <SplitView 
+            check={check}
+            onClose={() => setIsSplitView(false)}
+        />
+      ) : (
+        <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 lg:gap-8 lg:p-6 overflow-hidden">
+          <div className="md:col-span-2 h-full flex flex-col min-h-0">
+            <ProductGrid
+              menu={menuData}
+              onAddToCart={handleAddToCart}
+              qtyBuffer={qtyBuffer}
+            />
+          </div>
+          <div className="md:col-span-1 h-full flex flex-col min-h-0">
+            <OrderCart 
+                order={order}
+                check={check}
+                onOrderUpdate={handleOrderUpdate} 
+                user={user}
+                onSplitClick={() => setIsSplitView(true)}
+            />
+          </div>
+        </main>
+      )}
     </div>
   );
 }

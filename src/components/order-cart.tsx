@@ -15,21 +15,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Card from '@/components/ui/Card';
-import { type CartLine, type Order, type OrderTotal, type Shift } from '@/lib/data';
-import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CreditCard, Landmark, AlertCircle, FileDown, Mail, Printer } from 'lucide-react';
+import { type Order, type Shift, type ServiceCheck, type OrderLine } from '@/lib/data';
+import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CreditCard, Landmark, AlertCircle, FileDown, Mail, Printer, GitCommitHorizontal } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
+import { formatMoney } from '@/lib/money';
 
 type OrderCartProps = {
-    cartLines: CartLine[];
-    onUpdateCart: (lines: CartLine[]) => void;
+    order: Order;
+    check: ServiceCheck;
+    onOrderUpdate: (order: Order) => void;
     user: { uid: string, name: string };
+    onSplitClick: () => void;
 };
 
-export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartProps) {
-  const [totals, setTotals] = useState<OrderTotal | null>(null);
-  const [enrichedLines, setEnrichedLines] = useState<CartLine[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+export default function OrderCart({ order, check, onOrderUpdate, user, onSplitClick }: OrderCartProps) {
   const [isPaying, setIsPaying] = useState(false);
   const [paymentType, setPaymentType] = useState<'card' | 'cash'>('card');
   const [tenderedAmount, setTenderedAmount] = useState('');
@@ -57,47 +57,47 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
     checkOpenShift();
   }, []);
 
-  useEffect(() => {
-    const calculateTotals = async () => {
-      if (cartLines.length === 0) {
-        setTotals(null);
-        setEnrichedLines([]);
-        return;
-      }
-      setIsLoading(true);
-      try {
-        const res = await fetch('/api/price/order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lines: cartLines }),
-        });
-        if (!res.ok) throw new Error('Failed to calculate totals');
-        const data = await res.json();
-        setTotals(data);
-        setEnrichedLines(data.lines || []);
-      } catch (e) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not calculate order totals.' });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    calculateTotals();
-  }, [cartLines, toast]);
+  const handleUpdateQuantity = async (lineId: string, delta: number) => {
+    const line = order.lines.find(l => l.lineId === lineId);
+    if (!line) return;
 
-  const handleUpdateQuantity = (lineId: string, delta: number) => {
-    const updatedLines = cartLines.map(line => 
-      line.id === lineId ? { ...line, qty: Math.max(0, line.qty + delta) } : line
-    ).filter(line => line.qty > 0);
-    onUpdateCart(updatedLines);
+    const newQty = line.qty + delta;
+    if (newQty <= 0) {
+      await handleRemoveLine(lineId);
+      return;
+    }
+
+    try {
+        const res = await fetch('/api/orders/line', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: order.id, lineId, qty: newQty })
+        });
+        if (!res.ok) throw new Error('Failed to update quantity');
+        const updatedOrder = await res.json();
+        onOrderUpdate(updatedOrder);
+    } catch(e) {
+        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+    }
   };
   
-  const handleRemoveLine = (lineId: string) => {
-      const updatedLines = cartLines.filter(line => line.id !== lineId);
-      onUpdateCart(updatedLines);
+  const handleRemoveLine = async (lineId: string) => {
+    try {
+        const res = await fetch('/api/orders/line', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: order.id, lineId })
+        });
+        if (!res.ok) throw new Error('Failed to remove line');
+        const updatedOrder = await res.json();
+        onOrderUpdate(updatedOrder);
+    } catch(e) {
+        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+    }
   }
   
   const resetCart = () => {
-      onUpdateCart([]);
+      onOrderUpdate({ ...order, lines: [], totals: { subtotal: 0, tax: 0, total: 0 } });
       setCreatedOrder(null);
       setTenderedAmount('');
       setLast4('');
@@ -105,31 +105,17 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
   };
 
   const handlePay = async () => {
-    if (!totals || !openShift) return;
+    if (!order.totals || !openShift) return;
     setIsPaying(true);
     try {
         const paymentsPayload = [{
             type: paymentType,
-            amount: totals.total,
+            amount: order.totals.total,
             ...(paymentType === 'card' && { last4 }),
             ...(paymentType === 'cash' && { tendered: parseFloat(tenderedAmount) })
         }];
         
-        // This needs to be a two-step process: create order, then pay.
-        // For simplicity now, we assume a combined endpoint or a two-step flow.
-        const createRes = await fetch('/api/orders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user, items: cartLines, shiftId: openShift.id })
-        });
-
-        if (!createRes.ok) {
-            throw new Error('Failed to create draft order');
-        }
-
-        const draftOrder = await createRes.json();
-        
-        const payRes = await fetch(`/api/orders/${draftOrder.id}/pay`, {
+        const payRes = await fetch(`/api/orders/${order.id}/pay`, {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
              body: JSON.stringify({ payments: paymentsPayload, user }),
@@ -159,11 +145,28 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
         setIsPaying(false);
     }
   };
+
+  const handleSendToKitchen = async () => {
+    try {
+      await fetch('/api/orders/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+      toast({ title: 'Order Sent', description: 'New items sent to the kitchen.' });
+      // Re-fetch order to get updated line statuses
+      const orderRes = await fetch(`/api/orders/${order.id}`);
+      const updatedOrder = await orderRes.json();
+      onOrderUpdate(updatedOrder);
+    } catch(e) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not send order to kitchen.' });
+    }
+  }
   
   const isPaymentValid = () => {
       if (!openShift) return false;
       if (paymentType === 'cash') {
-          return parseFloat(tenderedAmount) >= (totals?.total || 0);
+          return parseFloat(tenderedAmount) >= (order.totals?.total || 0);
       }
       if (paymentType === 'card') {
           return last4.length === 4 && /^\d{4}$/.test(last4);
@@ -202,11 +205,11 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
       {renderNoShiftOverlay()}
       <div className="p-4 border-b border-brand-line">
         <h2 className="text-xl font-semibold flex items-center gap-2 font-headline">
-          <ShoppingCart className="h-6 w-6" /> Current Order
+          <ShoppingCart className="h-6 w-6" /> Current Order #{order.number}
         </h2>
       </div>
       <div className="flex-1 overflow-y-auto p-4">
-        {cartLines.length === 0 ? (
+        {order.lines.length === 0 ? (
           <div className="text-center text-muted-foreground h-full flex items-center justify-center">
             <p>Click on products to add them to the order.</p>
           </div>
@@ -214,26 +217,25 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
           <PostPaymentActions />
         ) : (
           <div className="space-y-4">
-            {(enrichedLines || []).map((line) => (
+            {(order.lines || []).map((line) => (
               <div key={line.id} className="flex items-start gap-4">
                 <div className="flex-1">
-                  <p className="font-medium">{line.productName}</p>
-                   {line.modsSummary && <p className="text-sm text-muted-foreground">{line.modsSummary}</p>}
-                   {line.total != null && <p className="text-sm font-semibold">${(line.total || 0).toFixed(2)}</p>}
+                  <p className="font-medium">{line.qty}x {line.name}</p>
+                   {line.mods && line.mods.length > 0 && <p className="text-sm text-muted-foreground">{line.mods.map(m => m.optionName).join(', ')}</p>}
+                   {line.lineTotal != null && <p className="text-sm font-semibold">{formatMoney(line.lineTotal / 100, 'ZAR', 'en-ZA')}</p>}
                 </div>
                 <div className="flex items-center gap-2">
-                   <span className="font-medium w-6 text-center">{line.qty}x</span>
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => handleUpdateQuantity(line.id, -1)}
+                    onClick={() => handleUpdateQuantity(line.lineId, -1)}
                   >
                     <MinusCircle className="h-4 w-4" />
                   </Button>
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => handleUpdateQuantity(line.id, 1)}
+                    onClick={() => handleUpdateQuantity(line.lineId, 1)}
                   >
                     <PlusCircle className="h-4 w-4" />
                   </Button>
@@ -241,7 +243,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
                     size="icon"
                     variant="ghost"
                     className="text-destructive"
-                    onClick={() => handleRemoveLine(line.id)}
+                    onClick={() => handleRemoveLine(line.lineId)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -252,30 +254,31 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
         )}
       </div>
       <div className="flex flex-col gap-4 mt-auto border-t p-4">
-        {isLoading && <p>Calculating...</p>}
-        {totals && !isLoading && !isPostPayment && (
+        {order.totals && !isPostPayment && (
             <div className="w-full space-y-2 text-sm">
                 <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${(totals?.subtotal ?? 0).toFixed(2)}</span>
+                    <span>{formatMoney(order.totals?.subtotal / 100, 'ZAR', 'en-ZA')}</span>
                 </div>
                  <div className="flex justify-between">
                     <span>Tax</span>
-                    <span>${(totals?.tax ?? 0).toFixed(2)}</span>
+                    <span>{formatMoney(order.totals?.tax / 100, 'ZAR', 'en-ZA')}</span>
                 </div>
                 <div className="w-full flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total</span>
-                    <span>${(totals?.total ?? 0).toFixed(2)}</span>
+                    <span>{formatMoney(order.totals?.total / 100, 'ZAR', 'en-ZA')}</span>
                 </div>
             </div>
         )}
         {!isPostPayment &&
             <div className="w-full grid grid-cols-2 gap-2">
-                <Button className="w-full" size="lg" variant="secondary" disabled>Hold</Button>
-
+                <Button className="w-full" size="lg" variant="secondary" onClick={onSplitClick} disabled={order.lines.length === 0}>
+                    <GitCommitHorizontal className="mr-2"/> Split
+                </Button>
+                <Button className="w-full" size="lg" variant="secondary" onClick={handleSendToKitchen} disabled={order.lines.length === 0}>Send</Button>
                 <Dialog onOpenChange={(open) => !open && setIsPostPayment(false)}>
                     <DialogTrigger asChild>
-                        <Button className="w-full" size="lg" disabled={cartLines.length === 0 || isLoading || !openShift}>
+                        <Button className="w-full col-span-2" size="lg" disabled={order.lines.length === 0 || !openShift}>
                             Pay
                         </Button>
                     </DialogTrigger>
@@ -299,11 +302,11 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
                                 <TabsContent value="cash" className="mt-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="tendered">Amount Tendered</Label>
-                                        <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={(totals?.total ?? 0).toFixed(2)} />
+                                        <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={(order.totals?.total ?? 0).toFixed(2)} />
                                     </div>
-                                    {parseFloat(tenderedAmount) >= (totals?.total || 0) && (
+                                    {parseFloat(tenderedAmount) >= (order.totals?.total || 0) && (
                                         <div className="text-lg font-semibold mt-4">
-                                            Change Due: ${(parseFloat(tenderedAmount) - (totals?.total || 0)).toFixed(2)}
+                                            Change Due: {formatMoney(parseFloat(tenderedAmount) - (order.totals?.total || 0), 'ZAR', 'en-ZA')}
                                         </div>
                                     )}
                                 </TabsContent>
@@ -313,7 +316,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
                                     <Button variant="ghost">Cancel</Button>
                                 </DialogClose>
                                 <Button onClick={handlePay} disabled={!isPaymentValid() || isPaying}>
-                                    {isPaying ? 'Processing...' : `Confirm & Pay $${(totals?.total ?? 0).toFixed(2)}`}
+                                    {isPaying ? 'Processing...' : `Confirm & Pay ${formatMoney(order.totals?.total / 100, 'ZAR', 'en-ZA')}`}
                                 </Button>
                             </DialogFooter>
                             </>
