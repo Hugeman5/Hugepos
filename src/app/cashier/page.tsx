@@ -6,23 +6,17 @@ import ProductGrid from '@/components/product-grid';
 import OrderCart from '@/components/order-cart';
 import {
   type Category,
-  type Product,
+  type MenuItem as Product,
   type Modifier,
   type Tax,
   type CartLine,
   type Shift
 } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-
-type MenuData = {
-  categories: Category[];
-  productsByCategory: Record<string, Product[]>;
-  modifiers: Modifier[];
-  taxes: Tax[];
-};
+import { type Menu } from '@/lib/menuRepo';
 
 export default function CashierDashboardPage() {
-  const [menuData, setMenuData] = useState<MenuData | null>(null);
+  const [menuData, setMenuData] = useState<Menu | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [qtyBuffer, setQtyBuffer] = useState<number>(1);
   const [user, setUser] = useState({ uid: 'jcashier', name: 'John Cashier' });
@@ -34,7 +28,7 @@ export default function CashierDashboardPage() {
   useEffect(() => {
     async function fetchMenu() {
       try {
-        const res = await fetch('/api/menu');
+        const res = await fetch('/api/admin/menu');
         if (!res.ok) throw new Error('Failed to fetch menu');
         const data = await res.json();
         setMenuData(data);
@@ -62,8 +56,8 @@ export default function CashierDashboardPage() {
 
   const handleBarcodeScan = useCallback(async (barcode: string) => {
     try {
-        const allProducts = Object.values(menuData?.productsByCategory || {}).flat();
-        const product = allProducts.find(p => p.barcode === barcode);
+        const allProducts = menuData?.items || [];
+        const product = allProducts.find(p => p.sku === barcode);
 
         if (product) {
             handleAddToCart(product, []);
@@ -150,6 +144,13 @@ export default function CashierDashboardPage() {
       </div>
     );
   }
+  
+  const productsByCategory = menuData.items.reduce((acc, item) => {
+    const catId = item.catId || 'uncategorized';
+    if (!acc[catId]) acc[catId] = [];
+    acc[catId].push(item);
+    return acc;
+  }, {} as Record<string, Product[]>);
 
   return (
     <div className="flex h-screen w-full flex-col bg-muted/40">
@@ -162,9 +163,9 @@ export default function CashierDashboardPage() {
       <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 lg:gap-8 lg:p-6 overflow-hidden">
         <div className="md:col-span-2 h-full flex flex-col min-h-0">
           <ProductGrid
-            categories={menuData.categories}
-            productsByCategory={menuData.productsByCategory}
-            allModifiers={menuData.modifiers}
+            categories={menuData.categories.filter(c=>c.active)}
+            productsByCategory={productsByCategory}
+            allModifiers={[]}
             onAddToCart={handleAddToCart}
             qtyBuffer={qtyBuffer}
           />
@@ -176,3 +177,5 @@ export default function CashierDashboardPage() {
     </div>
   );
 }
+
+    

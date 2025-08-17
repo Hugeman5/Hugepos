@@ -1,9 +1,8 @@
 
 import { NextResponse } from 'next/server';
 import {
-  getTaxes,
+  getProducts,
   getCategories,
-  getActiveProductsByCategory,
   getModifiers,
 } from '@/lib/catalogRepo';
 
@@ -11,18 +10,23 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const [taxes, categories, productsByCategory, modifiers] = await Promise.all([
-      getTaxes(),
+    const [categories, products] = await Promise.all([
       getCategories(),
-      getActiveProductsByCategory(),
-      getModifiers(),
+      getProducts(),
     ]);
 
+    const productsByCategory = products.filter(p=>p.active).reduce((acc, product) => {
+        const { categoryId } = product;
+        if (!acc[categoryId]) {
+            acc[categoryId] = [];
+        }
+        acc[categoryId].push(product);
+        return acc;
+    }, {} as Record<string, any[]>);
+
     return NextResponse.json({
-      taxes,
-      categories,
+      categories: categories.filter(c=>c.active),
       productsByCategory,
-      modifiers,
     });
   } catch (error) {
     console.error('[/api/menu] ', error);
@@ -32,3 +36,5 @@ export async function GET() {
     );
   }
 }
+
+    
