@@ -1,6 +1,46 @@
 
 {
-  "rules": [],
+  "rules": [
+    {
+      "id": "promo_happy_coffee",
+      "name": "Happy Hour Coffee -20%",
+      "code": "",
+      "type": "percent",
+      "value": 20,
+      "scope": "category",
+      "targetIds": [
+        "cat_coffee"
+      ],
+      "bxgy": {
+        "buyQty": 0,
+        "getQty": 0,
+        "appliesTo": "same"
+      },
+      "eligibility": {
+        "roles": [
+          "cashier",
+          "waiter"
+        ],
+        "minSpendCents": 0,
+        "minQty": 0
+      },
+      "time": {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": "14:00",
+        "end": "16:00",
+        "tz": "Africa/Johannesburg"
+      },
+      "stacking": "compatible",
+      "active": true,
+      "sort": 10
+    }
+  ],
   "meta": {
     "version": 1,
     "updatedAt": "2025-01-01T00:00:00.000Z"
