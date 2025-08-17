@@ -18,13 +18,16 @@ import {
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
-  type Product,
+  type MenuItem as Product,
   type Category,
+} from '@/lib/menuRepo';
+import {
   type Modifier,
   type CartLine,
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import { Input } from './ui/input';
+import { formatMoney } from '@/lib/money';
 
 type ProductGridProps = {
   categories: Category[];
@@ -49,15 +52,15 @@ export default function ProductGrid({
   const [isModifierDialogOpen, setIsModifierDialogOpen] = useState(false);
 
   const handleProductClick = (product: Product) => {
-    const productModifiers =
-      allModifiers.filter((m) => product.modifierIds?.includes(m.id)) || [];
-    if (productModifiers.length > 0) {
-      setSelectedProduct(product);
-      setSelectedMods({}); // Reset mods when opening
-      setIsModifierDialogOpen(true);
-    } else {
+    // const productModifiers =
+    //   allModifiers.filter((m) => product.modifierIds?.includes(m.id)) || [];
+    // if (productModifiers.length > 0) {
+    //   setSelectedProduct(product);
+    //   setSelectedMods({}); // Reset mods when opening
+    //   setIsModifierDialogOpen(true);
+    // } else {
       onAddToCart(product, []); // No modifiers, add directly to cart
-    }
+    // }
   };
 
   const handleModifierSubmit = () => {
@@ -112,7 +115,7 @@ export default function ProductGrid({
               <div className="p-0 relative h-32">
                 <Image
                   src={
-                    product.imageUrl ||
+                    // product.imageUrl ||
                     `https://placehold.co/300x200.png`
                   }
                   alt={product.name}
@@ -126,7 +129,7 @@ export default function ProductGrid({
               </div>
                <div className="p-3 pt-0">
                  <p className="text-muted-foreground text-sm font-bold">
-                  ${product.price.toFixed(2)}
+                  {formatMoney(product.priceCents / 100, 'ZAR', 'en-ZA')}
                 </p>
                </div>
             </Card>
@@ -140,7 +143,7 @@ export default function ProductGrid({
             <DialogTitle>Customize {selectedProduct?.name}</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-6">
-            {allModifiers
+            {/* {allModifiers
               .filter((m) => selectedProduct?.modifierIds?.includes(m.id))
               .map((mod) => (
                 <div key={mod.id}>
@@ -176,11 +179,11 @@ export default function ProductGrid({
                     </div>
                   )}
                 </div>
-              ))}
+              ))} */}
           </div>
           <DialogFooter>
             <DialogClose asChild>
-                <Button type="button" variant="secondary">Cancel</Button>
+                <Button variant="secondary">Cancel</Button>
             </DialogClose>
             <Button onClick={handleModifierSubmit}>Add to Order</Button>
           </DialogFooter>
