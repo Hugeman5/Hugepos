@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
+import IngredientPicker from "@/components/recipes/IngredientPicker";
 
 type Uom = "g" | "kg" | "ml" | "l" | "ea" | string;
 
@@ -90,6 +91,11 @@ export default function RecipeDialog({
       targetGpPct: "",
       bom: []
     }
+  );
+  
+  const ingOptions = useMemo(
+    () => ingredients.map(i => ({ id: i.id, name: i.name })),
+    [ingredients]
   );
 
   useEffect(() => { if (open) setForm(initial ?? {
@@ -236,16 +242,12 @@ export default function RecipeDialog({
               const costs = rowTotals({ qty: Number(row.qty || 0), wastePct: Number(row.wastePct || 0), ingId: row.ingredientId }, ingredientsPricing);
               return (
                 <div key={i} className="grid grid-cols-[1fr_90px_90px_110px_120px_120px_40px] gap-2 items-end">
-                  <div>
-                    <Select value={row.ingredientId} onValueChange={v=>setBom(i,{ ingredientId:v })}>
-                      <SelectTrigger><SelectValue placeholder="Choose ingredient" /></SelectTrigger>
-                      <SelectContent>
-                        {ingredients.map(ing=>(
-                          <SelectItem key={ing.id} value={ing.id}>{ing.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <IngredientPicker
+                    options={ingOptions}
+                    value={row.ingredientId}
+                    onChange={(id) => setBom(i, { ingredientId: id })}
+                    className="min-w-[220px]"
+                  />
                   <div>
                     <Input inputMode="decimal" value={row.qty} onChange={e=>setBom(i,{ qty: toNum(e.target.value) })}/>
                   </div>
@@ -265,8 +267,8 @@ export default function RecipeDialog({
                     <Input inputMode="decimal" value={row.wastePct}
                       onChange={e=>setBom(i,{ wastePct: toNum(e.target.value) })}/>
                   </div>
-                  <div className="text-right font-mono text-sm pr-2">{costs.ex > 0 ? formatMoney(costs.ex, currency) : '-'}</div>
-                  <div className="text-right font-mono text-sm pr-2">{costs.inc > 0 ? formatMoney(costs.inc, currency) : '-'}</div>
+                  <div className="text-right font-mono text-sm pr-2">{costs.ex > 0 ? formatMoney(costs.ex, { currency }) : '-'}</div>
+                  <div className="text-right font-mono text-sm pr-2">{costs.inc > 0 ? formatMoney(costs.inc, { currency }) : '-'}</div>
                   <div>
                     <Button type="button" variant="ghost" onClick={()=>removeRow(i)} aria-label="Remove row">
                       <Trash2 className="h-4 w-4" />
@@ -280,9 +282,9 @@ export default function RecipeDialog({
 
           <div className="mt-3 border-t border-zinc-700 pt-2 text-sm grid grid-cols-2 gap-y-1 max-w-sm ml-auto">
             <div className="text-zinc-400">Total Cost ex VAT</div>
-            <div className="text-right font-mono">{formatMoney(bomTotals.ex, currency)}</div>
+            <div className="text-right font-mono">{formatMoney(bomTotals.ex, { currency })}</div>
             <div className="text-zinc-400">Total Cost inc VAT</div>
-            <div className="text-right font-mono">{formatMoney(bomTotals.inc, currency)}</div>
+            <div className="text-right font-mono">{formatMoney(bomTotals.inc, { currency })}</div>
           </div>
 
         </div>
