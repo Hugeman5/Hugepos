@@ -1,10 +1,9 @@
 
-import { NextResponse } from 'next/server';
-import { Suppliers } from '@/lib/repos/suppliersRepo';
+import { NextResponse } from "next/server";
+import { Suppliers } from "@/lib/repos/suppliersRepo";
+export const dynamic = "force-dynamic";
 
-export const dynamic = 'force-dynamic';
-
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: { params: { id: string } }){
   await Suppliers.remove(params.id);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok:true });
 }

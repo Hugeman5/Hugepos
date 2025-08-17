@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { type Supplier } from '@/lib/repos/suppliersRepo';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import Papa from 'papaparse';
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -25,9 +26,15 @@ export default function SuppliersPage() {
 
   async function fetchData() {
     setIsLoading(true);
-    const res = await fetch('/api/suppliers');
-    setSuppliers(await res.json());
-    setIsLoading(false);
+    try {
+        const res = await fetch('/api/suppliers', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to fetch suppliers');
+        setSuppliers(await res.json());
+    } catch(e) {
+        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -52,7 +59,7 @@ export default function SuppliersPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure?')) return;
+    if (!confirm('Are you sure? This will delete the supplier but not their items.')) return;
     try {
       await fetch(`/api/suppliers/${id}`, { method: 'DELETE' });
       toast({ title: 'Success', description: 'Supplier deleted.' });
@@ -66,14 +73,32 @@ export default function SuppliersPage() {
     if (!editingSupplier || !csvData) return;
     setIsUploading(true);
     try {
-        const res = await fetch('/api/supplier-items/bulk', {
+        const parsed = Papa.parse(csvData, { header: true, skipEmptyLines: true });
+        const itemsToUpsert = parsed.data.map((row: any, i: number) => {
+            if (!row.sku && !row.name) {
+                throw new Error(`Row ${i+2}: SKU or Name is required.`);
+            }
+            return {
+                id: `${editingSupplier.id}_${row.sku || row.name.replace(/\s+/g, '_')}`,
+                supplierId: editingSupplier.id,
+                sku: row.sku,
+                name: row.name,
+                uom: row.uom,
+                packSize: parseFloat(row.packSize),
+                priceExVat: parseFloat(row.priceExVat),
+                vatRate: row.vatRate ? parseFloat(row.vatRate) : undefined,
+                lastUpdated: new Date().toISOString()
+            };
+        });
+
+        const res = await fetch('/api/supplier-items', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ supplierId: editingSupplier.id, csv: csvData }),
+            body: JSON.stringify(itemsToUpsert),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'CSV import failed');
-        toast({ title: 'Success', description: `Imported ${data.count} items.` });
+
+        if (!res.ok) throw new Error('CSV import failed');
+        toast({ title: 'Success', description: `Imported ${itemsToUpsert.length} items.` });
         setIsCsvDialogOpen(false);
         setCsvData('');
     } catch(e) {
@@ -97,7 +122,7 @@ export default function SuppliersPage() {
           <Table>
             <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
             <TableBody>
-              {isLoading ? <TableRow><TableCell colSpan={4}>Loading...</TableCell></TableRow> : suppliers.map(s => (
+              {isLoading ? <TableRow><TableCell colSpan={4} className="text-center">Loading...</TableCell></TableRow> : suppliers.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No suppliers created yet.</TableCell></TableRow> : suppliers.map(s => (
                 <TableRow key={s.id}>
                   <TableCell>{s.name}</TableCell>
                   <TableCell>{s.email}</TableCell>

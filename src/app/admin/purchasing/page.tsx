@@ -15,15 +15,17 @@ import { type Settings } from '@/lib/settingsRepo';
 export default function PurchaseOrdersPage() {
   const [pos, setPos] = useState<PurchaseOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
     async function fetchPOs() {
       setIsLoading(true);
+      setError(null);
       try {
         const [poRes, settingsRes] = await Promise.all([
-            fetch('/api/purchase-orders'),
+            fetch('/api/purchase-orders', { cache: 'no-store' }),
             fetch('/api/settings')
         ]);
         
@@ -37,6 +39,7 @@ export default function PurchaseOrdersPage() {
         }
 
       } catch (e) {
+        setError((e as Error).message);
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
       } finally {
         setIsLoading(false);
@@ -62,6 +65,7 @@ export default function PurchaseOrdersPage() {
           <CardDescription>A list of all purchase orders.</CardDescription>
         </CardHeader>
         <CardContent>
+          {isLoading ? <p>Loading orders...</p> : error ? <div className="text-destructive bg-destructive/10 p-4 rounded-md">{error}</div> : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -69,27 +73,32 @@ export default function PurchaseOrdersPage() {
                 <TableHead>Supplier</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? <TableRow><TableCell colSpan={6}>Loading...</TableCell></TableRow> : pos.map(po => (
-                <TableRow key={po.id}>
-                  <TableCell>{po.id}</TableCell>
-                  <TableCell>{po.supplierName}</TableCell>
-                  <TableCell>{new Date(po.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell><Badge variant={po.status === 'sent' ? 'default' : 'secondary'}>{po.status}</Badge></TableCell>
-                  <TableCell>{money(po.totals.incVat)}</TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/admin/purchasing/${po.id}`}>View</Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+                {pos.length === 0 ? (
+                    <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">No purchase orders created yet.</TableCell>
+                    </TableRow>
+                ) : pos.map(po => (
+                    <TableRow key={po.id}>
+                    <TableCell className="font-mono">{po.id}</TableCell>
+                    <TableCell>{po.supplierName}</TableCell>
+                    <TableCell>{new Date(po.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell><Badge variant={po.status === 'sent' ? 'default' : 'secondary'}>{po.status}</Badge></TableCell>
+                    <TableCell className="text-right font-mono">{money(po.totals.incVat)}</TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="outline" size="sm" asChild>
+                        <Link href={`/admin/purchasing/${po.id}`}>View</Link>
+                        </Button>
+                    </TableCell>
+                    </TableRow>
+                ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </AdminLayout>

@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
@@ -24,6 +24,7 @@ export default function NewPurchaseOrderPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [settings, setSettings] = useState<Settings|null>(null);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
   
@@ -34,29 +35,50 @@ export default function NewPurchaseOrderPage() {
 
   useEffect(() => {
     async function fetchInitialData() {
-      const [suppliersRes, settingsRes] = await Promise.all([
-          fetch('/api/suppliers'),
-          fetch('/api/settings')
-      ]);
-      setSuppliers(await suppliersRes.json());
-      setSettings(await settingsRes.json());
+      setIsLoading(true);
+      setError(null);
+      try {
+        const [suppliersRes, settingsRes] = await Promise.all([
+            fetch('/api/suppliers', { cache: 'no-store' }),
+            fetch('/api/settings')
+        ]);
+        if (!suppliersRes.ok) throw new Error("Failed to fetch suppliers");
+        setSuppliers(await suppliersRes.json());
+        if (!settingsRes.ok) throw new Error("Failed to fetch settings");
+        setSettings(await settingsRes.json());
+      } catch(e) {
+        setError((e as Error).message);
+      } finally {
+        setIsLoading(false);
+      }
     }
     fetchInitialData();
   }, []);
 
   useEffect(() => {
-    if (!selectedSupplier) return;
+    if (!selectedSupplier) {
+      setSupplierItems([]);
+      return;
+    }
     async function fetchItems() {
       setIsLoading(true);
-      const res = await fetch(`/api/supplier-items?supplierId=${selectedSupplier?.id}`);
-      setSupplierItems(await res.json());
-      setIsLoading(false);
+      setError(null);
+      try {
+        const res = await fetch(`/api/supplier-items?supplierId=${selectedSupplier?.id}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error("Failed to fetch supplier items");
+        setSupplierItems(await res.json());
+      } catch(e) {
+        setError((e as Error).message);
+      } finally {
+        setIsLoading(false);
+      }
     }
     fetchItems();
   }, [selectedSupplier]);
 
-  const handleQtyChange = (itemId: string, qty: number) => {
-    setQtyById(prev => ({ ...prev, [itemId]: Math.max(0, qty) }));
+  const handleQtyChange = (itemId: string, qtyStr: string) => {
+    const qty = parseInt(qtyStr, 10);
+    setQtyById(prev => ({ ...prev, [itemId]: isNaN(qty) ? 0 : Math.max(0, qty) }));
   };
 
   const handleCreatePO = async () => {
@@ -70,7 +92,7 @@ export default function NewPurchaseOrderPage() {
       if (!res.ok) throw new Error(await res.text());
       const po = await res.json();
       toast({ title: 'Success', description: `PO ${po.id} created.` });
-      router.push(`/admin/purchasing/${po.id}`);
+      router.push(`/admin/purchasing/`);
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     } finally {
@@ -78,11 +100,23 @@ export default function NewPurchaseOrderPage() {
     }
   };
 
-  const [lines, totals] = (async () => {
-    if (!supplierItems.length || !settings) return [[], { exVat: 0, vat: 0, incVat: 0 }];
-    const poLines = await toPOLines(supplierItems, qtyById, settings);
-    return [poLines, calculateTotals(poLines)];
-  })();
+  const poLines = useMemo(() => {
+    if (!supplierItems.length || !settings) return [];
+    const filteredItems = supplierItems.filter(item => qtyById[item.id] > 0);
+    // This is a bit of a hack since toPOLines is async.
+    // A full solution would use a separate effect to calculate lines.
+    // For now, we make it sync for immediate feedback, assuming settings are loaded.
+    return filteredItems.map(it => {
+        const qty = qtyById[it.id] ?? 0;
+        const vat = it.vatRate ?? settings.defaultVatRate ?? 0.15;
+        const ex = qty * it.priceExVat;
+        const v = ex * vat;
+        const inc = ex + v;
+        return { itemId: it.id, name: it.name, sku: it.sku, qty, uom: it.uom, packSize: it.packSize, priceExVat: it.priceExVat, vatRate: vat, lineExVat: ex, lineVat: v, lineIncVat: inc };
+      });
+  }, [supplierItems, qtyById, settings]);
+
+  const totals = useMemo(() => calculateTotals(poLines), [poLines]);
 
   return (
     <AdminLayout title="New Purchase Order">
@@ -91,6 +125,7 @@ export default function NewPurchaseOrderPage() {
           <CardTitle>Create Purchase Order</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error && <div className="text-destructive bg-destructive/10 p-4 rounded-md">{error}</div>}
           <Select onValueChange={id => setSelectedSupplier(suppliers.find(s => s.id === id) || null)}>
             <SelectTrigger><SelectValue placeholder="Select a supplier..." /></SelectTrigger>
             <SelectContent>{suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
@@ -103,32 +138,32 @@ export default function NewPurchaseOrderPage() {
                   <TableRow>
                     <TableHead>Item</TableHead>
                     <TableHead>Pack Size</TableHead>
-                    <TableHead>Price (Ex. VAT)</TableHead>
-                    <TableHead>Qty</TableHead>
+                    <TableHead className="text-right">Price (Ex. VAT)</TableHead>
+                    <TableHead className="w-24">Qty</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? <TableRow><TableCell colSpan={4}>Loading items...</TableCell></TableRow> : supplierItems.map(item => (
+                  {isLoading ? <TableRow><TableCell colSpan={4} className="text-center">Loading items...</TableCell></TableRow> : supplierItems.map(item => (
                     <TableRow key={item.id}>
                       <TableCell>{item.name}</TableCell>
                       <TableCell>{item.packSize} {item.uom}</TableCell>
-                      <TableCell>{money(item.priceExVat)}</TableCell>
+                      <TableCell className="text-right font-mono">{money(item.priceExVat)}</TableCell>
                       <TableCell>
-                        <Input type="number" className="w-20" value={qtyById[item.id] || ''} onChange={e => handleQtyChange(item.id, parseInt(e.target.value, 10))} />
+                        <Input type="number" className="w-20 text-center" value={qtyById[item.id] || ''} onChange={e => handleQtyChange(item.id, e.target.value)} />
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              <div className="flex justify-end">
-                <div className="w-80 space-y-2">
-                    <div className="flex justify-between"><span>Subtotal (Ex. VAT)</span><span>{money(totals.exVat)}</span></div>
-                    <div className="flex justify-between"><span>VAT</span><span>{money(totals.vat)}</span></div>
-                    <div className="flex justify-between font-bold"><span>Total (Inc. VAT)</span><span>{money(totals.incVat)}</span></div>
+              <div className="flex justify-end mt-4">
+                <div className="w-80 space-y-2 text-sm">
+                    <div className="flex justify-between"><span>Subtotal (Ex. VAT)</span><span className="font-mono">{money(totals.exVat)}</span></div>
+                    <div className="flex justify-between"><span>VAT (15%)</span><span className="font-mono">{money(totals.vat)}</span></div>
+                    <div className="flex justify-between font-bold text-base border-t pt-2 mt-2"><span>Total (Inc. VAT)</span><span className="font-mono">{money(totals.incVat)}</span></div>
                 </div>
               </div>
-              <Input placeholder="Optional notes..." value={notes} onChange={e => setNotes(e.target.value)} />
-              <Button onClick={handleCreatePO} disabled={isCreating || Object.keys(qtyById).filter(k=>qtyById[k] > 0).length === 0}>
+              <Input placeholder="Optional notes for this PO..." value={notes} onChange={e => setNotes(e.target.value)} />
+              <Button onClick={handleCreatePO} disabled={isCreating || Object.values(qtyById).every(q => q === 0)}>
                 {isCreating ? 'Creating...' : 'Create Purchase Order'}
               </Button>
             </>
