@@ -1,4 +1,3 @@
-
 [
   {
     "id": "sup_checkers",
@@ -8,5 +7,12 @@
     "address": "1 Supply Rd, Cape Town",
     "vatRate": 0.15,
     "notes": ""
+  },
+  {
+    "name": "Oil & More",
+    "email": "ORDERS@OILANDMORE.CO.ZA",
+    "phone": "021-551-3855",
+    "vatRate": 15,
+    "id": "oil-more"
   }
 ]

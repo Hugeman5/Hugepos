@@ -1,11 +1,10 @@
+
 import { NextResponse } from "next/server";
 import { getSettings } from "@/lib/settingsRepo";
 import { round2 } from "@/lib/money";
 
-// Adjust these imports to your repo helpers if names differ:
 import { getRecipesFile } from "@/lib/repos/recipesRepo";
 import { getAllIngredients } from "@/lib/repos/ingredientsRepo";
-import { toBase, costPerBaseUnit } from "@/lib/costing";
 import { type Recipe, type BomRow } from "@/lib/repos/recipesRepo";
 import { type Ingredient } from "@/lib/repos/ingredientsRepo";
 
@@ -14,6 +13,15 @@ const n = (v: any, d = 0): Num => {
   const x = typeof v === "string" ? parseFloat(v) : Number(v);
   return Number.isFinite(x) ? x : d;
 };
+
+// Cost source priority
+function getUnitCost(ing: Ingredient): number {
+    if (typeof ing.unitCostIncVat === 'number' && isFinite(ing.unitCostIncVat)) return ing.unitCostIncVat;
+    if (typeof ing.priceIncVat === 'number' && isFinite(ing.priceIncVat) && typeof ing.packSize === 'number' && ing.packSize > 0) return ing.priceIncVat / ing.packSize;
+    if (typeof ing.unitCostExVat === 'number' && isFinite(ing.unitCostExVat)) return ing.unitCostExVat;
+    if (typeof ing.priceExVat === 'number' && isFinite(ing.priceExVat) && typeof ing.packSize === 'number' && ing.packSize > 0) return ing.priceExVat / ing.packSize;
+    return 0;
+}
 
 
 export async function POST(req: Request) {
@@ -41,7 +49,7 @@ export async function POST(req: Request) {
       if (!ing) continue;
       
       const qty = n(row.qty);
-      const uCost = costPerBaseUnit(ing);
+      const uCost = getUnitCost(ing);
       const waste = Math.max(n(row.wastePct), 0);
       baseCost += qty * uCost * (1 + waste);
     }

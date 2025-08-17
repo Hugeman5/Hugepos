@@ -1,6 +1,10 @@
-
 [
-  {"id":"barista","name":"Barista"},
-  {"id":"kitchen_hot","name":"Hot Kitchen"},
-  {"id":"pastry","name":"Pastry"}
+  {
+    "id": "kitchen_hot",
+    "name": "Hot Kitchen"
+  },
+  {
+    "id": "coffee_bar",
+    "name": "Coffee Bar"
+  }
 ]

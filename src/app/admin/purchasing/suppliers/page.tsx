@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,35 +11,165 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { type Supplier } from '@/lib/repos/suppliersRepo';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { type SupplierItem } from '@/lib/repos/supplierItemsRepo';
+import { PlusCircle, Edit, Trash2, Upload, FileText } from 'lucide-react';
 import Papa from 'papaparse';
+import { getSettings } from '@/lib/settingsRepo';
+import { formatMoney } from '@/lib/money';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+
+function CsvUploadDialog({ supplier, open, onClose, onImported }: { supplier: Supplier, open: boolean, onClose: () => void, onImported: () => void }) {
+    const [file, setFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [error, setError] = useState('');
+    const [vatRate, setVatRate] = useState(supplier.vatRate?.toString() || '');
+    const [headers, setHeaders] = useState<string[]>([]);
+    
+    // Column mappings
+    const [colName, setColName] = useState('');
+    const [colSku, setColSku] = useState('');
+    const [colUom, setColUom] = useState('');
+    const [colPackSize, setColPackSize] = useState('');
+    const [colPriceEx, setColPriceEx] = useState('');
+    const [colPriceInc, setColPriceInc] = useState('');
+
+
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if (open) {
+            setFile(null);
+            setIsUploading(false);
+            setError('');
+            setVatRate(supplier.vatRate?.toString() || '');
+            setHeaders([]);
+        }
+    }, [open, supplier]);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0];
+        if (selectedFile) {
+            setFile(selectedFile);
+            Papa.parse(selectedFile, {
+                header: true,
+                skipEmptyLines: true,
+                preview: 1,
+                complete: (results) => {
+                    setHeaders(results.meta.fields || []);
+                }
+            });
+        }
+    };
+
+    const handleUpload = async () => {
+        if (!file) {
+            setError('Please select a file to upload.');
+            return;
+        }
+        setIsUploading(true);
+        setError('');
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('supplierId', supplier.id);
+        if (vatRate) formData.append('vatRate', vatRate);
+        if (colName) formData.append('colName', colName);
+        if (colSku) formData.append('colSku', colSku);
+        if (colUom) formData.append('colUom', colUom);
+        if (colPackSize) formData.append('colPackSize', colPackSize);
+        if (colPriceEx) formData.append('colPriceEx', colPriceEx);
+        if (colPriceInc) formData.append('colPriceInc', colPriceInc);
+
+        try {
+            const res = await fetch('/api/supplier-items/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Upload failed');
+            toast({ title: 'Import Successful', description: `Imported ${data.imported} items for ${supplier.name}.` });
+            onImported();
+            onClose();
+        } catch (e) {
+            setError((e as Error).message);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+    
+    const renderMappingSelect = (label: string, value: string, setter: (val: string) => void) => (
+        <div className="grid grid-cols-3 items-center gap-4">
+            <Label className="text-right">{label}</Label>
+            <Select value={value} onValueChange={setter}>
+                <SelectTrigger className="col-span-2"><SelectValue placeholder="Auto-detect" /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="">Auto-detect</SelectItem>
+                    {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                </SelectContent>
+            </Select>
+        </div>
+    )
+
+    return (
+        <Dialog open={open} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader><DialogTitle>Import Catalog for {supplier.name}</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div>
+                        <Label htmlFor="csv-file">CSV File</Label>
+                        <Input id="csv-file" type="file" accept=".csv" onChange={handleFileChange} />
+                    </div>
+                    <div>
+                        <Label htmlFor="vat-rate">Default VAT Rate</Label>
+                        <Input id="vat-rate" type="number" step="0.01" value={vatRate} onChange={e => setVatRate(e.target.value)} placeholder="e.g. 0.15 for 15%"/>
+                    </div>
+                    {headers.length > 0 && (
+                        <div className="space-y-2 border-t pt-4">
+                            <h4 className="font-semibold">Column Mapping (Optional)</h4>
+                            <p className="text-xs text-muted-foreground">Override auto-detection if your column names are unusual.</p>
+                            {renderMappingSelect('Name/Description', colName, setColName)}
+                            {renderMappingSelect('SKU/Code', colSku, setColSku)}
+                            {renderMappingSelect('Unit of Measure', colUom, setColUom)}
+                            {renderMappingSelect('Pack Size', colPackSize, setColPackSize)}
+                            {renderMappingSelect('Price (Ex. VAT)', colPriceEx, setColPriceEx)}
+                            {renderMappingSelect('Price (Inc. VAT)', colPriceInc, setColPriceInc)}
+                        </div>
+                    )}
+                    {error && <p className="text-sm text-destructive bg-destructive/10 p-2 rounded-md">{error}</p>}
+                </div>
+                <DialogFooter>
+                    <Button variant="secondary" onClick={onClose} disabled={isUploading}>Cancel</Button>
+                    <Button onClick={handleUpload} disabled={isUploading || !file}>{isUploading ? 'Uploading...' : 'Upload & Import'}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string|null>(null);
   const [editingSupplier, setEditingSupplier] = useState<Partial<Supplier> | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
-  const [csvData, setCsvData] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
+  
   const { toast } = useToast();
 
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
         const res = await fetch('/api/suppliers', { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch suppliers');
         setSuppliers(await res.json());
     } catch(e) {
+        setError((e as Error).message);
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     } finally {
         setIsLoading(false);
     }
-  }
+  }, [toast]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleSave = async () => {
     if (!editingSupplier) return;
@@ -68,45 +198,6 @@ export default function SuppliersPage() {
       toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     }
   };
-  
-  const handleImportCsv = async () => {
-    if (!editingSupplier || !csvData) return;
-    setIsUploading(true);
-    try {
-        const parsed = Papa.parse(csvData, { header: true, skipEmptyLines: true });
-        const itemsToUpsert = parsed.data.map((row: any, i: number) => {
-            if (!row.sku && !row.name) {
-                throw new Error(`Row ${i+2}: SKU or Name is required.`);
-            }
-            return {
-                id: `${editingSupplier.id}_${row.sku || row.name.replace(/\s+/g, '_')}`,
-                supplierId: editingSupplier.id,
-                sku: row.sku,
-                name: row.name,
-                uom: row.uom,
-                packSize: parseFloat(row.packSize),
-                priceExVat: parseFloat(row.priceExVat),
-                vatRate: row.vatRate ? parseFloat(row.vatRate) : undefined,
-                lastUpdated: new Date().toISOString()
-            };
-        });
-
-        const res = await fetch('/api/supplier-items', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(itemsToUpsert),
-        });
-
-        if (!res.ok) throw new Error('CSV import failed');
-        toast({ title: 'Success', description: `Imported ${itemsToUpsert.length} items.` });
-        setIsCsvDialogOpen(false);
-        setCsvData('');
-    } catch(e) {
-        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
-    } finally {
-        setIsUploading(false);
-    }
-  }
 
   return (
     <AdminLayout title="Suppliers">
@@ -119,23 +210,27 @@ export default function SuppliersPage() {
           <CardDescription>A list of vendors for purchasing.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {isLoading ? <TableRow><TableCell colSpan={4} className="text-center">Loading...</TableCell></TableRow> : suppliers.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No suppliers created yet.</TableCell></TableRow> : suppliers.map(s => (
-                <TableRow key={s.id}>
-                  <TableCell>{s.name}</TableCell>
-                  <TableCell>{s.email}</TableCell>
-                  <TableCell>{s.phone}</TableCell>
-                  <TableCell className="space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => { setEditingSupplier(s); setIsDialogOpen(true); }}>Edit</Button>
-                    <Button variant="outline" size="sm" onClick={() => { setEditingSupplier(s); setIsCsvDialogOpen(true); }}>Import Catalog</Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(s.id)}>Delete</Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {isLoading && <p>Loading...</p>}
+          {error && <p className="text-destructive">{error}</p>}
+          {!isLoading && !error && (
+            <Table>
+              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {suppliers.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No suppliers created yet.</TableCell></TableRow> : suppliers.map(s => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-semibold">{s.name}</TableCell>
+                    <TableCell>{s.email}</TableCell>
+                    <TableCell>{s.phone}</TableCell>
+                    <TableCell className="space-x-2 text-right">
+                      <Button variant="outline" size="sm" onClick={() => { setEditingSupplier(s); setIsDialogOpen(true); }}><Edit className="h-3 w-3 mr-1"/> Edit</Button>
+                      <Button variant="outline" size="sm" onClick={() => { setEditingSupplier(s); setIsCsvDialogOpen(true); }}><Upload className="h-3 w-3 mr-1"/> Import Catalog</Button>
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(s.id)}><Trash2 className="h-3 w-3"/></Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -157,17 +252,14 @@ export default function SuppliersPage() {
         </DialogContent>
       </Dialog>
       
-      <Dialog open={isCsvDialogOpen} onOpenChange={setIsCsvDialogOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Import Catalog for {editingSupplier?.name}</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Paste CSV data with headers: sku,name,uom,packSize,priceExVat,vatRate</p>
-          <Textarea rows={10} value={csvData} onChange={e => setCsvData(e.target.value)} />
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setIsCsvDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleImportCsv} disabled={isUploading}>{isUploading ? "Importing..." : "Import"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {editingSupplier && (
+        <CsvUploadDialog
+            supplier={editingSupplier as Supplier}
+            open={isCsvDialogOpen}
+            onClose={() => setIsCsvDialogOpen(false)}
+            onImported={fetchData}
+        />
+      )}
     </AdminLayout>
   );
 }
