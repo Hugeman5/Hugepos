@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { useToast } from "@/hooks/use-toast";
 
 import { type Recipe } from "@/lib/repos/recipesRepo";
-import { type Ingredient } from "@/lib/repos/ingredientsRepo";
+import { type Ingredient as FullIngredient } from "@/lib/repos/ingredientsRepo";
 import { type MenuItem, type Menu } from "@/lib/menuRepo";
 import { type RecipesFile } from '@/lib/repos/recipesRepo';
 
@@ -110,7 +110,7 @@ const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
 
 export default function RecipesPage() {
   const [recipesFile, setRecipesFile] = useState<RecipesFile | null>(null);
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [ingredients, setIngredients] = useState<FullIngredient[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -126,14 +126,14 @@ export default function RecipesPage() {
     setIsLoading(true);
     try {
       const [recipesRes, ingredientsRes, menuRes] = await Promise.all([
-        fetch("/api/recipes"),
-        fetch("/api/inventory/ingredients"),
-        fetch("/api/admin/menu"),
+        fetch("/api/recipes", { cache: "no-store" }),
+        fetch("/api/inventory/ingredients", { cache: "no-store" }),
+        fetch("/api/admin/menu", { cache: "no-store" }),
       ]);
       if (!recipesRes.ok || !ingredientsRes.ok || !menuRes.ok) throw new Error("Failed to fetch initial data");
 
       const recipesData: RecipesFile = await recipesRes.json();
-      const ingredientsData: Ingredient[] = await ingredientsRes.json();
+      const ingredientsData: FullIngredient[] = await ingredientsRes.json();
       const menuData: Menu = await menuRes.json();
 
       setRecipesFile(recipesData);
@@ -154,6 +154,12 @@ export default function RecipesPage() {
     () => ingredients.map((i) => ({ id: i.id, name: i.name })),
     [ingredients]
   );
+  
+  const ingredientsPricing = useMemo<Record<string, FullIngredient>>(
+    () => Object.fromEntries(ingredients.map(i => [i.id, i])),
+    [ingredients]
+  );
+
 
   const handleOpenNewDialog = () => {
     setSelectedRecipe({
@@ -312,6 +318,7 @@ export default function RecipesPage() {
         mode={dialogMode || "create"}
         initial={selectedRecipe ?? undefined}
         ingredients={ingredientsLite}
+        ingredientsPricing={ingredientsPricing}
         onClose={() => setDialogMode(null)}
         onSaved={fetchData}
       />

@@ -1,37 +1,83 @@
 
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PlusCircle, Trash2 } from "lucide-react";
+import { formatMoney } from "@/lib/money";
 
-type Uom = "g" | "kg" | "ml" | "l" | "ea";
+type Uom = "g" | "kg" | "ml" | "l" | "ea" | string;
 
 export type IngredientLite = { id: string; name: string };
 export type BomRowEdit = { ingredientId: string; qty: number | ""; uom: Uom; wastePct: number | "" };
 
 export type RecipeEdit = {
-  id: string;           // for create, allow caller to pre-generate or use a temp id (we’ll POST full object anyway)
+  id: string;
   name: string;
   yieldPortions: number | "";
-  overheadPct: number | "";     // 0.10 = 10%
+  overheadPct: number | "";
   packagingCost: number | "";
-  targetGpPct: number | "";     // 0.60 = 60%
+  targetGpPct: number | "";
   bom: BomRowEdit[];
 };
 
+type Pricing = {
+  unitCostExVat?: number;
+  unitCostIncVat?: number;
+  priceExVat?: number;
+  priceIncVat?: number;
+  packSize?: number;
+  vatRate?: number;
+};
+
+const VAT_DEFAULT = 0.15;
+const currency = "ZAR";
+
+function getUnitCosts(ingId: string, pricing: Record<string, Pricing>) {
+  const p = pricing[ingId] || {};
+  const vat = Number.isFinite(p.vatRate) ? (p.vatRate as number) : VAT_DEFAULT;
+  const pack = Number(p.packSize) > 0 ? Number(p.packSize) : 1;
+
+  const priceInc = Number.isFinite(p.priceIncVat) ? Number(p.priceIncVat) :
+                   Number.isFinite(p.priceExVat) ? Number(p.priceExVat)! * (1 + vat) : undefined;
+
+  const priceEx = Number.isFinite(p.priceExVat) ? Number(p.priceExVat) :
+                  Number.isFinite(priceInc) ? Number(priceInc)! / (1 + vat) : undefined;
+
+  const unitInc = Number.isFinite(p.unitCostIncVat) ? Number(p.unitCostIncVat) :
+                  (Number.isFinite(priceInc) ? Number(priceInc)! / pack : undefined);
+
+  const unitEx  = Number.isFinite(p.unitCostExVat) ? Number(p.unitCostExVat) :
+                  (Number.isFinite(priceEx) ? Number(priceEx)! / pack : undefined);
+
+  return { unitEx, unitInc, vat, pack };
+}
+
+function rowTotals({ qty, wastePct, ingId }:{
+  qty: number; wastePct: number; ingId: string;
+}, pricing: Record<string, Pricing>) {
+  const { unitEx, unitInc } = getUnitCosts(ingId, pricing);
+  const effQty = qty * (1 + (Number.isFinite(wastePct) ? wastePct : 0)); // simple waste uplift
+  const ex = unitEx !== undefined ? effQty * unitEx : 0;
+  const inc = unitInc !== undefined ? effQty * unitInc : 0;
+  return { ex, inc };
+}
+
 export default function RecipeDialog({
-  open, mode, initial, ingredients, onClose, onSaved
-}:{
+  open, mode, initial, ingredients,
+  ingredientsPricing = {},
+  onClose, onSaved
+}: {
   open: boolean;
   mode: "create" | "edit";
-  initial?: RecipeEdit;                 // when edit, full recipe payload
-  ingredients: IngredientLite[];        // provided by page
+  initial?: RecipeEdit;
+  ingredients: IngredientLite[];
+  ingredientsPricing?: Record<string, Pricing>;
   onClose: () => void;
-  onSaved: () => void;                  // refresh list on success
+  onSaved: () => Promise<void> | void;
 }) {
   const [working, setWorking] = useState(false);
   const [form, setForm] = useState<RecipeEdit>(() =>
@@ -81,6 +127,20 @@ export default function RecipeDialog({
     }
     return "";
   }, [form]);
+  
+  const bomTotals = useMemo(() => {
+    return (form.bom || []).reduce((acc, r) => {
+      const t = rowTotals({
+        qty: Number(r.qty || 0),
+        wastePct: Number(r.wastePct || 0),
+        ingId: r.ingredientId
+      }, ingredientsPricing);
+      acc.ex += t.ex;
+      acc.inc += t.inc;
+      return acc;
+    }, { ex: 0, inc: 0 });
+  }, [form.bom, ingredientsPricing]);
+
 
   async function save() {
     if (invalid) return;
@@ -118,7 +178,7 @@ export default function RecipeDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v)=>{ if(!v) onClose(); }}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "New Recipe" : "Edit Recipe"}</DialogTitle>
         </DialogHeader>
@@ -163,50 +223,68 @@ export default function RecipeDialog({
           </div>
 
           <div className="mt-3 grid gap-2">
-            {form.bom.map((row, i) => (
-              <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                <div className="col-span-4">
-                  <Label>Ingredient</Label>
-                  <Select value={row.ingredientId} onValueChange={v=>setBom(i,{ ingredientId:v })}>
-                    <SelectTrigger><SelectValue placeholder="Choose ingredient" /></SelectTrigger>
-                    <SelectContent>
-                      {ingredients.map(ing=>(
-                        <SelectItem key={ing.id} value={ing.id}>{ing.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            <div className="grid grid-cols-[1fr_90px_90px_110px_120px_120px_40px] gap-2 px-2 text-xs text-zinc-400">
+              <span>Ingredient</span>
+              <span className="text-left">Qty</span>
+              <span className="text-left">UoM</span>
+              <span className="text-left">Waste %</span>
+              <span className="text-right">Cost ex VAT</span>
+              <span className="text-right">Cost inc VAT</span>
+              <span></span>
+            </div>
+            {form.bom.map((row, i) => {
+              const costs = rowTotals({ qty: Number(row.qty || 0), wastePct: Number(row.wastePct || 0), ingId: row.ingredientId }, ingredientsPricing);
+              return (
+                <div key={i} className="grid grid-cols-[1fr_90px_90px_110px_120px_120px_40px] gap-2 items-end">
+                  <div>
+                    <Select value={row.ingredientId} onValueChange={v=>setBom(i,{ ingredientId:v })}>
+                      <SelectTrigger><SelectValue placeholder="Choose ingredient" /></SelectTrigger>
+                      <SelectContent>
+                        {ingredients.map(ing=>(
+                          <SelectItem key={ing.id} value={ing.id}>{ing.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Input inputMode="decimal" value={row.qty} onChange={e=>setBom(i,{ qty: toNum(e.target.value) })}/>
+                  </div>
+                  <div>
+                    <Select value={row.uom} onValueChange={v=>setBom(i,{ uom: v as Uom })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="g">g</SelectItem>
+                        <SelectItem value="kg">kg</SelectItem>
+                        <SelectItem value="ml">ml</SelectItem>
+                        <SelectItem value="l">l</SelectItem>
+                        <SelectItem value="ea">ea</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Input inputMode="decimal" value={row.wastePct}
+                      onChange={e=>setBom(i,{ wastePct: toNum(e.target.value) })}/>
+                  </div>
+                  <div className="text-right font-mono text-sm pr-2">{costs.ex > 0 ? formatMoney(costs.ex, currency) : '-'}</div>
+                  <div className="text-right font-mono text-sm pr-2">{costs.inc > 0 ? formatMoney(costs.inc, currency) : '-'}</div>
+                  <div>
+                    <Button type="button" variant="ghost" onClick={()=>removeRow(i)} aria-label="Remove row">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="col-span-3">
-                  <Label>Qty</Label>
-                  <Input inputMode="decimal" value={row.qty} onChange={e=>setBom(i,{ qty: toNum(e.target.value) })}/>
-                </div>
-                <div className="col-span-2">
-                  <Label>UoM</Label>
-                  <Select value={row.uom} onValueChange={v=>setBom(i,{ uom: v as Uom })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="g">g</SelectItem>
-                      <SelectItem value="kg">kg</SelectItem>
-                      <SelectItem value="ml">ml</SelectItem>
-                      <SelectItem value="l">l</SelectItem>
-                      <SelectItem value="ea">ea</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="col-span-2">
-                  <Label>Waste %</Label>
-                  <Input inputMode="decimal" value={row.wastePct}
-                    onChange={e=>setBom(i,{ wastePct: toNum(e.target.value) })}/>
-                </div>
-                <div className="col-span-1">
-                  <Button type="button" variant="ghost" onClick={()=>removeRow(i)} aria-label="Remove row">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {form.bom.length === 0 && <p className="text-sm opacity-70">No BOM rows yet.</p>}
           </div>
+
+          <div className="mt-3 border-t border-zinc-700 pt-2 text-sm grid grid-cols-2 gap-y-1 max-w-sm ml-auto">
+            <div className="text-zinc-400">Total Cost ex VAT</div>
+            <div className="text-right font-mono">{formatMoney(bomTotals.ex, currency)}</div>
+            <div className="text-zinc-400">Total Cost inc VAT</div>
+            <div className="text-right font-mono">{formatMoney(bomTotals.inc, currency)}</div>
+          </div>
+
         </div>
 
         {invalid && <p className="text-sm text-red-500 mt-2">{invalid}</p>}
