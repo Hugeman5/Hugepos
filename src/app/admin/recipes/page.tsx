@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import Card from '@/components/ui/Card';
+import { CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { type Recipe, type Ingredient, type MenuItem, type RecipeLink, type RecipesFile } from '@/lib/data';
 import { PlusCircle, Trash2, Edit } from 'lucide-react';
