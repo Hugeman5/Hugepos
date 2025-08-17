@@ -14,12 +14,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { type Order, type Shift, type ServiceCheck, type OrderLine } from '@/lib/data';
 import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CreditCard, Landmark, AlertCircle, FileDown, Mail, Printer, GitCommitHorizontal } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { formatMoney } from '@/lib/money';
+import { getSettings, type Settings } from '@/lib/settingsRepo';
 
 type OrderCartProps = {
     order: Order;
@@ -37,25 +38,38 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const [openShift, setOpenShift] = useState<Shift | null>(null);
   const [isPostPayment, setIsPostPayment] = useState(false);
+  const [settings, setSettings] = useState<Settings | null>(null);
   
   const { toast } = useToast();
   
   useEffect(() => {
-    async function checkOpenShift() {
+    async function getInitialData() {
         try {
-            const res = await fetch('/api/register/open-shift');
-            if (res.ok) {
-                const data = await res.json();
+            const [shiftRes, settingsRes] = await Promise.all([
+                fetch('/api/register/open-shift'),
+                getSettings()
+            ]);
+
+            if (shiftRes.ok) {
+                const data = await shiftRes.json();
                 setOpenShift(data);
             } else {
                 setOpenShift(null);
             }
+            setSettings(settingsRes);
+
         } catch(e) {
             setOpenShift(null);
         }
     }
-    checkOpenShift();
+    getInitialData();
   }, []);
+
+  const money = (value: number) => {
+    if (!settings) return `R ${value.toFixed(2)}`;
+    return formatMoney(value, { currency: settings.currency, locale: settings.locale });
+  };
+
 
   const handleUpdateQuantity = async (lineId: string, delta: number) => {
     const line = order.lines.find(l => l.lineId === lineId);
@@ -214,12 +228,12 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
   return (
     <Card className="h-full flex flex-col relative">
       {renderNoShiftOverlay()}
-      <div className="p-4 border-b border-brand-line">
+      <CardHeader>
         <h2 className="text-xl font-semibold flex items-center gap-2 font-headline">
           <ShoppingCart className="h-6 w-6" /> Current Order #{order.number}
         </h2>
-      </div>
-      <div className="flex-1 overflow-y-auto p-4">
+      </CardHeader>
+      <CardContent className="flex-1 overflow-y-auto p-4">
         {order.lines.length === 0 ? (
           <div className="text-center text-muted-foreground h-full flex items-center justify-center">
             <p>Click on products to add them to the order.</p>
@@ -233,7 +247,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
                 <div className="flex-1">
                   <p className="font-medium">{line.qty}x {line.name}</p>
                    {line.mods && line.mods.length > 0 && <p className="text-sm text-muted-foreground">{line.mods.map(m => m.optionName).join(', ')}</p>}
-                   {line.lineTotal != null && <p className="text-sm font-semibold">{formatMoney(line.lineTotal, 'ZAR', 'en-ZA')}</p>}
+                   {line.lineTotal != null && <p className="text-sm font-semibold">{money(line.lineTotal)}</p>}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -263,21 +277,21 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
             ))}
           </div>
         )}
-      </div>
+      </CardContent>
       <div className="flex flex-col gap-4 mt-auto border-t p-4">
         {order.totals && !isPostPayment && (
             <div className="w-full space-y-2 text-sm">
                 <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>{formatMoney(order.totals?.subtotal, 'ZAR', 'en-ZA')}</span>
+                    <span>{money(order.totals?.subtotal)}</span>
                 </div>
                  <div className="flex justify-between">
                     <span>Tax</span>
-                    <span>{formatMoney(order.totals?.tax, 'ZAR', 'en-ZA')}</span>
+                    <span>{money(order.totals?.tax)}</span>
                 </div>
                 <div className="w-full flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total</span>
-                    <span>{formatMoney(order.totals?.total, 'ZAR', 'en-ZA')}</span>
+                    <span>{money(order.totals?.total)}</span>
                 </div>
             </div>
         )}
@@ -319,7 +333,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
                                     </div>
                                     {parseFloat(tenderedAmount) >= (order.totals?.total || 0) && (
                                         <div className="text-lg font-semibold mt-4">
-                                            Change Due: {formatMoney(parseFloat(tenderedAmount) - (order.totals?.total || 0), 'ZAR', 'en-ZA')}
+                                            Change Due: {money(parseFloat(tenderedAmount) - (order.totals?.total || 0))}
                                         </div>
                                     )}
                                 </TabsContent>
@@ -329,7 +343,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
                                     <Button variant="ghost">Cancel</Button>
                                 </DialogClose>
                                 <Button onClick={handlePay} disabled={!isPaymentValid() || isPaying}>
-                                    {isPaying ? 'Processing...' : `Confirm & Pay ${formatMoney(order.totals?.total, 'ZAR', 'en-ZA')}`}
+                                    {isPaying ? 'Processing...' : `Confirm & Pay ${money(order.totals?.total)}`}
                                 </Button>
                             </DialogFooter>
                             </>

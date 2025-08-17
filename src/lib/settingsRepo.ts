@@ -43,27 +43,17 @@ const defaultSettings: Settings = {
   }
 };
 
-async function readJSONFile<T>(filePath: string, defaultValue: T): Promise<T> {
-  try {
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    const data = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(data) as T;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      await fs.writeFile(filePath, JSON.stringify(defaultValue, null, 2));
-      return defaultValue;
-    }
-    throw error;
-  }
-}
-
-async function writeJSONFile<T>(filePath: string, data: T): Promise<void> {
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
-}
+let cached: Settings | null = null;
 
 export async function getSettings(): Promise<Settings> {
-  return await readJSONFile<Settings>(settingsPath, defaultSettings);
+  if (cached) return cached;
+  try {
+    const raw = await fs.readFile(settingsPath, "utf8");
+    cached = JSON.parse(raw) as Settings;
+  } catch {
+    cached = defaultSettings;
+  }
+  return cached!;
 }
 
 export async function saveSettings(patch: Partial<Settings>): Promise<Settings> {
@@ -75,6 +65,8 @@ export async function saveSettings(patch: Partial<Settings>): Promise<Settings> 
       vat: { ...currentSettings.vat, ...patch.vat },
       rounding: { ...currentSettings.rounding, ...patch.rounding }
   };
-  await writeJSONFile(settingsPath, newSettings);
+  await fs.mkdir(dataDir, { recursive: true });
+  await fs.writeFile(settingsPath, JSON.stringify(newSettings, null, 2), 'utf-8');
+  cached = newSettings; // Update cache
   return newSettings;
 }

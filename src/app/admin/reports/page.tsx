@@ -3,17 +3,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/DateRangePicker';
 import { addDays, format } from 'date-fns';
 import { type DateRange } from 'react-day-picker';
 import KpiCard from '@/components/admin/KpiCard';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Pie, Cell } from 'recharts';
+import { formatMoney } from '@/lib/money';
+import { getSettings } from '@/lib/settingsRepo';
+import { type Settings } from '@/lib/settingsRepo';
 
-const f = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const n = new Intl.NumberFormat('en-US');
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
@@ -48,6 +49,16 @@ export default function ReportsPage() {
         from: addDays(new Date(), -14),
         to: new Date(),
     });
+    const [settings, setSettings] = useState<Settings | null>(null);
+
+    useEffect(() => {
+        getSettings().then(setSettings);
+    }, []);
+
+    const money = (value: number) => {
+        if (!settings) return `R ${value.toFixed(2)}`;
+        return formatMoney(value, { currency: settings.currency, locale: settings.locale });
+    };
 
     const params = useMemo(() => {
         const p = new URLSearchParams();
@@ -81,52 +92,52 @@ export default function ReportsPage() {
         </TabsList>
         <TabsContent value="overview" className="mt-4">
             <Card>
-                <div className="p-4 border-b border-brand-line">
-                    <h2 className="text-xl font-semibold">Sales Overview</h2>
+                <CardHeader>
+                    <CardTitle>Sales Overview</CardTitle>
                     <p className="text-brand-mute">A summary of sales performance for the selected period.</p>
-                </div>
-                <div className="p-4">
+                </CardHeader>
+                <CardContent>
                     {loadingOverview ? <p>Loading...</p> : overview ? (
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            <KpiCard label="Net Sales" value={f.format(overview.net)} />
-                            <KpiCard label="Gross Sales" value={f.format(overview.gross)} />
-                            <KpiCard label="Discounts" value={f.format(overview.discounts)} />
-                            <KpiCard label="Tax" value={f.format(overview.tax)} />
+                            <KpiCard label="Net Sales" value={money(overview.net)} />
+                            <KpiCard label="Gross Sales" value={money(overview.gross)} />
+                            <KpiCard label="Discounts" value={money(overview.discounts)} />
+                            <KpiCard label="Tax" value={money(overview.tax)} />
                              <KpiCard label="Orders" value={n.format(overview.orders)} />
-                            <KpiCard label="Avg. Ticket Size" value={f.format(overview.avgTicket)} />
+                            <KpiCard label="Avg. Ticket Size" value={money(overview.avgTicket)} />
                             <KpiCard label="Items Sold" value={n.format(overview.items)} />
                             <KpiCard label="Items per Order" value={overview.itemsPerOrder.toFixed(2)} />
                         </div>
                     ) : <p>No overview data available.</p>}
-                </div>
+                </CardContent>
             </Card>
         </TabsContent>
         <TabsContent value="sales" className="mt-4">
             <Card>
-                <div className="p-4 border-b border-brand-line"><h2 className="text-xl font-semibold">Sales by Day</h2></div>
-                <div className="p-4 h-96">
+                <CardHeader><CardTitle>Sales by Day</CardTitle></CardHeader>
+                <CardContent className="p-4 h-96">
                     {loadingByDay ? <p>Loading chart...</p> : salesByDay?.items?.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={salesByDay.items}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="day" />
-                                <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+                                <YAxis yAxisId="left" orientation="left" stroke="#8884d8" tickFormatter={(val) => money(val)} />
                                 <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
-                                <Tooltip formatter={(value, name) => name === 'net' ? f.format(value as number) : value } />
+                                <Tooltip formatter={(value, name) => name === 'net' ? money(value as number) : value } />
                                 <Legend />
                                 <Bar yAxisId="left" dataKey="net" fill="#8884d8" name="Net Sales" />
                                 <Bar yAxisId="right" dataKey="orders" fill="#82ca9d" name="Orders" />
                             </BarChart>
                         </ResponsiveContainer>
                     ) : <p>No sales data to display.</p>}
-                </div>
+                </CardContent>
             </Card>
         </TabsContent>
          <TabsContent value="items" className="mt-4">
             <div className="grid md:grid-cols-2 gap-4">
                  <Card>
-                    <div className="p-4 border-b border-brand-line"><h2 className="text-xl font-semibold">Sales by Category</h2></div>
-                    <div className="p-4">
+                    <CardHeader><CardTitle>Sales by Category</CardTitle></CardHeader>
+                    <CardContent>
                         {loadingByCategory ? <p>Loading...</p> : byCategory?.items?.length > 0 ? (
                            <Table>
                                <TableHeader><TableRow><TableHead>Category</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Net Sales</TableHead></TableRow></TableHeader>
@@ -135,17 +146,17 @@ export default function ReportsPage() {
                                        <TableRow key={cat.categoryId}>
                                            <TableCell>{cat.categoryName}</TableCell>
                                            <TableCell className="text-right">{n.format(cat.qty)}</TableCell>
-                                           <TableCell className="text-right">{f.format(cat.net)}</TableCell>
+                                           <TableCell className="text-right">{money(cat.net)}</TableCell>
                                        </TableRow>
                                    ))}
                                </TableBody>
                            </Table>
                         ) : <p>No data.</p>}
-                    </div>
+                    </CardContent>
                 </Card>
                 <Card>
-                    <div className="p-4 border-b border-brand-line"><h2 className="text-xl font-semibold">Top Selling Items</h2></div>
-                    <div className="p-4">
+                    <CardHeader><CardTitle>Top Selling Items</CardTitle></CardHeader>
+                    <CardContent>
                         {loadingByItem ? <p>Loading...</p> : byItem?.items?.length > 0 ? (
                            <Table>
                                <TableHeader><TableRow><TableHead>Product</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Net Sales</TableHead></TableRow></TableHeader>
@@ -154,20 +165,20 @@ export default function ReportsPage() {
                                        <TableRow key={item.productId}>
                                            <TableCell>{item.name}</TableCell>
                                            <TableCell className="text-right">{n.format(item.qty)}</TableCell>
-                                           <TableCell className="text-right">{f.format(item.net)}</TableCell>
+                                           <TableCell className="text-right">{money(item.net)}</TableCell>
                                        </TableRow>
                                    ))}
                                </TableBody>
                            </Table>
                         ) : <p>No data.</p>}
-                    </div>
+                    </CardContent>
                 </Card>
             </div>
          </TabsContent>
          <TabsContent value="payments" className="mt-4">
             <Card>
-                <div className="p-4 border-b border-brand-line"><h2 className="text-xl font-semibold">Payment Mix</h2></div>
-                <div className="p-4 h-96">
+                <CardHeader><CardTitle>Payment Mix</CardTitle></CardHeader>
+                <CardContent className="h-96">
                      {loadingPaymentMix ? <p>Loading...</p> : paymentMix?.items?.length > 0 ? (
                        <ResponsiveContainer width="100%" height="100%">
                          <PieChart>
@@ -176,18 +187,18 @@ export default function ReportsPage() {
                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                              ))}
                            </Pie>
-                           <Tooltip formatter={(value) => f.format(value as number)} />
+                           <Tooltip formatter={(value) => money(value as number)} />
                            <Legend />
                          </PieChart>
                        </ResponsiveContainer>
                      ) : <p>No payment data.</p>}
-                </div>
+                </CardContent>
             </Card>
          </TabsContent>
          <TabsContent value="registers" className="mt-4">
             <Card>
-                <div className="p-4 border-b border-brand-line"><h2 className="text-xl font-semibold">Register Closures</h2></div>
-                <div className="p-4">
+                <CardHeader><CardTitle>Register Closures</CardTitle></CardHeader>
+                <CardContent>
                      {loadingClosures ? <p>Loading...</p> : registerClosures?.items?.length > 0 ? (
                            <Table>
                                <TableHeader><TableRow><TableHead>Shift</TableHead><TableHead>Register</TableHead><TableHead className="text-right">Expected</TableHead><TableHead className="text-right">Counted</TableHead><TableHead className="text-right">Discrepancy</TableHead></TableRow></TableHeader>
@@ -196,15 +207,15 @@ export default function ReportsPage() {
                                        <TableRow key={s.shiftId}>
                                            <TableCell>{s.shiftId}</TableCell>
                                            <TableCell>{s.registerId}</TableCell>
-                                           <TableCell className="text-right">{f.format(s.expectedCash)}</TableCell>
-                                           <TableCell className="text-right">{f.format(s.countedCash)}</TableCell>
-                                           <TableCell className={`text-right ${s.discrepancy !== 0 ? 'text-destructive' : ''}`}>{f.format(s.discrepancy)}</TableCell>
+                                           <TableCell className="text-right">{money(s.expectedCash)}</TableCell>
+                                           <TableCell className="text-right">{money(s.countedCash)}</TableCell>
+                                           <TableCell className={`text-right ${s.discrepancy !== 0 ? 'text-destructive' : ''}`}>{money(s.discrepancy)}</TableCell>
                                        </TableRow>
                                    ))}
                                </TableBody>
                            </Table>
                         ) : <p>No register closure data.</p>}
-                </div>
+                </CardContent>
             </Card>
          </TabsContent>
       </Tabs>

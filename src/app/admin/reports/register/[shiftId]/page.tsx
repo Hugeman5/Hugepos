@@ -5,14 +5,15 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { type RegisterReport } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Printer } from 'lucide-react';
 import Link from 'next/link';
-
-const f = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+import { formatMoney } from '@/lib/money';
+import { getSettings } from '@/lib/settingsRepo';
+import { type Settings } from '@/lib/settingsRepo';
 
 export default function RegisterReportPage() {
   const params = useParams();
@@ -22,6 +23,16 @@ export default function RegisterReportPage() {
   const [report, setReport] = useState<RegisterReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [settings, setSettings] = useState<Settings | null>(null);
+
+  useEffect(() => {
+    getSettings().then(setSettings);
+  }, []);
+
+  const money = (value: number) => {
+    if (!settings) return `R ${value.toFixed(2)}`;
+    return formatMoney(value, { currency: settings.currency, locale: settings.locale });
+  };
 
   useEffect(() => {
     if (!reportId) return;
@@ -45,7 +56,7 @@ export default function RegisterReportPage() {
     fetchReport();
   }, [reportId, toast]);
   
-  if (isLoading) {
+  if (isLoading || !settings) {
     return <AdminLayout title="Register Report"><div>Loading report...</div></AdminLayout>;
   }
 
@@ -72,35 +83,35 @@ export default function RegisterReportPage() {
             <Button variant="secondary" className="ml-auto" onClick={() => window.print()}><Printer className="mr-2"/> Print</Button>
         </div>
         <Card className="bg-brand-card border-brand-line">
-            <div className="p-4 border-b border-brand-line">
-                <h2 className="text-xl font-semibold">Shift Summary</h2>
+            <CardHeader>
+                <CardTitle>Shift Summary</CardTitle>
                 <p className="text-brand-mute">Generated on {new Date(report.ts).toLocaleString()}</p>
-            </div>
-            <div className="p-4 grid md:grid-cols-3 gap-8">
+            </CardHeader>
+            <CardContent className="p-4 grid md:grid-cols-3 gap-8">
                 <div className="space-y-2">
                     <h3 className="font-semibold text-lg">Sales Summary</h3>
                     <Separator/>
-                    {renderDetailRow('Net Sales', f.format(report.netSales))}
-                    {renderDetailRow('Tax', f.format(report.taxTotal))}
-                    {renderDetailRow('Total Sales', f.format(report.salesTotal), 'font-bold border-t')}
+                    {renderDetailRow('Net Sales', money(report.netSales))}
+                    {renderDetailRow('Tax', money(report.taxTotal))}
+                    {renderDetailRow('Total Sales', money(report.salesTotal), 'font-bold border-t')}
                     <Separator className="my-4"/>
-                    {renderDetailRow('Cash Payments', f.format(report.cashPaymentsTotal))}
-                    {renderDetailRow('Card Payments', f.format(report.cardPaymentsTotal))}
-                     {renderDetailRow('Total Payments', f.format(report.cashPaymentsTotal + report.cardPaymentsTotal), 'font-bold border-t')}
+                    {renderDetailRow('Cash Payments', money(report.cashPaymentsTotal))}
+                    {renderDetailRow('Card Payments', money(report.cardPaymentsTotal))}
+                     {renderDetailRow('Total Payments', money(report.cashPaymentsTotal + report.cardPaymentsTotal), 'font-bold border-t')}
                 </div>
                 
                  <div className="space-y-2">
                     <h3 className="font-semibold text-lg">Cash Drawer</h3>
                     <Separator/>
-                    {renderDetailRow('Starting Float', f.format(report.startingFloat))}
-                    {renderDetailRow('Cash Sales', f.format(report.cashSales))}
-                    {renderDetailRow('Pay Ins', f.format(report.cashIn))}
-                    {renderDetailRow('Pay Outs', f.format(report.cashOut))}
+                    {renderDetailRow('Starting Float', money(report.startingFloat))}
+                    {renderDetailRow('Cash Sales', money(report.cashSales))}
+                    {renderDetailRow('Pay Ins', money(report.cashIn))}
+                    {renderDetailRow('Pay Outs', money(report.cashOut))}
                     <Separator className="my-4"/>
-                    {renderDetailRow('Expected in Drawer', f.format(report.expectedInDrawer), 'font-bold border-t')}
-                    {renderDetailRow('Actual in Drawer', f.format(report.actualInDrawer), 'font-bold')}
+                    {renderDetailRow('Expected in Drawer', money(report.expectedInDrawer), 'font-bold border-t')}
+                    {renderDetailRow('Actual in Drawer', money(report.actualInDrawer), 'font-bold')}
                     <Separator className="my-4"/>
-                    {renderDetailRow('Difference', f.format(report.difference), `font-bold ${report.difference !== 0 ? 'text-destructive' : 'text-green-400'}`)}
+                    {renderDetailRow('Difference', money(report.difference), `font-bold ${report.difference !== 0 ? 'text-destructive' : 'text-green-400'}`)}
                  </div>
                  
                   <div className="space-y-2">
@@ -110,12 +121,12 @@ export default function RegisterReportPage() {
                         {report.cashMovements.length > 0 ? report.cashMovements.map(m => (
                             <div key={m.id} className={`flex justify-between py-1 ${m.type === 'payout' ? 'text-yellow-400' : 'text-green-400'}`}>
                                 <span>{m.reason} ({m.userName})</span>
-                                <span>{m.type === 'payout' ? '-' : ''}{f.format(m.amount)}</span>
+                                <span>{m.type === 'payout' ? '-' : ''}{money(m.amount)}</span>
                             </div>
                         )) : <p className="text-muted-foreground py-2">No cash movements recorded.</p>}
                     </div>
                  </div>
-            </div>
+            </CardContent>
         </Card>
     </AdminLayout>
   );

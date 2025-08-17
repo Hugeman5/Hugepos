@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { type Category, type MenuItem, type Menu, type ModifierSet } from '@/lib/menuRepo';
+import { type Category, type MenuItem, type Menu } from '@/lib/menuRepo';
 import Link from 'next/link';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { formatMoney } from '@/lib/money';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { getSettings, type Settings } from '@/lib/settingsRepo';
 
 export default function MenuBuilderPage() {
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -26,6 +27,16 @@ export default function MenuBuilderPage() {
   const [editingCategory, setEditingCategory] = useState<Partial<Category> | null>(null);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const { toast } = useToast();
+  const [settings, setSettings] = useState<Settings | null>(null);
+
+  useEffect(() => {
+    getSettings().then(setSettings);
+  }, []);
+
+  const money = (value: number) => {
+    if (!settings) return `R ${value.toFixed(2)}`;
+    return formatMoney(value, { currency: settings.currency, locale: settings.locale });
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -120,7 +131,7 @@ export default function MenuBuilderPage() {
   }
 
 
-  if (isLoading || !menu) {
+  if (isLoading || !menu || !settings) {
     return <AdminLayout title="Menu Builder">Loading...</AdminLayout>;
   }
 
@@ -147,13 +158,13 @@ export default function MenuBuilderPage() {
         {/* Categories Section */}
         <div className="md:col-span-1">
           <Card>
-            <div className="p-4 border-b border-brand-line flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Categories</h2>
+            <CardHeader className="flex flex-row justify-between items-center">
+              <CardTitle>Categories</CardTitle>
               <Button size="icon" variant="ghost" onClick={() => { setEditingCategory({name: '', color: '#5FB9A4', active: true, sort: 0}); setIsCategoryDialogOpen(true); }}>
                 <PlusCircle className="h-5 w-5" />
               </Button>
-            </div>
-            <div className="p-4 space-y-2">
+            </CardHeader>
+            <CardContent className="space-y-2">
                 {menu.categories.map(cat => (
                     <div key={cat.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-brand-muted">
                         <div className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.color }}></div>
@@ -171,20 +182,20 @@ export default function MenuBuilderPage() {
                         </Button>
                     </div>
                 ))}
-            </div>
+            </CardContent>
           </Card>
         </div>
 
         {/* Items Section */}
         <div className="md:col-span-2">
           <Card>
-            <div className="p-4 border-b border-brand-line flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Menu Items</h2>
+            <CardHeader className="flex flex-row justify-between items-center">
+              <CardTitle>Menu Items</CardTitle>
               <Button onClick={() => { setEditingItem({ name: '', catId: menu.categories[0]?.id, priceCents: 0, taxCode: 'STD15', active: true }); setIsItemDialogOpen(true); }}>
                 <PlusCircle className="mr-2" /> Add Item
               </Button>
-            </div>
-            <div className="p-4">
+            </CardHeader>
+            <CardContent>
               <Table>
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Category</TableHead><TableHead>Price</TableHead><TableHead>Active</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -192,7 +203,7 @@ export default function MenuBuilderPage() {
                         <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.name}</TableCell>
                             <TableCell>{menu.categories.find(c => c.id === item.catId)?.name}</TableCell>
-                            <TableCell>{formatMoney(item.priceCents / 100, 'ZAR', 'en-ZA')}</TableCell>
+                            <TableCell>{money(item.priceCents / 100)}</TableCell>
                             <TableCell><Badge variant={item.active ? 'default' : 'secondary'}>{item.active ? 'Yes' : 'No'}</Badge></TableCell>
                             <TableCell className="text-right">
                                 <Button size="icon" variant="ghost" onClick={() => { setEditingItem(item); setIsItemDialogOpen(true); }}><Edit className="h-4 w-4" /></Button>
@@ -202,7 +213,7 @@ export default function MenuBuilderPage() {
                     ))}
                 </TableBody>
               </Table>
-            </div>
+            </CardContent>
           </Card>
         </div>
       </div>
@@ -288,3 +299,6 @@ export default function MenuBuilderPage() {
     </AdminLayout>
   );
 }
+
+// Dummy function to satisfy TS, will be replaced by actual API call
+async function updateCategory(id: string, patch: any) {}

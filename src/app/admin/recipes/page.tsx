@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
-import { type Recipe, type RecipesFile } from "@/lib/repos/recipesRepo";
+import { type Recipe } from "@/lib/repos/recipesRepo";
 import { type Ingredient } from "@/lib/repos/ingredientsRepo";
 import { type MenuItem, type Menu } from "@/lib/menuRepo";
+import { type RecipesFile } from '@/lib/repos/recipesRepo';
+
 
 import RecipeDialog, { type RecipeEdit, type IngredientLite } from "@/components/recipes/RecipeDialog";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -77,10 +79,10 @@ const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
           {cost && (
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               <span className="text-zinc-400">Total Cost</span>
-              <span className="font-mono text-right">{formatMoney(cost.totalCost, cost.currency)}</span>
+              <span className="font-mono text-right">{formatMoney(cost.totalCost, {currency: cost.currency})}</span>
 
               <span className="text-zinc-400">Cost/Portion</span>
-              <span className="font-mono text-right">{formatMoney(cost.costPerPortion, cost.currency)}</span>
+              <span className="font-mono text-right">{formatMoney(cost.costPerPortion, {currency: cost.currency})}</span>
 
               <span className="text-zinc-400 col-span-2 border-b border-zinc-700 my-1"></span>
 
@@ -88,16 +90,16 @@ const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
               <span className="font-mono text-right">{(cost.gpPct * 100).toFixed(0)}%</span>
 
               <span className="text-zinc-400">GP / Portion</span>
-              <span className="font-mono text-right">{formatMoney(cost.gp, cost.currency)}</span>
+              <span className="font-mono text-right">{formatMoney(cost.gp, {currency: cost.currency})}</span>
 
               <span className="text-zinc-400">Ex-VAT RSP</span>
-              <span className="font-mono text-right">{formatMoney(cost.exVatRSP, cost.currency)}</span>
+              <span className="font-mono text-right">{formatMoney(cost.exVatRSP, {currency: cost.currency})}</span>
 
               <span className="text-zinc-400">VAT ({(cost.vatRate * 100).toFixed(0)}%)</span>
-              <span className="font-mono text-right">{formatMoney(cost.vatAmount, cost.currency)}</span>
+              <span className="font-mono text-right">{formatMoney(cost.vatAmount, {currency: cost.currency})}</span>
 
               <span className="text-zinc-400 font-bold">Inc-VAT RSP</span>
-              <span className="font-mono text-right font-bold">{formatMoney(cost.incVatRSP, cost.currency)}</span>
+              <span className="font-mono text-right font-bold">{formatMoney(cost.incVatRSP, {currency: cost.currency})}</span>
             </div>
           )}
         </div>

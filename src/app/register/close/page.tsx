@@ -4,15 +4,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { DoorClosed, LandPlot, Minus, Plus, Banknote } from 'lucide-react';
 import Link from 'next/link';
 import { type Shift } from '@/lib/data';
+import { formatMoney } from '@/lib/money';
+import { getSettings, type Settings } from '@/lib/settingsRepo';
 
-const f = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 export default function CloseRegisterPage() {
   const router = useRouter();
@@ -21,19 +22,26 @@ export default function CloseRegisterPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [actualCash, setActualCash] = useState('');
   const [isClosing, setIsClosing] = useState(false);
+  const [settings, setSettings] = useState<Settings | null>(null);
   
   const user = { id: 'jcashier', name: 'John Cashier' };
 
   useEffect(() => {
     async function getOpenShift() {
       try {
-        const res = await fetch('/api/register/open-shift');
-        if (res.ok) {
-          const data = await res.json();
+        const [shiftRes, settingsRes] = await Promise.all([
+            fetch('/api/register/open-shift'),
+            getSettings()
+        ]);
+        
+        if (shiftRes.ok) {
+          const data = await shiftRes.json();
           setShift(data);
         } else {
           setShift(null);
         }
+        setSettings(settingsRes);
+
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not load shift details.' });
       } finally {
@@ -43,6 +51,11 @@ export default function CloseRegisterPage() {
     getOpenShift();
   }, [toast]);
   
+  const money = (value: number) => {
+    if (!settings) return `R ${value.toFixed(2)}`;
+    return formatMoney(value, { currency: settings.currency, locale: settings.locale });
+  };
+
   const handleCloseShift = async () => {
     if (!actualCash) {
       toast({ variant: 'destructive', title: 'Error', description: 'Please enter the actual cash amount.' });
@@ -95,11 +108,11 @@ export default function CloseRegisterPage() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
       <div className="w-full max-w-2xl">
         <Card>
-          <div className="p-4 text-center border-b border-brand-line">
-            <h2 className="text-2xl font-headline text-primary">Close Register</h2>
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-headline text-primary">Close Register</CardTitle>
             <p className="text-brand-mute">Review totals and enter final cash count to close the shift.</p>
-          </div>
-          <div className="p-4 grid md:grid-cols-2 gap-8">
+          </CardHeader>
+          <CardContent className="p-4 grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
                 <h3 className="font-semibold text-lg">Actions</h3>
                 <Button className="w-full justify-start" variant="secondary" asChild><Link href="/cashier"><LandPlot className="mr-2"/> Back to Sales</Link></Button>
@@ -111,15 +124,15 @@ export default function CloseRegisterPage() {
                  <h3 className="font-semibold text-lg">Shift Summary</h3>
                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Starting Float</span>
-                    <span>{f.format(shift.floatAmount)}</span>
+                    <span>{money(shift.floatAmount)}</span>
                  </div>
                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Card Payments</span>
-                    <span>{f.format(shift.cardPayments || 0)}</span>
+                    <span>{money(shift.cardPayments || 0)}</span>
                  </div>
                  <div className="flex justify-between font-semibold text-lg border-t pt-2">
                     <span>Expected Cash</span>
-                    <span>{f.format(shift.cashExpected || 0)}</span>
+                    <span>{money(shift.cashExpected || 0)}</span>
                  </div>
                  
                  <div className="space-y-2 pt-4">
@@ -130,7 +143,7 @@ export default function CloseRegisterPage() {
                 {actualCash && (
                      <div className="flex justify-between font-semibold text-lg border-t pt-2">
                         <span>Difference</span>
-                        <span className={difference === 0 ? '' : 'text-destructive'}>{f.format(difference)}</span>
+                        <span className={difference === 0 ? '' : 'text-destructive'}>{money(difference)}</span>
                      </div>
                 )}
                  
@@ -140,7 +153,7 @@ export default function CloseRegisterPage() {
 
             </div>
 
-          </div>
+          </CardContent>
         </Card>
       </div>
     </main>

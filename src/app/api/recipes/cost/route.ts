@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
-import { CURRENCY, VAT_RATE, roundPrice } from "@/lib/settings/pricing";
+import { getSettings } from "@/lib/settingsRepo";
+import { round2 } from "@/lib/money";
 
 // Adjust these imports to your repo helpers if names differ:
 import { getRecipesFile } from "@/lib/repos/recipesRepo";
 import { getAllIngredients } from "@/lib/repos/ingredientsRepo";
+import { toBase, costPerBaseUnit } from "@/lib/costing";
+import { type Recipe, type BomRow } from "@/lib/repos/recipesRepo";
+import { type Ingredient } from "@/lib/repos/ingredientsRepo";
 
 type Num = number;
 const n = (v: any, d = 0): Num => {
@@ -11,19 +15,6 @@ const n = (v: any, d = 0): Num => {
   return Number.isFinite(x) ? x : d;
 };
 
-// Try to derive a unit cost from common shapes on ingredients
-function unitCost(ing: any): number {
-  // Preferred: explicit unit cost
-  if (Number.isFinite(ing?.unitCost)) return Number(ing.unitCost);
-
-  // Fallbacks: pack cost / pack size
-  const packCost = n(ing?.packCost);
-  const packSize = Math.max(n(ing?.packSize, 1), 1);
-  if (packCost > 0) return packCost / packSize;
-
-  // Last resort
-  return 0;
-}
 
 export async function POST(req: Request) {
   try {
@@ -32,9 +23,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "recipeId required" }, { status: 400 });
     }
 
-    const [recipesFile, ingredients] = await Promise.all([
+    const [recipesFile, ingredients, settings] = await Promise.all([
       getRecipesFile(),
       getAllIngredients(),
+      getSettings()
     ]);
 
     const recipe = (recipesFile?.recipes ?? []).find((r: any) => r.id === recipeId);
@@ -46,8 +38,10 @@ export async function POST(req: Request) {
     let baseCost = 0;
     for (const row of recipe.bom ?? []) {
       const ing = ingById.get(row.ingredientId);
+      if (!ing) continue;
+      
       const qty = n(row.qty);
-      const uCost = unitCost(ing);
+      const uCost = costPerBaseUnit(ing);
       const waste = Math.max(n(row.wastePct), 0);
       baseCost += qty * uCost * (1 + waste);
     }
@@ -68,26 +62,26 @@ export async function POST(req: Request) {
     })();
 
     let exVatRSP = costPerPortion / (1 - gpPct);
-    exVatRSP = roundPrice(exVatRSP);
 
-    const vatRate = Number(VAT_RATE); // guarantee number
+    const vatRate = Number(settings.vat.defaultRate); // guarantee number
     const vatAmount = exVatRSP * vatRate;
     const incVatRSP = exVatRSP + vatAmount;
 
     return NextResponse.json({
-      currency: CURRENCY,
-      vatRate,                 // e.g. 0.15 -> UI shows 15%
+      currency: settings.currency,
+      vatRate,
       baseCost,
       overhead,
       totalCost,
       costPerPortion,
-      exVatRSP,
-      incVatRSP,
-      vatAmount,
-      gp: exVatRSP - costPerPortion,
+      exVatRSP: round2(exVatRSP),
+      incVatRSP: round2(incVatRSP),
+      vatAmount: round2(vatAmount),
+      gp: round2(exVatRSP - costPerPortion),
       gpPct,
     });
   } catch (e) {
+    console.error("Costing error:", e)
     return NextResponse.json({ error: "Costing failed" }, { status: 500 });
   }
 }

@@ -3,18 +3,30 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { type PromotionRule } from '@/lib/data';
 import { PlusCircle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import { formatMoney } from '@/lib/money';
+import { getSettings, type Settings } from '@/lib/settingsRepo';
 
 export default function PromotionsPage() {
   const [promotions, setPromotions] = useState<PromotionRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [settings, setSettings] = useState<Settings | null>(null);
+
+  useEffect(() => {
+    getSettings().then(setSettings);
+  }, []);
+
+  const money = (value: number) => {
+    if (!settings) return `R ${value.toFixed(2)}`;
+    return formatMoney(value, { currency: settings.currency, locale: settings.locale });
+  };
 
   useEffect(() => {
     fetchData();
@@ -50,7 +62,7 @@ export default function PromotionsPage() {
   }
 
 
-  if (isLoading) {
+  if (isLoading || !settings) {
     return <AdminLayout title="Promotions">Loading...</AdminLayout>;
   }
 
@@ -91,7 +103,7 @@ export default function PromotionsPage() {
                   <div><Badge variant="secondary" className="capitalize">{promo.scope}</Badge></div>
                   <div>
                     {promo.type === 'percent' ? `${promo.value}%` : 
-                     promo.type === 'amount' ? `R${(promo.value / 100).toFixed(2)}` :
+                     promo.type === 'amount' ? money(promo.value / 100) :
                      `Buy ${promo.bxgy.buyQty}, Get ${promo.bxgy.getQty}`
                     }
                   </div>

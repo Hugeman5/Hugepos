@@ -1,5 +1,20 @@
 {
   "currency": "ZAR",
-  "vatRate": 0.15,
-  "rounding": "99c"
+  "locale": "en-ZA",
+  "currencySymbol": "R",
+  "vat": {
+    "priceIncludesVAT": true,
+    "defaultRate": 0.15,
+    "categories": {
+      "standard": 0.15,
+      "zero": 0.0,
+      "exempt": 0.0
+    },
+    "defaultCategory": "standard"
+  },
+  "rounding": {
+    "displayDecimals": 2,
+    "cashRounding": false,
+    "cashStep": 0.10
+  }
 }

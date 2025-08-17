@@ -1,4 +1,5 @@
-import { getSettings } from "./settings";
+import { getSettings } from "./settingsRepo";
+import { round2 } from "./money";
 
 type U = "g"|"kg"|"ml"|"l"|"ea";
 
@@ -48,19 +49,16 @@ export async function computeRecipeCost(args:{
 
   // pricing: GP% is calculated on EX-VAT price
   const exVatRSP = costPerPortion / Math.max(1 - (args.targetGpPct ?? 0), 1e-9);
-  const vat = exVatRSP * s.vatRate;
+  
+  const vat = exVatRSP * s.vat.defaultRate;
   let incVatRSP = exVatRSP + vat;
-
-  // simple rounding rules
-  if (s.rounding === "99c") incVatRSP = Math.floor(incVatRSP) + 0.99;
-  if (s.rounding === "95c") incVatRSP = Math.floor(incVatRSP) + 0.95;
-
+  
   const gp = exVatRSP - costPerPortion;
   const gpPct = gp > 0 && exVatRSP > 0 ? gp / exVatRSP : 0;
 
   return {
     currency: s.currency,
-    vatRate: s.vatRate,
+    vatRate: s.vat.defaultRate,
     baseCost, overhead, totalCost, costPerPortion,
     exVatRSP: round2(exVatRSP),
     incVatRSP: round2(incVatRSP),
@@ -68,5 +66,3 @@ export async function computeRecipeCost(args:{
     gp: round2(gp), gpPct: +(gpPct*100).toFixed(2)
   };
 }
-
-function round2(n:number){ return Math.round(n*100)/100; }
