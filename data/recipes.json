@@ -1,20 +1,33 @@
 
-{ 
-  "recipes":[
+{
+  "recipes": [
     {
-        "id":"rec_croissant",
-        "name":"Croissant",
-        "yield":"ea",
-        "bom":[
-            {"ingredientId":"ing_flour","qty":0.09,"uom":"kg"},
-            {"ingredientId":"ing_eggs","qty":0.20,"uom":"ea"}
-        ]
+      "id": "croissant",
+      "name": "Croissant",
+      "yieldPortions": 12,
+      "overheadPct": 0.1,
+      "packagingCost": 2.5,
+      "targetGpPct": 0.6,
+      "bom": [
+        {
+          "ingredientId": "flour12_5kg",
+          "qty": 900,
+          "uom": "g",
+          "wastePct": 0.02
+        },
+        {
+          "ingredientId": "eggs_tray_30",
+          "qty": 2,
+          "uom": "ea",
+          "wastePct": 0
+        }
+      ]
     }
-  ], 
-  "links":[
-    {"itemId":"it_croissant","recipeId":"rec_croissant"}
-  ], 
-  "settings":{
-      "decrementOn":"send"
-  } 
+  ],
+  "links": [
+    {
+      "recipeId": "croissant",
+      "itemId": "croissant"
+    }
+  ]
 }

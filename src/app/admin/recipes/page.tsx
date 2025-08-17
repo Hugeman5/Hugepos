@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/Button";
 import {
@@ -13,11 +14,17 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import {
   type Recipe,
-  type Ingredient,
-  type MenuItem,
+  type RecipeLink,
   type RecipesFile,
-} from "@/lib/data";
-import { PlusCircle, Trash2, Edit } from "lucide-react";
+} from "@/lib/repos/recipesRepo";
+import {
+  type Ingredient,
+} from "@/lib/repos/ingredientsRepo";
+import {
+    type MenuItem, type Menu
+} from "@/lib/menuRepo";
+
+import { PlusCircle, Trash2, Edit, ChevronDown, ChevronUp } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +42,72 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatMoney } from "@/lib/money";
+
+type CostingResult = {
+    currency: string;
+    vatRate: number;
+    baseCost: number;
+    overhead: number;
+    totalCost: number;
+    costPerPortion: number;
+    exVatRSP: number;
+    incVatRSP: number;
+    vatAmount: number;
+    gp: number;
+    gpPct: number;
+}
+
+const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
+    const [cost, setCost] = useState<CostingResult | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+    const { toast } = useToast();
+
+    const fetchCost = useCallback(async () => {
+        if (!isOpen) return;
+        setIsLoading(true);
+        try {
+            const res = await fetch("/api/recipes/cost", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ recipeId }) });
+            if(!res.ok) throw new Error("Cost calc failed");
+            const data = await res.json();
+            setCost(data);
+        } catch (e) {
+            toast({ variant: 'destructive', title: "Costing Error", description: (e as Error).message });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [recipeId, isOpen, toast]);
+    
+    useEffect(() => {
+        fetchCost();
+    }, [fetchCost]);
+
+    return (
+        <div className="mt-2 border-t border-zinc-700 pt-2">
+            <button onClick={() => setIsOpen(o => !o)} className="text-sm text-zinc-400 hover:text-white flex items-center gap-1 w-full text-left">
+                {isOpen ? <ChevronUp className="h-4 w-4"/> : <ChevronDown className="h-4 w-4"/>}
+                Costing & Suggested Price
+            </button>
+            {isOpen && (
+                <div className="p-2 mt-2 bg-zinc-900 rounded-md text-xs space-y-2">
+                    {isLoading && <p>Calculating...</p>}
+                    {cost && (
+                       <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                           <span className="text-zinc-400">Total Cost</span><span className="font-mono text-right">{formatMoney(cost.totalCost, cost.currency)}</span>
+                           <span className="text-zinc-400">Cost/Portion</span><span className="font-mono text-right">{formatMoney(cost.costPerPortion, cost.currency)}</span>
+                           <span className="text-zinc-400 col-span-2 border-b border-zinc-700 my-1"></span>
+                           <span className="text-zinc-400">Target GP</span><span className="font-mono text-right">{(cost.gpPct/100).toLocaleString(undefined, {style:'percent', minimumFractionDigits:0})}</span>
+                           <span className="text-zinc-400">Ex-VAT RSP</span><span className="font-mono text-right">{formatMoney(cost.exVatRSP, cost.currency)}</span>
+                           <span className="text-zinc-400">VAT (15%)</span><span className="font-mono text-right">{formatMoney(cost.vatAmount, cost.currency)}</span>
+                           <span className="text-zinc-400 font-bold">Inc-VAT RSP</span><span className="font-mono text-right font-bold">{formatMoney(cost.incVatRSP, cost.currency)}</span>
+                       </div>
+                    )}
+                </div>
+            )}
+        </div>
+    )
+}
 
 export default function RecipesPage() {
   const [recipesFile, setRecipesFile] = useState<RecipesFile | null>(null);
@@ -43,58 +116,73 @@ export default function RecipesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setIsLoading(true);
-        const [recipesRes, ingredientsRes, menuRes] = await Promise.all([
-          fetch("/api/recipes", { cache: "no-store" }),
-          fetch("/api/inventory/ingredients", { cache: "no-store" }),
-          fetch("/api/admin/menu", { cache: "no-store" }),
-        ]);
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [recipesRes, ingredientsRes, menuRes] = await Promise.all([
+        fetch("/api/recipes"),
+        fetch("/api/inventory/ingredients"),
+        fetch("/api/admin/menu"),
+      ]);
 
-        if (!recipesRes.ok || !ingredientsRes.ok || !menuRes.ok) {
-          throw new Error("Failed to fetch initial data");
-        }
-
-        const recipesData = await recipesRes.json();
-        const ingredientsData = await ingredientsRes.json();
-        const menuData = await menuRes.json();
-
-        setRecipesFile(recipesData);
-        setIngredients(Array.isArray(ingredientsData) ? ingredientsData : []);
-        setMenuItems(Array.isArray(menuData?.items) ? menuData.items : []);
-      } catch (e) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: (e as Error).message,
-        });
-      } finally {
-        setIsLoading(false);
+      if (!recipesRes.ok || !ingredientsRes.ok || !menuRes.ok) {
+        throw new Error("Failed to fetch initial data");
       }
+      
+      const recipesData: RecipesFile = await recipesRes.json();
+      const ingredientsData: Ingredient[] = await ingredientsRes.json();
+      const menuData: Menu = await menuRes.json();
+
+      setRecipesFile(recipesData);
+      setIngredients(ingredientsData);
+      setMenuItems(menuData.items);
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: (e as Error).message,
+      });
+    } finally {
+      setIsLoading(false);
     }
-    fetchData();
   }, [toast]);
+  
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  // ---- Handlers (wire to your APIs when ready) ----
-  const handleSaveRecipe = async (recipe: Partial<Recipe>) => {
-    console.log("Saving recipe...", recipe);
-    // TODO: POST/PATCH /api/recipes
+  async function handleSaveRecipe(recipe: Partial<Recipe>) {
+    const newId = `rec_${Date.now()}`;
+    const fullRecipe: Recipe = {
+      id: recipe.id || newId,
+      name: recipe.name || "New Recipe",
+      bom: recipe.bom || [],
+      yieldPortions: recipe.yieldPortions || 1,
+      overheadPct: recipe.overheadPct || 0,
+      packagingCost: recipe.packagingCost || 0,
+      targetGpPct: recipe.targetGpPct || 0.6,
+    };
+    const res = await fetch("/api/recipes", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(fullRecipe) });
+    if(!res.ok) throw new Error("Save failed");
     toast({ title: "Success", description: "Recipe saved." });
+    await fetchData();
   };
 
-  const handleDeleteRecipe = async (id: string) => {
-    console.log("Deleting recipe", id);
-    // TODO: DELETE /api/recipes/[id]
+  async function handleDeleteRecipe(id: string) {
+    if (!window.confirm("Are you sure?")) return;
+    const res = await fetch(`/api/recipes/${id}`, { method:"DELETE" });
+    if(!res.ok) throw new Error("Delete failed");
     toast({ title: "Success", description: "Recipe deleted." });
+    await fetchData();
   };
 
-  const handleLinkItem = async (itemId: string, recipeId: string) => {
-    console.log(`Linking ${itemId} -> ${recipeId}`);
-    // TODO: POST /api/recipes/link
+  async function handleLinkItem(itemId: string, recipeId: string) {
+    const res = await fetch("/api/recipes/link", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ itemId, recipeId }) });
+    if(!res.ok) throw new Error("Link failed");
     toast({ title: "Linked", description: "Item linked to recipe." });
+    await fetchData();
   };
+  
 
   if (isLoading || !recipesFile) {
     return <AdminLayout title="Recipes">Loading...</AdminLayout>;
@@ -120,13 +208,12 @@ export default function RecipesPage() {
 
         <CardContent>
           <div className="flex justify-end mb-4">
-            <Button onClick={() => handleSaveRecipe({})}>
+            <Button onClick={() => handleSaveRecipe({name: 'New Recipe', id: `rec_${Date.now()}`})}>
               <PlusCircle className="mr-2" />
               New Recipe
             </Button>
           </div>
 
-          {/* Recipes List */}
           <div className="border border-zinc-800 rounded-lg divide-y divide-zinc-800">
             {(recipesFile.recipes ?? []).map((recipe) => (
               <div key={recipe.id} className="p-4">
@@ -139,8 +226,8 @@ export default function RecipesPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Link Dropdown */}
                     <Select
+                      value={recipesFile.links.find(l => l.recipeId === recipe.id)?.itemId}
                       onValueChange={(itemId) => handleLinkItem(itemId, recipe.id)}
                     >
                       <SelectTrigger className="w-[220px]">
@@ -168,7 +255,6 @@ export default function RecipesPage() {
                   </div>
                 </div>
 
-                {/* BOM list */}
                 <ul className="mt-3 text-sm space-y-1">
                   {(recipe.bom ?? []).map((row, idx) => {
                     const ing = ingredients.find((i) => i.id === row.ingredientId);
@@ -182,6 +268,7 @@ export default function RecipesPage() {
                     );
                   })}
                 </ul>
+                 <CostingDisplay recipeId={recipe.id} />
               </div>
             ))}
           </div>

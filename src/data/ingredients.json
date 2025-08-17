@@ -1,0 +1,21 @@
+
+[
+  {
+    "id": "flour12_5kg",
+    "name": "Flour 12.5kg",
+    "purchasePrice": 375.00,
+    "purchaseUom": "kg",
+    "purchaseQty": 12.5,
+    "baseUom": "g",
+    "yieldPct": 1.0
+  },
+  {
+    "id": "eggs_tray_30",
+    "name": "Eggs tray 30",
+    "purchasePrice": 65.00,
+    "purchaseUom": "ea",
+    "purchaseQty": 30,
+    "baseUom": "ea",
+    "yieldPct": 1.0
+  }
+]
