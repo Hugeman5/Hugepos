@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { type Order, type Shift, type ServiceCheck, type OrderLine } from '@/lib/data';
 import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CreditCard, Landmark, AlertCircle, FileDown, Mail, Printer, GitCommitHorizontal } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -342,4 +342,3 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
     </Card>
   );
 }
-

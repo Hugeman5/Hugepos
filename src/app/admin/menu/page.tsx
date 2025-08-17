@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { type Category, type MenuItem, type Menu, type ModifierSet } from '@/lib/menuRepo';
@@ -159,7 +159,8 @@ export default function MenuBuilderPage() {
                         <div className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.color }}></div>
                         <span className="flex-1 font-medium">{cat.name}</span>
                          <Switch checked={cat.active} onCheckedChange={async (active) => {
-                             await updateCategory(cat.id, { active });
+                             // This is a fire-and-forget for quick toggling
+                             updateCategory(cat.id, { active });
                              fetchData();
                          }} />
                         <Button size="icon" variant="ghost" onClick={() => { setEditingCategory(cat); setIsCategoryDialogOpen(true); }}>
@@ -287,4 +288,3 @@ export default function MenuBuilderPage() {
     </AdminLayout>
   );
 }
-

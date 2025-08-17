@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -7,7 +8,7 @@ import { routeForRole } from '@/lib/roles';
 import { type User } from '@/lib/data';
 
 import Avatar from '@/components/ui/Avatar';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import Keypad from '@/components/ui/Keypad';
 
 const setSession = (user: { uid: string, name: string, role: string }) => {

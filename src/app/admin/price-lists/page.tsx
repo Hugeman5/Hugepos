@@ -1,6 +1,6 @@
 
 import AdminLayout from '@/components/admin/AdminLayout';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 
