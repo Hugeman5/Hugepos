@@ -32,6 +32,7 @@ type Pricing = {
   priceIncVat?: number;
   packSize?: number;
   vatRate?: number;
+  uom?: Uom; // Add uom to pricing info
 };
 
 const VAT_DEFAULT = 0.15;
@@ -46,22 +47,37 @@ function getUnitCosts(ingId: string, pricing: Record<string, Pricing>) {
                    Number.isFinite(p.priceExVat) ? Number(p.priceExVat)! * (1 + vat) : undefined;
 
   const priceEx = Number.isFinite(p.priceExVat) ? Number(p.priceExVat) :
-                  Number.isFinite(priceInc) ? Number(priceInc)! / (1 + vat) : undefined;
+                  (Number.isFinite(priceInc) ? Number(priceInc)! / (1 + vat) : undefined);
 
-  const unitInc = Number.isFinite(p.unitCostIncVat) ? Number(p.unitCostIncVat) :
-                  (Number.isFinite(priceInc) ? Number(priceInc)! / pack : undefined);
+  let unitInc = Number.isFinite(p.unitCostIncVat) ? Number(p.unitCostIncVat) :
+                (Number.isFinite(priceInc) ? Number(priceInc)! / pack : undefined);
 
-  const unitEx  = Number.isFinite(p.unitCostExVat) ? Number(p.unitCostExVat) :
-                  (Number.isFinite(priceEx) ? Number(priceEx)! / pack : undefined);
+  let unitEx  = Number.isFinite(p.unitCostExVat) ? Number(p.unitCostExVat) :
+                (Number.isFinite(priceEx) ? Number(priceEx)! / pack : undefined);
+
+  // Apply UOM conversion factor for cost per base unit (g/ml)
+  let conversionFactor = 1;
+  if (p.uom === 'kg') conversionFactor = 1000;
+  if (p.uom === 'l') conversionFactor = 1000;
+
+  if (unitInc !== undefined) unitInc /= conversionFactor;
+  if (unitEx !== undefined) unitEx /= conversionFactor;
 
   return { unitEx, unitInc, vat, pack };
 }
 
-function rowTotals({ qty, wastePct, ingId }:{
-  qty: number; wastePct: number; ingId: string;
+function rowTotals({ qty, wastePct, ingId, uom }:{
+  qty: number; wastePct: number; ingId: string; uom: Uom
 }, pricing: Record<string, Pricing>) {
   const { unitEx, unitInc } = getUnitCosts(ingId, pricing);
-  const effQty = qty * (1 + (Number.isFinite(wastePct) ? wastePct : 0)); // simple waste uplift
+  
+  let convertedQty = qty;
+  // If we are using grams, but the base unit cost is per kg, we don't need to divide again
+  if (uom === 'kg' || uom === 'l') {
+    convertedQty *= 1000;
+  }
+  
+  const effQty = convertedQty * (1 + (Number.isFinite(wastePct) ? wastePct : 0));
   const ex = unitEx !== undefined ? effQty * unitEx : 0;
   const inc = unitInc !== undefined ? effQty * unitInc : 0;
   return { ex, inc };
@@ -139,7 +155,8 @@ export default function RecipeDialog({
       const t = rowTotals({
         qty: Number(r.qty || 0),
         wastePct: Number(r.wastePct || 0),
-        ingId: r.ingredientId
+        ingId: r.ingredientId,
+        uom: r.uom,
       }, ingredientsPricing);
       acc.ex += t.ex;
       acc.inc += t.inc;
@@ -239,7 +256,12 @@ export default function RecipeDialog({
               <span></span>
             </div>
             {form.bom.map((row, i) => {
-              const costs = rowTotals({ qty: Number(row.qty || 0), wastePct: Number(row.wastePct || 0), ingId: row.ingredientId }, ingredientsPricing);
+              const costs = rowTotals({ 
+                qty: Number(row.qty || 0), 
+                wastePct: Number(row.wastePct || 0), 
+                ingId: row.ingredientId,
+                uom: row.uom
+              }, ingredientsPricing);
               return (
                 <div key={i} className="grid grid-cols-[1fr_90px_90px_110px_120px_120px_40px] gap-2 items-end">
                   <IngredientPicker
