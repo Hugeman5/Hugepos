@@ -88,43 +88,41 @@ export default function FloorPlanAdminPage() {
 
   return (
     <AdminLayout title="Floor Plan Editor">
-      <Card>
-        <div className="p-4 border-b border-brand-line">
-          <h2 className="text-xl font-semibold">Manage Floor Plan</h2>
-          <p className="text-brand-mute">Visually arrange your restaurant's tables and service areas.</p>
-        </div>
-        <div className="p-4">
-            <div className="flex justify-end mb-4">
-                 <Button onClick={() => handleOpenTableDialog()}><PlusCircle className="mr-2"/> Add Table</Button>
-            </div>
-            <div className="relative border rounded-lg bg-background h-[600px] w-full p-4 overflow-auto">
-              {floorPlan.areas.map(area => (
-                <div key={area.id} className="mb-8">
-                    <h3 className="text-lg font-semibold mb-2" style={{ color: area.color }}>{area.name}</h3>
-                    <div className="relative border-2 border-dashed h-full rounded-md" style={{ borderColor: area.color }}>
-                        {floorPlan.tables.filter(t => t.areaId === area.id).map(table => (
-                            <div
-                                key={table.id}
-                                className={cn('absolute group w-24 h-24 border-2 flex flex-col items-center justify-center cursor-pointer', table.shape === 'round' && 'rounded-full')}
-                                style={{ left: `${table.x}px`, top: `${table.y}px`, borderColor: area.color }}
-                            >
-                               <div className="z-10">
-                                   <p className="font-bold text-lg">{table.name}</p>
-                                   <p className="text-xs text-muted-foreground">{table.seats} seats</p>
-                               </div>
-                               <div className="absolute inset-0 bg-card opacity-80 group-hover:opacity-100 transition-opacity"></div>
-                               <div className="absolute top-1 right-1 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                   <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleOpenTableDialog(table)}><Edit className="h-3 w-3"/></Button>
-                                   <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDeleteTable(table.id)}><Trash2 className="h-3 w-3 text-destructive"/></Button>
-                               </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-              ))}
-            </div>
-        </div>
-      </Card>
+      <div className="p-4 border-b border-brand-line">
+        <h2 className="text-xl font-semibold">Manage Floor Plan</h2>
+        <p className="text-brand-mute">Visually arrange your restaurant's tables and service areas.</p>
+      </div>
+      <div className="p-4">
+          <div className="flex justify-end mb-4">
+               <Button onClick={() => handleOpenTableDialog()}><PlusCircle className="mr-2"/> Add Table</Button>
+          </div>
+          <div className="relative border rounded-lg bg-background h-[600px] w-full p-4 overflow-auto">
+            {floorPlan.areas.map(area => (
+              <div key={area.id} className="mb-8">
+                  <h3 className="text-lg font-semibold mb-2" style={{ color: area.color }}>{area.name}</h3>
+                  <div className="relative border-2 border-dashed h-full rounded-md" style={{ borderColor: area.color }}>
+                      {floorPlan.tables.filter(t => t.areaId === area.id).map(table => (
+                          <div
+                              key={table.id}
+                              className={cn('absolute group w-24 h-24 border-2 flex flex-col items-center justify-center cursor-pointer', table.shape === 'round' && 'rounded-full')}
+                              style={{ left: `${table.x}px`, top: `${table.y}px`, borderColor: area.color }}
+                          >
+                             <div className="z-10">
+                                 <p className="font-bold text-lg">{table.name}</p>
+                                 <p className="text-xs text-muted-foreground">{table.seats} seats</p>
+                             </div>
+                             <div className="absolute inset-0 bg-card opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                             <div className="absolute top-1 right-1 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleOpenTableDialog(table)}><Edit className="h-3 w-3"/></Button>
+                                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDeleteTable(table.id)}><Trash2 className="h-3 w-3 text-destructive"/></Button>
+                             </div>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+            ))}
+          </div>
+      </div>
       
       <Dialog open={isTableDialogOpen} onOpenChange={setIsTableDialogOpen}>
           <DialogContent>

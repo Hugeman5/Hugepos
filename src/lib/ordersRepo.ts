@@ -1,4 +1,5 @@
 
+
 import { promises as fs } from 'fs';
 import path from 'path';
 import { type Order, type Cart, type User, type OrderLine, type Product } from './data';
@@ -105,12 +106,9 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
     const product = productMap.get(line.productId);
     if (!product) throw new Error(`Invalid product ID in cart: ${line.productId}`);
     
-    const tax = taxMap.get(product.taxId);
-    if (!tax) throw new Error(`Invalid tax ID on product: ${product.taxId}`);
-
     const lineModifiers = product.modifierIds?.map(id => modifierMap.get(id)).filter(Boolean) as any[];
 
-    const computedLine = await pricing.computeLine(line, product, lineModifiers, tax);
+    const computedLine = await pricing.computeLine(line, product, lineModifiers);
     
     const stationId = await stationsRepo.resolveStationForProduct(product.id, product.categoryId);
 
