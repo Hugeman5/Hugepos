@@ -9,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PlusCircle, Trash2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import IngredientPicker from "@/components/recipes/IngredientPicker";
+import { lineCostIncVat } from "@/lib/costing";
+import { type Ingredient } from "@/lib/repos/ingredientsRepo";
 
-type Uom = "g" | "kg" | "ml" | "l" | "ea" | string;
 
 export type IngredientLite = { id: string; name: string };
-export type BomRowEdit = { ingredientId: string; qty: number | ""; uom: Uom; wastePct: number | "" };
+export type BomRowEdit = { ingredientId: string; qty: number | ""; uom: string; wastePct: number | "" };
 
 export type RecipeEdit = {
   id: string;
@@ -25,63 +26,11 @@ export type RecipeEdit = {
   bom: BomRowEdit[];
 };
 
-type Pricing = {
-  unitCostExVat?: number;
-  unitCostIncVat?: number;
-  priceExVat?: number;
-  priceIncVat?: number;
-  packSize?: number;
-  vatRate?: number;
-  uom?: Uom; // Add uom to pricing info
-};
+type Pricing = Ingredient;
 
 const VAT_DEFAULT = 0.15;
 const currency = "ZAR";
 
-function getUnitCosts(ingId: string, pricing: Record<string, Pricing>) {
-  const p = pricing[ingId] || {};
-  const vat = Number.isFinite(p.vatRate) ? (p.vatRate as number) : VAT_DEFAULT;
-  const pack = Number(p.packSize) > 0 ? Number(p.packSize) : 1;
-
-  const priceInc = Number.isFinite(p.priceIncVat) ? Number(p.priceIncVat) :
-                   Number.isFinite(p.priceExVat) ? Number(p.priceExVat)! * (1 + vat) : undefined;
-
-  const priceEx = Number.isFinite(p.priceExVat) ? Number(p.priceExVat) :
-                  (Number.isFinite(priceInc) ? Number(priceInc)! / (1 + vat) : undefined);
-
-  let unitInc = Number.isFinite(p.unitCostIncVat) ? Number(p.unitCostIncVat) :
-                (Number.isFinite(priceInc) ? Number(priceInc)! / pack : undefined);
-
-  let unitEx  = Number.isFinite(p.unitCostExVat) ? Number(p.unitCostExVat) :
-                (Number.isFinite(priceEx) ? Number(priceEx)! / pack : undefined);
-
-  // Apply UOM conversion factor for cost per base unit (g/ml)
-  let conversionFactor = 1;
-  if (p.uom === 'kg') conversionFactor = 1000;
-  if (p.uom === 'l') conversionFactor = 1000;
-
-  if (unitInc !== undefined) unitInc /= conversionFactor;
-  if (unitEx !== undefined) unitEx /= conversionFactor;
-
-  return { unitEx, unitInc, vat, pack };
-}
-
-function rowTotals({ qty, wastePct, ingId, uom }:{
-  qty: number; wastePct: number; ingId: string; uom: Uom
-}, pricing: Record<string, Pricing>) {
-  const { unitEx, unitInc } = getUnitCosts(ingId, pricing);
-  
-  let convertedQty = qty;
-  // If we are using grams, but the base unit cost is per kg, we don't need to divide again
-  if (uom === 'kg' || uom === 'l') {
-    convertedQty *= 1000;
-  }
-  
-  const effQty = convertedQty * (1 + (Number.isFinite(wastePct) ? wastePct : 0));
-  const ex = unitEx !== undefined ? effQty * unitEx : 0;
-  const inc = unitInc !== undefined ? effQty * unitInc : 0;
-  return { ex, inc };
-}
 
 export default function RecipeDialog({
   open, mode, initial, ingredients,
@@ -152,14 +101,19 @@ export default function RecipeDialog({
   
   const bomTotals = useMemo(() => {
     return (form.bom || []).reduce((acc, r) => {
-      const t = rowTotals({
-        qty: Number(r.qty || 0),
-        wastePct: Number(r.wastePct || 0),
-        ingId: r.ingredientId,
-        uom: r.uom,
-      }, ingredientsPricing);
-      acc.ex += t.ex;
-      acc.inc += t.inc;
+      const ingredient = ingredientsPricing[r.ingredientId];
+      if (!ingredient) return acc;
+      
+      const inc = lineCostIncVat({
+          ingredient: ingredient,
+          qty: Number(r.qty || 0),
+          uom: r.uom,
+          wastePct: Number(r.wastePct || 0)
+      });
+      const ex = inc / (1 + (ingredient.vatRate || VAT_DEFAULT));
+
+      acc.ex += ex;
+      acc.inc += inc;
       return acc;
     }, { ex: 0, inc: 0 });
   }, [form.bom, ingredientsPricing]);
@@ -256,12 +210,18 @@ export default function RecipeDialog({
               <span></span>
             </div>
             {form.bom.map((row, i) => {
-              const costs = rowTotals({ 
-                qty: Number(row.qty || 0), 
-                wastePct: Number(row.wastePct || 0), 
-                ingId: row.ingredientId,
-                uom: row.uom
-              }, ingredientsPricing);
+              const ingredient = ingredientsPricing[row.ingredientId];
+              const costs = { ex: 0, inc: 0 };
+              if (ingredient) {
+                  costs.inc = lineCostIncVat({
+                      ingredient: ingredient,
+                      qty: Number(row.qty || 0),
+                      uom: row.uom,
+                      wastePct: Number(row.wastePct || 0)
+                  });
+                  costs.ex = costs.inc / (1 + (ingredient.vatRate || VAT_DEFAULT));
+              }
+              
               return (
                 <div key={i} className="grid grid-cols-[1fr_90px_90px_110px_120px_120px_40px] gap-2 items-end">
                   <IngredientPicker
@@ -274,7 +234,7 @@ export default function RecipeDialog({
                     <Input inputMode="decimal" value={row.qty} onChange={e=>setBom(i,{ qty: toNum(e.target.value) })}/>
                   </div>
                   <div>
-                    <Select value={row.uom} onValueChange={v=>setBom(i,{ uom: v as Uom })}>
+                    <Select value={row.uom} onValueChange={v=>setBom(i,{ uom: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="g">g</SelectItem>

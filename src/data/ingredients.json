@@ -3,19 +3,21 @@
   {
     "id": "flour12_5kg",
     "name": "Flour 12.5kg",
-    "purchasePrice": 375.00,
     "purchaseUom": "kg",
-    "purchaseQty": 12.5,
-    "baseUom": "g",
-    "yieldPct": 1.0
+    "purchaseSize": 12.5,
+    "priceIncVat": 375,
+    "priceExVat": 326.09,
+    "vatRate": 0.15,
+    "source": "manual"
   },
   {
     "id": "eggs_tray_30",
     "name": "Eggs tray 30",
-    "purchasePrice": 65.00,
     "purchaseUom": "ea",
-    "purchaseQty": 30,
-    "baseUom": "ea",
-    "yieldPct": 1.0
+    "purchaseSize": 30,
+    "priceIncVat": 80,
+    "priceExVat": 69.57,
+    "vatRate": 0.15,
+    "source": "manual"
   }
 ]

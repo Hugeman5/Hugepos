@@ -1,95 +1,80 @@
 
 import { NextResponse } from "next/server";
 import { getSettings } from "@/lib/settingsRepo";
-import { round2 } from "@/lib/money";
-
 import { getRecipesFile } from "@/lib/repos/recipesRepo";
 import { getAllIngredients } from "@/lib/repos/ingredientsRepo";
-import { type Recipe, type BomRow } from "@/lib/repos/recipesRepo";
-import { type Ingredient } from "@/lib/repos/ingredientsRepo";
+import { toBase } from "@/lib/uom";
 
-type Num = number;
-const n = (v: any, d = 0): Num => {
-  const x = typeof v === "string" ? parseFloat(v) : Number(v);
-  return Number.isFinite(x) ? x : d;
-};
+function round2(n:number){ return Math.round((n + Number.EPSILON) * 100) / 100; }
 
-// Cost source priority
-function getUnitCost(ing: Ingredient): number {
-    if (typeof ing.unitCostIncVat === 'number' && isFinite(ing.unitCostIncVat)) return ing.unitCostIncVat;
-    if (typeof ing.priceIncVat === 'number' && isFinite(ing.priceIncVat) && typeof ing.packSize === 'number' && ing.packSize > 0) return ing.priceIncVat / ing.packSize;
-    if (typeof ing.unitCostExVat === 'number' && isFinite(ing.unitCostExVat)) return ing.unitCostExVat;
-    if (typeof ing.priceExVat === 'number' && isFinite(ing.priceExVat) && typeof ing.packSize === 'number' && ing.packSize > 0) return ing.priceExVat / ing.packSize;
-    return 0;
-}
+export async function POST(req: Request){
+  try{
+    const { recipeId } = await req.json();
+    if(!recipeId) return NextResponse.json({error:"recipeId required"},{status:400});
 
+    const settings = await getSettings();
+    const recipes = await getRecipesFile();
+    const ing = await getAllIngredients();
 
-export async function POST(req: Request) {
-  try {
-    const { recipeId } = await req.json().catch(() => ({}));
-    if (!recipeId) {
-      return NextResponse.json({ error: "recipeId required" }, { status: 400 });
-    }
+    const r = recipes.recipes.find(x=>x.id===recipeId);
+    if(!r) return NextResponse.json({error:"Recipe not found"},{status:404});
 
-    const [recipesFile, ingredients, settings] = await Promise.all([
-      getRecipesFile(),
-      getAllIngredients(),
-      getSettings()
-    ]);
-
-    const recipe = (recipesFile?.recipes ?? []).find((r: any) => r.id === recipeId);
-    if (!recipe) return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
-
-    const ingById = new Map(ingredients.map((i: any) => [i.id, i]));
-
-    // Base cost = Σ (qty * unitCost * (1 + wastePct))
     let baseCost = 0;
-    for (const row of recipe.bom ?? []) {
-      const ing = ingById.get(row.ingredientId);
-      if (!ing) continue;
-      
-      const qty = n(row.qty);
-      const uCost = getUnitCost(ing);
-      const waste = Math.max(n(row.wastePct), 0);
-      baseCost += qty * uCost * (1 + waste);
+
+    for(const row of (r.bom ?? [])){
+      const item = ing.find(i=>i.id===row.ingredientId);
+      if(!item) continue;
+
+      const waste = Number(row.wastePct ?? 0);
+      const qty = Number(row.qty ?? 0);
+      const uom = String(row.uom ?? item.purchaseUom);
+      const eff = qty * (1 + waste);
+
+      const recipeBase = toBase(eff, uom);
+      const packBase   = toBase(item.purchaseSize, item.purchaseUom);
+
+      if (recipeBase.kind !== packBase.kind) {
+        return NextResponse.json({ error:`UoM mismatch for ${item.name}: ${uom} vs ${item.purchaseUom}` }, { status:400 });
+      }
+
+      const packPriceInc = Number(item.priceIncVat ?? 0);
+      const unitPriceInc = packPriceInc / packBase.base;
+
+      const lineCostInc = unitPriceInc * recipeBase.base;
+
+      baseCost += lineCostInc;
     }
 
-    const overheadPct = Math.max(n(recipe.overheadPct), 0);
-    const packaging = Math.max(n(recipe.packagingCost), 0);
+    const packaging = Number(r.packagingCost ?? 0);
+    const overheadPct = Number(r.overheadPct ?? 0);
+    const targetGp = Math.min(Math.max(Number(r.targetGpPct ?? 0.6), 0), 0.95);
+    const vatRate  = Number(settings.vat.defaultRate ?? 0.15);
 
-    const overhead = baseCost * overheadPct + packaging;
-    const totalCost = baseCost + overhead;
-
-    const portions = Math.max(n(recipe.yieldPortions, 1), 1);
+    const overhead = baseCost * overheadPct;
+    const totalCost = baseCost + overhead + packaging;
+    const portions  = Math.max(Number(r.yieldPortions ?? 1), 1);
     const costPerPortion = totalCost / portions;
 
-    // GP% is margin on ex-VAT price: price = cost / (1 - GP%)
-    const gpPct = (() => {
-      const g = n(recipe.targetGpPct, 0.6);
-      return g > 0 && g < 1 ? g : 0.6;
-    })();
-
-    let exVatRSP = costPerPortion / (1 - gpPct);
-
-    const vatRate = Number(settings.vat.defaultRate); // guarantee number
-    const vatAmount = exVatRSP * vatRate;
-    const incVatRSP = exVatRSP + vatAmount;
+    const costEx = totalCost / (1 + vatRate);
+    const rspEx  = costEx / (1 - targetGp);
+    const vatAmt = rspEx * vatRate;
+    const rspInc = rspEx + vatAmt;
 
     return NextResponse.json({
-      currency: settings.currency,
+      currency: settings.currency ?? "ZAR",
       vatRate,
-      baseCost,
-      overhead,
-      totalCost,
-      costPerPortion,
-      exVatRSP: round2(exVatRSP),
-      incVatRSP: round2(incVatRSP),
-      vatAmount: round2(vatAmount),
-      gp: round2(exVatRSP - costPerPortion),
-      gpPct,
+      baseCost: round2(baseCost),
+      overhead: round2(overhead),
+      totalCost: round2(totalCost),
+      costPerPortion: round2(costPerPortion),
+      exVatRSP: round2(rspEx),
+      incVatRSP: round2(rspInc),
+      vatAmount: round2(vatAmt),
+      gp: round2(rspEx - costEx),
+      gpPct: round2(targetGp * 100)
     });
-  } catch (e) {
+  }catch(e:any){
     console.error("Costing error:", e)
-    return NextResponse.json({ error: "Costing failed" }, { status: 500 });
+    return NextResponse.json({error:e?.message ?? "Costing failed"},{status:500});
   }
 }
