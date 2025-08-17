@@ -3,24 +3,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
 import { useToast } from '@/hooks/use-toast';
 import { type FloorPlan, type Table, type Area } from '@/lib/data';
 import { PlusCircle, Trash2, Edit } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { FloorPlanObject } from '@/components/waiter/FloorPlanObject';
+
+type EditingObject = (Partial<Table> & { objectType: 'table' }) | (Partial<any> & { objectType: 'decor' });
 
 export default function FloorPlanAdminPage() {
   const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   
-  const [isTableDialogOpen, setIsTableDialogOpen] = useState(false);
-  const [editingTable, setEditingTable] = useState<Partial<Table> | null>(null);
+  const [isObjectDialogOpen, setIsObjectDialogOpen] = useState(false);
+  const [editingObject, setEditingObject] = useState<EditingObject | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -41,29 +42,38 @@ export default function FloorPlanAdminPage() {
   }, [fetchData]);
 
   const handleOpenTableDialog = (table?: Table) => {
-    setEditingTable(table || { name: '', areaId: floorPlan?.areas[0]?.id || '', seats: 2, shape: 'square', x: 50, y: 50 });
-    setIsTableDialogOpen(true);
+    setEditingObject({ objectType: 'table', ...table, name: table?.name || '', areaId: table?.areaId || floorPlan?.areas[0]?.id || '', seats: table?.seats || 2, shape: table?.shape || 'square', x: table?.x || 50, y: table?.y || 50 });
+    setIsObjectDialogOpen(true);
   };
   
-  const handleSaveTable = async () => {
-    if (!editingTable) return;
+  const handleSaveObject = async () => {
+    if (!editingObject) return;
     
-    const url = editingTable.id ? `/api/floor/tables/${editingTable.id}` : '/api/floor/tables';
-    const method = editingTable.id ? 'PATCH' : 'POST';
+    // This is a simplified example. A real implementation would have separate endpoints for decor.
+    // For now, we'll focus on just updating tables as that's what the API supports.
+    if (editingObject.objectType !== 'table') {
+        toast({ title: 'Info', description: 'Editing decor items is not yet supported.'})
+        setIsObjectDialogOpen(false);
+        return;
+    }
+
+    const tableData = editingObject as Partial<Table>;
+    const url = tableData.id ? `/api/floor/tables/${tableData.id}` : '/api/floor/tables';
+    const method = tableData.id ? 'PATCH' : 'POST';
     
     try {
         const res = await fetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(editingTable),
+            body: JSON.stringify(tableData),
         });
         if (!res.ok) {
             const error = await res.json();
             throw new Error(error.message || "Failed to save table");
         }
-        toast({ title: 'Success', description: `Table ${editingTable.name} saved.`});
-        setIsTableDialogOpen(false);
-        setEditingTable(null);
+        toast({ title: 'Success', description: `Table ${tableData.name} saved.`});
+        setIsObjectDialogOpen(false);
+        setEditingObject(null);
         fetchData(); // Refresh data
     } catch (e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
@@ -100,63 +110,64 @@ export default function FloorPlanAdminPage() {
             {floorPlan.areas.map(area => (
               <div key={area.id} className="mb-8">
                   <h3 className="text-lg font-semibold mb-2" style={{ color: area.color }}>{area.name}</h3>
-                  <div className="relative border-2 border-dashed h-full rounded-md" style={{ borderColor: area.color }}>
+                  <div className="relative border-2 border-dashed h-full rounded-md p-4" style={{ borderColor: area.color }}>
                       {floorPlan.tables.filter(t => t.areaId === area.id).map(table => (
                           <div
                               key={table.id}
-                              className={cn('absolute group w-24 h-24 border-2 flex flex-col items-center justify-center cursor-pointer', table.shape === 'round' && 'rounded-full')}
-                              style={{ left: `${table.x}px`, top: `${table.y}px`, borderColor: area.color }}
+                              className="absolute group cursor-pointer"
+                              style={{ left: `${table.x}px`, top: `${table.y}px` }}
                           >
-                             <div className="z-10">
-                                 <p className="font-bold text-lg">{table.name}</p>
-                                 <p className="text-xs text-muted-foreground">{table.seats} seats</p>
-                             </div>
-                             <div className="absolute inset-0 bg-card opacity-80 group-hover:opacity-100 transition-opacity"></div>
-                             <div className="absolute top-1 right-1 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleOpenTableDialog(table)}><Edit className="h-3 w-3"/></Button>
-                                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleDeleteTable(table.id)}><Trash2 className="h-3 w-3 text-destructive"/></Button>
+                             <FloorPlanObject type="table" shape={table.shape} seats={table.seats} name={table.name} />
+                             <div className="absolute -top-2 -right-2 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <Button size="icon" variant="secondary" className="h-6 w-6" onClick={() => handleOpenTableDialog(table)}><Edit className="h-3 w-3"/></Button>
+                                 <Button size="icon" variant="destructive" className="h-6 w-6" onClick={() => handleDeleteTable(table.id)}><Trash2 className="h-3 w-3"/></Button>
                              </div>
                           </div>
                       ))}
+                       {floorPlan.decor?.map(item => (
+                          <div key={item.id} className="absolute group" style={{ left: `${item.x}px`, top: `${item.y}px` }}>
+                            <FloorPlanObject type={item.asset} />
+                          </div>
+                       ))}
                   </div>
               </div>
             ))}
           </div>
       </div>
       
-      <Dialog open={isTableDialogOpen} onOpenChange={setIsTableDialogOpen}>
+      <Dialog open={isObjectDialogOpen} onOpenChange={setIsObjectDialogOpen}>
           <DialogContent>
             <DialogHeader>
-                <DialogTitle>{editingTable?.id ? `Edit ${editingTable.name}` : 'Add New Table'}</DialogTitle>
+                <DialogTitle>{editingObject?.id ? `Edit Object` : 'Add New Object'}</DialogTitle>
             </DialogHeader>
-            {editingTable && (
+            {editingObject?.objectType === 'table' && (
                 <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="name" className="text-right">Name</Label>
-                        <Input id="name" value={editingTable.name} onChange={(e) => setEditingTable(t => t ? {...t, name: e.target.value} : null)} className="col-span-3" />
+                        <Input id="name" value={(editingObject as Table).name} onChange={(e) => setEditingObject(o => o ? {...o, name: e.target.value} : null)} className="col-span-3" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="area" className="text-right">Area</Label>
-                        <Select value={editingTable.areaId} onValueChange={(val) => setEditingTable(t => t ? {...t, areaId: val} : null)}>
+                        <Select value={(editingObject as Table).areaId} onValueChange={(val) => setEditingObject(o => o ? {...o, areaId: val} : null)}>
                             <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
                             <SelectContent>{floorPlan.areas.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
                         </Select>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="seats" className="text-right">Seats</Label>
-                        <Input id="seats" type="number" value={editingTable.seats} onChange={(e) => setEditingTable(t => t ? {...t, seats: parseInt(e.target.value, 10)} : null)} className="col-span-3" />
+                        <Input id="seats" type="number" value={(editingObject as Table).seats} onChange={(e) => setEditingObject(o => o ? {...o, seats: parseInt(e.target.value, 10)} : null)} className="col-span-3" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="x" className="text-right">X Pos</Label>
-                        <Input id="x" type="number" value={editingTable.x} onChange={(e) => setEditingTable(t => t ? {...t, x: parseInt(e.target.value, 10)} : null)} className="col-span-3" />
+                        <Input id="x" type="number" value={editingObject.x} onChange={(e) => setEditingObject(o => o ? {...o, x: parseInt(e.target.value, 10)} : null)} className="col-span-3" />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="y" className="text-right">Y Pos</Label>
-                        <Input id="y" type="number" value={editingTable.y} onChange={(e) => setEditingTable(t => t ? {...t, y: parseInt(e.target.value, 10)} : null)} className="col-span-3" />
+                        <Input id="y" type="number" value={editingObject.y} onChange={(e) => setEditingObject(o => o ? {...o, y: parseInt(e.target.value, 10)} : null)} className="col-span-3" />
                     </div>
                      <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="shape" className="text-right">Shape</Label>
-                        <Select value={editingTable.shape} onValueChange={(val) => setEditingTable(t => t ? {...t, shape: val as any} : null)}>
+                        <Select value={(editingObject as Table).shape} onValueChange={(val) => setEditingObject(o => o ? {...o, shape: val as any} : null)}>
                             <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="square">Square</SelectItem>
@@ -167,8 +178,8 @@ export default function FloorPlanAdminPage() {
                 </div>
             )}
             <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsTableDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSaveTable}>Save Table</Button>
+                <Button variant="secondary" onClick={() => setIsObjectDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveObject}>Save</Button>
             </DialogFooter>
           </DialogContent>
       </Dialog>

@@ -3,6 +3,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -290,9 +291,19 @@ export type Table = {
   shape: TableShape;
 };
 
+export type Decor = {
+  id: string;
+  asset: 'plant' | 'bar' | string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+}
+
 export type FloorPlan = {
   areas: Area[];
   tables: Table[];
+  decor?: Decor[];
 };
 
 export type TableState = "free"|"seated"|"ordering"|"fired"|"served"|"bill"|"dirty";
@@ -453,4 +464,3 @@ export type EmailOutboxItem = {
     status: 'queued' | 'sent' | 'error';
     error?: string;
 };
-

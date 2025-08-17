@@ -41,6 +41,37 @@
       "x": 100,
       "y": 100,
       "shape": "square"
+    },
+    {
+      "id": "P2",
+      "areaId": "patio",
+      "name": "P2",
+      "seats": 2,
+      "x": 300,
+      "y": 250,
+      "shape": "round"
+    }
+  ],
+  "decor": [
+    {
+      "id": "plant1",
+      "asset": "plant",
+      "x": 450,
+      "y": 80
+    },
+    {
+      "id": "plant2",
+      "asset": "plant",
+      "x": 50,
+      "y": 350
+    },
+    {
+      "id": "bar",
+      "asset": "bar",
+      "x": 550,
+      "y": 120,
+      "width": 200,
+      "height": 50
     }
   ]
 }
