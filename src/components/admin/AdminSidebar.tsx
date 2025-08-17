@@ -10,7 +10,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 const navItems = [
   { href: '/admin', label: 'Overview', icon: Home },
   { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/admin/orders', label: 'Orders', icon: Package },
 ];
 
 const catalogItems = [
@@ -67,7 +66,9 @@ const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; ico
 const NavGroup = ({ title, items }: { title: string; items: { href: string; label: string; icon: React.ElementType }[] }) => (
     <Accordion type="single" collapsible defaultValue="item-1">
         <AccordionItem value="item-1" className="border-b-0">
-            <AccordionTrigger className="py-2 text-sm text-brand-text-dim hover:no-underline">{title}</AccordionTrigger>
+            <AccordionTrigger className="py-2 text-sm text-brand-text-dim hover:no-underline">
+              <span>{title}</span>
+            </AccordionTrigger>
             <AccordionContent className="pl-4 space-y-1">
                 {items.map(item => <NavLink key={item.href} {...item} />)}
             </AccordionContent>
