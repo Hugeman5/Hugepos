@@ -22,5 +22,10 @@ hr{border:none;border-top:1px dashed #999;margin:.5rem 0}
 <div class="center" style="font-size:0.8em;padding-top:8px;">Prices include VAT</div>
 {{/priceIncludesVAT}}
 <hr/>
+<div class="center" style="margin-top: 16px;">Scan to view receipt</div>
+<div class="center" style="margin-top: 8px;"><img src="{{qrUrl}}" alt="QR Code" /></div>
+<div class="center" style="margin-top: 16px;">Order: {{orderNumber}}</div>
+<div class="center" style="margin-top: 8px;"><img src="{{code128Url}}" alt="Barcode" /></div>
+<hr/>
 <div class="center">THANK YOU!</div>
 </body></html>

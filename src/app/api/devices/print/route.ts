@@ -6,6 +6,9 @@ import * as ordersRepo from '@/lib/ordersRepo';
 import * as paymentsRepo from '@/lib/paymentsRepo';
 import * as templates from '@/lib/printTemplates';
 import * as settingsRepo from '@/lib/settingsRepo';
+import * as signing from '@/lib/signing';
+import * as qr from '@/lib/qr';
+import * as barcode from '@/lib/barcode';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { formatMoney } from '@/lib/money';
@@ -34,10 +37,8 @@ export async function POST(req: Request) {
         if (type === 'test') {
              if (!deviceId) throw new Error("deviceId is required for test prints.");
              job = await printRepo.enqueue({ deviceId, type, payload: { message: "Test print successful!" } });
-             const template = await templates.getTemplate('test');
-             // For test, we can use default settings for rendering
              const settings = await settingsRepo.getSettings();
-             const html = await templates.render("receipt", { ...job.payload, ts: new Date().toLocaleString(), currencySymbol: settings.currencySymbol, vatRatePct: Math.round(settings.vat.defaultRate * 100) });
+             const html = await templates.render("receipt", { outlet:"Test Outlet", register: "Test Register", orderNumber: "TEST-001", ts: new Date().toLocaleString(), server: "Test User", lines: [{qty:1, name:"Test Item", priceEach: formatMoney(10, settings.currency, settings.locale)}], subtotal:formatMoney(10, settings.currency, settings.locale), discount: formatMoney(0, settings.currency, settings.locale), vat:formatMoney(1.5, settings.currency, settings.locale), total:formatMoney(11.5, settings.currency, settings.locale), priceIncludesVAT:true, vatRatePct: 15, qrUrl:"", code128Url:"" });
              const outputPath = `/data/prints/${job.id}.html`;
              await fs.writeFile(path.join(process.cwd(), 'data', 'prints', `${job.id}.html`), html);
              job = await printRepo.setStatus(job.id, { outputPath, status: 'rendered' });
@@ -55,6 +56,15 @@ export async function POST(req: Request) {
             
             const settings = await settingsRepo.getSettings();
 
+            // --- Generate signed QR and barcode ---
+            const ts = new Date(order.ts).toISOString();
+            const totalCents = Math.round((order.totals.total || 0) * 100);
+            const sig = await signing.signReceipt({ orderId: order.id, totalCents, ts });
+            const deepPath = `/r/${encodeURIComponent(order.id)}?ts=${encodeURIComponent(ts)}&total=${totalCents}&sig=${sig}`;
+            const qrUrl = await qr.qrDataUrl(`http://localhost:9000${deepPath}`, 150); // Using localhost for now
+            const code128Url = await barcode.code128SvgDataUrl(String(order.number));
+            // ------------------------------------
+
             const templateData = {
                 outlet: "Main Outlet",
                 register: "Front Register",
@@ -64,7 +74,7 @@ export async function POST(req: Request) {
                 lines: order.lines.map(line => ({
                     name: line.name,
                     qty: line.qty,
-                    priceEach: formatMoney(line.unitPrice, settings.currency, settings.locale)
+                    priceEach: formatMoney(line.lineTotal, settings.currency, settings.locale)
                 })),
                 subtotal: formatMoney(order.totals.subtotal, settings.currency, settings.locale),
                 discount: formatMoney(order.totals.discount || 0, settings.currency, settings.locale),
@@ -72,8 +82,9 @@ export async function POST(req: Request) {
                 total: formatMoney(order.totals.total, settings.currency, settings.locale),
                 priceIncludesVAT: settings.vat.priceIncludesVAT,
                 vatRatePct: Math.round(settings.vat.defaultRate * 100),
-                currencySymbol: settings.currencySymbol,
                 payments,
+                qrUrl,
+                code128Url
             };
 
             job = await printRepo.enqueue({ deviceId: printer.id, type, payload: templateData });

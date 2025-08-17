@@ -1,5 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { formatMoney } from './money';
+import { getSettings } from './settingsRepo';
 
 const templatesDir = path.join(process.cwd(), 'data', 'print_templates');
 
@@ -29,18 +31,20 @@ export async function render(kind: 'receipt' | 'kitchen', data: Record<string, a
     output = output.replace(/\{\{#each (\w+)\}\}([\s\S]*?)\{\{\/each\}\}/g, (match, key, block) => {
         const items = data[key];
         if (!Array.isArray(items)) return '';
-        // This is a simplified version; doesn't support nested each or complex context
+        
         return items.map(item => {
             let renderedBlock = block;
             for (const itemKey in item) {
-                renderedBlock = renderedBlock.replace(new RegExp(`\\{\\{${itemKey}\\}\\}`, 'g'), item[itemKey]);
+                 if (typeof item[itemKey] === 'string' || typeof item[itemKey] === 'number') {
+                    renderedBlock = renderedBlock.replace(new RegExp(`\\{\\{${itemKey}\\}\\}`, 'g'), String(item[itemKey]));
+                }
             }
             return renderedBlock;
         }).join('');
     });
     
-    // Handle {{#if}} blocks (basic existence check)
-    output = output.replace(/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (match, key, block) => {
+    // Handle conditional blocks
+    output = output.replace(/\{\{#(priceIncludesVAT)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (match, key, block) => {
         return data[key] ? block : '';
     });
 
@@ -53,6 +57,8 @@ export async function render(kind: 'receipt' | 'kitchen', data: Record<string, a
             if (value && typeof value === 'object' && k in value) {
                 value = value[k];
             } else {
+                 // if the key is not found directly, check if it's a root key
+                if(data[key]) return String(data[key]);
                 return ''; // Key not found, replace with empty string
             }
         }
