@@ -10,6 +10,7 @@ import {
 } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
+import { type Settings } from '@/lib/settingsRepo';
 
 export default function CashierDashboardPage() {
   const [menuData, setMenuData] = useState<Menu | null>(null);
@@ -17,6 +18,7 @@ export default function CashierDashboardPage() {
   const [qtyBuffer, setQtyBuffer] = useState<number>(1);
   const [user, setUser] = useState({ uid: 'jcashier', name: 'John Cashier' });
   const [shiftStatus, setShiftStatus] = useState<any>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const { toast } = useToast();
   const scanBuffer = useRef('');
   const scanTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -37,32 +39,29 @@ export default function CashierDashboardPage() {
   }
 
   useEffect(() => {
-    async function fetchMenu() {
+    async function fetchInitialData() {
       try {
-        const res = await fetch('/api/admin/menu');
-        if (!res.ok) throw new Error('Failed to fetch menu');
-        const data = await res.json();
-        setMenuData(data);
+        const [menuRes, shiftRes, settingsRes] = await Promise.all([
+            fetch('/api/admin/menu'),
+            fetch('/api/register/open-shift'),
+            fetch('/api/settings'),
+        ]);
+
+        if (!menuRes.ok) throw new Error('Failed to fetch menu');
+        setMenuData(await menuRes.json());
+        
+        if (shiftRes.ok) setShiftStatus(await shiftRes.json());
+
+        if (!settingsRes.ok) throw new Error('Failed to fetch settings');
+        setSettings(await settingsRes.json());
+
       } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
       }
     }
     
-    async function fetchShiftStatus() {
-        try {
-            const res = await fetch('/api/register/open-shift');
-            if(res.ok) {
-                const data = await res.json();
-                setShiftStatus(data);
-            }
-        } catch(e) {
-            console.error("Could not fetch shift status", e);
-        }
-    }
-    
-    fetchMenu();
-    fetchShiftStatus();
+    fetchInitialData();
     createNewOrder();
   }, [toast]);
 
@@ -147,7 +146,7 @@ export default function CashierDashboardPage() {
     setOrder(updatedOrder);
   }
 
-  if (!menuData || !order) {
+  if (!menuData || !order || !settings) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         Loading POS...
@@ -169,6 +168,7 @@ export default function CashierDashboardPage() {
             menu={menuData}
             onAddToCart={handleAddToCart}
             qtyBuffer={qtyBuffer}
+            settings={settings}
           />
         </div>
         <div className="md:col-span-1 h-full flex flex-col min-h-0">
@@ -176,6 +176,7 @@ export default function CashierDashboardPage() {
             order={order}
             onOrderUpdate={handleOrderUpdate}
             user={user}
+            settings={settings}
           />
         </div>
       </main>

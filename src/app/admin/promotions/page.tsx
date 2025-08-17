@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { formatMoney } from '@/lib/money';
-import { getSettings, type Settings } from '@/lib/settingsRepo';
+import { type Settings } from '@/lib/settingsRepo';
 
 export default function PromotionsPage() {
   const [promotions, setPromotions] = useState<PromotionRule[]>([]);
@@ -20,11 +20,21 @@ export default function PromotionsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
-    getSettings().then(setSettings);
-  }, []);
+    async function fetchSettings() {
+        try {
+            const res = await fetch('/api/settings');
+            if (!res.ok) throw new Error('Failed to fetch settings');
+            const data = await res.json();
+            setSettings(data);
+        } catch(e) {
+             toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+        }
+    }
+    fetchSettings();
+  }, [toast]);
 
   const money = (value: number) => {
-    if (!settings) return `R ${value.toFixed(2)}`;
+    if (!settings) return `...`;
     return formatMoney(value, { currency: settings.currency, locale: settings.locale });
   };
 

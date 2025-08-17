@@ -92,9 +92,9 @@ function TaxSettingsCard() {
                     <h4 className="font-semibold">Live Preview</h4>
                     <p className="text-sm text-muted-foreground">Based on your current settings:</p>
                     <div className="text-sm">
-                        <p>A product priced at <strong>{formatMoney(examplePrice, settings.currency)}</strong></p>
-                        <p>...will have <strong>{formatMoney(exampleNet, settings.currency)}</strong> in net sales</p>
-                        <p>...and <strong>{formatMoney(exampleTax, settings.currency)}</strong> in VAT.</p>
+                        <p>A product priced at <strong>{formatMoney(examplePrice, { currency: settings.currency })}</strong></p>
+                        <p>...will have <strong>{formatMoney(exampleNet, { currency: settings.currency })}</strong> in net sales</p>
+                        <p>...and <strong>{formatMoney(exampleTax, { currency: settings.currency })}</strong> in VAT.</p>
                     </div>
                 </div>
             </div>

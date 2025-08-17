@@ -15,6 +15,7 @@ import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
 import { SplitView } from '@/components/waiter/SplitView';
 import { Button } from '@/components/ui/Button';
 import { GitCommitHorizontal } from 'lucide-react';
+import { type Settings } from '@/lib/settingsRepo';
 
 
 export default function TableOrderPage() {
@@ -25,6 +26,7 @@ export default function TableOrderPage() {
   const [menuData, setMenuData] = useState<Menu | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [check, setCheck] = useState<ServiceCheck | null>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [qtyBuffer, setQtyBuffer] = useState<number>(1);
   const [isSplitView, setIsSplitView] = useState(false);
@@ -62,18 +64,25 @@ export default function TableOrderPage() {
   }, [tableId, toast, router]);
 
   useEffect(() => {
-    async function fetchMenu() {
+    async function fetchInitialData() {
       try {
-        const res = await fetch('/api/admin/menu');
-        if (!res.ok) throw new Error('Failed to fetch menu');
-        const data = await res.json();
-        setMenuData(data);
+         const [menuRes, settingsRes] = await Promise.all([
+            fetch('/api/admin/menu'),
+            fetch('/api/settings'),
+        ]);
+
+        if (!menuRes.ok) throw new Error('Failed to fetch menu');
+        setMenuData(await menuRes.json());
+        
+        if (!settingsRes.ok) throw new Error('Failed to fetch settings');
+        setSettings(await settingsRes.json());
+
       } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
       }
     }
-    fetchMenu();
+    fetchInitialData();
     fetchCheckAndOrder();
   }, [fetchCheckAndOrder, toast]);
 
@@ -123,7 +132,7 @@ export default function TableOrderPage() {
     setOrder(updatedOrder);
   };
   
-  if (isLoading || !menuData || !check || !order) {
+  if (isLoading || !menuData || !check || !order || !settings) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         Loading Table {tableId} Order...
@@ -151,6 +160,7 @@ export default function TableOrderPage() {
               menu={menuData}
               onAddToCart={handleAddToCart}
               qtyBuffer={qtyBuffer}
+              settings={settings}
             />
           </div>
           <div className="md:col-span-1 h-full flex flex-col min-h-0">
@@ -159,6 +169,7 @@ export default function TableOrderPage() {
                 check={check}
                 onOrderUpdate={handleOrderUpdate} 
                 user={user}
+                settings={settings}
                 onSplitClick={() => setIsSplitView(true)}
             />
           </div>

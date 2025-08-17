@@ -12,7 +12,7 @@ import { DoorClosed, LandPlot, Minus, Plus, Banknote } from 'lucide-react';
 import Link from 'next/link';
 import { type Shift } from '@/lib/data';
 import { formatMoney } from '@/lib/money';
-import { getSettings, type Settings } from '@/lib/settingsRepo';
+import { type Settings } from '@/lib/settingsRepo';
 
 
 export default function CloseRegisterPage() {
@@ -31,7 +31,7 @@ export default function CloseRegisterPage() {
       try {
         const [shiftRes, settingsRes] = await Promise.all([
             fetch('/api/register/open-shift'),
-            getSettings()
+            fetch('/api/settings'),
         ]);
         
         if (shiftRes.ok) {
@@ -40,7 +40,9 @@ export default function CloseRegisterPage() {
         } else {
           setShift(null);
         }
-        setSettings(settingsRes);
+        if (settingsRes.ok) {
+            setSettings(await settingsRes.json());
+        }
 
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not load shift details.' });
@@ -52,7 +54,7 @@ export default function CloseRegisterPage() {
   }, [toast]);
   
   const money = (value: number) => {
-    if (!settings) return `R ${value.toFixed(2)}`;
+    if (!settings) return `...`;
     return formatMoney(value, { currency: settings.currency, locale: settings.locale });
   };
 

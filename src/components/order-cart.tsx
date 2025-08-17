@@ -20,17 +20,18 @@ import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CreditCard, Landmark, Al
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { formatMoney } from '@/lib/money';
-import { getSettings, type Settings } from '@/lib/settingsRepo';
+import { type Settings } from '@/lib/settingsRepo';
 
 type OrderCartProps = {
     order: Order;
     check?: ServiceCheck;
     onOrderUpdate: (order: Order) => void;
     user: { uid: string, name: string };
+    settings: Settings;
     onSplitClick?: () => void;
 };
 
-export default function OrderCart({ order, check, onOrderUpdate, user, onSplitClick }: OrderCartProps) {
+export default function OrderCart({ order, check, onOrderUpdate, user, settings, onSplitClick }: OrderCartProps) {
   const [isPaying, setIsPaying] = useState(false);
   const [paymentType, setPaymentType] = useState<'card' | 'cash'>('card');
   const [tenderedAmount, setTenderedAmount] = useState('');
@@ -38,35 +39,28 @@ export default function OrderCart({ order, check, onOrderUpdate, user, onSplitCl
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
   const [openShift, setOpenShift] = useState<Shift | null>(null);
   const [isPostPayment, setIsPostPayment] = useState(false);
-  const [settings, setSettings] = useState<Settings | null>(null);
   
   const { toast } = useToast();
   
   useEffect(() => {
-    async function getInitialData() {
+    async function getOpenShift() {
         try {
-            const [shiftRes, settingsRes] = await Promise.all([
-                fetch('/api/register/open-shift'),
-                getSettings()
-            ]);
-
+            const shiftRes = await fetch('/api/register/open-shift');
             if (shiftRes.ok) {
-                const data = await shiftRes.json();
-                setOpenShift(data);
+                setOpenShift(await shiftRes.json());
             } else {
                 setOpenShift(null);
             }
-            setSettings(settingsRes);
-
         } catch(e) {
+            console.error("Could not fetch open shift", e);
             setOpenShift(null);
         }
     }
-    getInitialData();
+    getOpenShift();
   }, []);
 
   const money = (value: number) => {
-    if (!settings) return `R ${value.toFixed(2)}`;
+    if (!settings) return `...`;
     return formatMoney(value, { currency: settings.currency, locale: settings.locale });
   };
 

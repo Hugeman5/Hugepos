@@ -12,7 +12,6 @@ import { type DateRange } from 'react-day-picker';
 import KpiCard from '@/components/admin/KpiCard';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Pie, Cell } from 'recharts';
 import { formatMoney } from '@/lib/money';
-import { getSettings } from '@/lib/settingsRepo';
 import { type Settings } from '@/lib/settingsRepo';
 
 const n = new Intl.NumberFormat('en-US');
@@ -52,11 +51,21 @@ export default function ReportsPage() {
     const [settings, setSettings] = useState<Settings | null>(null);
 
     useEffect(() => {
-        getSettings().then(setSettings);
+        async function fetchSettings() {
+            try {
+                const res = await fetch('/api/settings');
+                if (!res.ok) throw new Error('Failed to fetch settings');
+                const data = await res.json();
+                setSettings(data);
+            } catch(e) {
+                console.error(e);
+            }
+        }
+        fetchSettings();
     }, []);
 
     const money = (value: number) => {
-        if (!settings) return `R ${value.toFixed(2)}`;
+        if (!settings) return `...`;
         return formatMoney(value, { currency: settings.currency, locale: settings.locale });
     };
 

@@ -22,25 +22,27 @@ export default function AdminHome(){
   useEffect(()=>{
     (async()=>{
       setLoading(true);
-      const [sales, lowStock, openTickets, recentOrders, activeUsers, appSettings] = await Promise.all([
+      const [sales, lowStock, openTickets, recentOrders, activeUsers, appSettingsRes] = await Promise.all([
         fetch('/api/admin/metrics/sales-today').then(r=>r.json()).catch(()=>({total:0,orders:0,avg:0})),
         fetch('/api/admin/metrics/low-stock').then(r=>r.json()).catch(()=>({count:0,items:[]})),
         fetch('/api/admin/metrics/open-tickets').then(r=>r.json()).catch(()=>({count:0})),
         fetch('/api/admin/orders/recent').then(r=>r.json()).catch(()=>({items:[]})),
         fetch('/api/admin/users/active-count').then(x=>x.json()).catch(()=>({count:0})),
-        fetch('/api/settings').then(r=>r.json()).catch(()=>null)
+        fetch('/api/settings').catch(()=>null)
       ]);
       setKpi({ sales, low: lowStock, open: openTickets, users: activeUsers });
       setOrders(recentOrders.items || []);
       setLow(lowStock.items || []);
-      setSettings(appSettings);
+      if (appSettingsRes && appSettingsRes.ok) {
+        setSettings(await appSettingsRes.json());
+      }
       setLoading(false);
     })();
   },[]);
 
   const money = (val: number) => {
-    if (!settings) return `$${(val || 0).toFixed(2)}`;
-    return formatMoney(val || 0, settings.currency, settings.locale);
+    if (!settings) return `...`;
+    return formatMoney(val || 0, { currency: settings.currency, locale: settings.locale });
   }
 
   return (

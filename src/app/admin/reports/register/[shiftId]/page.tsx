@@ -12,7 +12,6 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { formatMoney } from '@/lib/money';
-import { getSettings } from '@/lib/settingsRepo';
 import { type Settings } from '@/lib/settingsRepo';
 
 export default function RegisterReportPage() {
@@ -26,11 +25,21 @@ export default function RegisterReportPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
-    getSettings().then(setSettings);
+    async function fetchSettings() {
+        try {
+            const res = await fetch('/api/settings');
+            if (!res.ok) throw new Error('Failed to fetch settings');
+            const data = await res.json();
+            setSettings(data);
+        } catch(e) {
+             console.error(e);
+        }
+    }
+    fetchSettings();
   }, []);
 
   const money = (value: number) => {
-    if (!settings) return `R ${value.toFixed(2)}`;
+    if (!settings) return `...`;
     return formatMoney(value, { currency: settings.currency, locale: settings.locale });
   };
 

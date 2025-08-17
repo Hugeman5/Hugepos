@@ -17,7 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { formatMoney } from '@/lib/money';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { getSettings, type Settings } from '@/lib/settingsRepo';
+import { type Settings } from '@/lib/settingsRepo';
 
 export default function MenuBuilderPage() {
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -30,11 +30,21 @@ export default function MenuBuilderPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
-    getSettings().then(setSettings);
-  }, []);
+    async function fetchSettings() {
+        try {
+            const res = await fetch('/api/settings');
+            if (!res.ok) throw new Error('Failed to fetch settings');
+            const data = await res.json();
+            setSettings(data);
+        } catch(e) {
+             toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+        }
+    }
+    fetchSettings();
+  }, [toast]);
 
   const money = (value: number) => {
-    if (!settings) return `R ${value.toFixed(2)}`;
+    if (!settings) return `...`;
     return formatMoney(value, { currency: settings.currency, locale: settings.locale });
   };
 
@@ -171,7 +181,7 @@ export default function MenuBuilderPage() {
                         <span className="flex-1 font-medium">{cat.name}</span>
                          <Switch checked={cat.active} onCheckedChange={async (active) => {
                              // This is a fire-and-forget for quick toggling
-                             updateCategory(cat.id, { active });
+                             await updateCategory(cat.id, { active });
                              fetchData();
                          }} />
                         <Button size="icon" variant="ghost" onClick={() => { setEditingCategory(cat); setIsCategoryDialogOpen(true); }}>
@@ -300,5 +310,12 @@ export default function MenuBuilderPage() {
   );
 }
 
-// Dummy function to satisfy TS, will be replaced by actual API call
-async function updateCategory(id: string, patch: any) {}
+// A helper function to quickly update a category property.
+// In a real app, this would be more robust.
+async function updateCategory(id: string, patch: Partial<Omit<Category, 'id'>>) {
+    await fetch(`/api/admin/menu/categories/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch)
+    });
+}

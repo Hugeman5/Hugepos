@@ -24,12 +24,13 @@ import {
 } from '@/lib/data';
 import { Checkbox } from './ui/checkbox';
 import { formatMoney } from '@/lib/money';
-import { getSettings, type Settings } from '@/lib/settingsRepo';
+import { type Settings } from '@/lib/settingsRepo';
 
 type ProductGridProps = {
   menu: Menu;
   onAddToCart: (product: MenuItem, mods: CartLineMod[]) => void;
   qtyBuffer: number;
+  settings: Settings;
 };
 
 type SelectedMods = Record<string, string[]>; // setId -> optionId[]
@@ -158,14 +159,10 @@ export default function ProductGrid({
   menu,
   onAddToCart,
   qtyBuffer,
+  settings
 }: ProductGridProps) {
   const [selectedCategory, setSelectedCategory] = useState(menu.categories[0]?.id || 'all');
   const [selectedProduct, setSelectedProduct] = useState<MenuItem | null>(null);
-  const [settings, setSettings] = useState<Settings | null>(null);
-
-  useEffect(() => {
-    getSettings().then(setSettings);
-  }, []);
 
   const handleProductClick = (product: MenuItem) => {
     if (product.modifierSetIds && product.modifierSetIds.length > 0) {
@@ -178,11 +175,9 @@ export default function ProductGrid({
   const products = menu.items.filter(i => i.catId === selectedCategory && i.active);
 
   const money = (value: number) => {
-    if (!settings) return `R ${value.toFixed(2)}`;
+    if (!settings) return `...`;
     return formatMoney(value, { currency: settings.currency, locale: settings.locale });
   };
-
-  if (!settings) return <div>Loading...</div>
 
   return (
     <div className="flex flex-col gap-4 h-full">
