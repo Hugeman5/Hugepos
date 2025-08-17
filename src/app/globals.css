@@ -10,7 +10,7 @@
     --line: #2b3040;
     --text: #e6e7ea;
     --text-dim: #a9afc3;
-    --accent: #66a3c2;
+    --accent: #3b82f6;
     --danger: #ff5f5f;
     --ok: #7ee29b;
     
@@ -21,7 +21,7 @@
     --popover: var(--panel);
     --popover-foreground: var(--text);
     --primary: var(--accent);
-    --primary-foreground: #0f1115;
+    --primary-foreground: #ffffff;
     --secondary: var(--muted);
     --secondary-foreground: var(--text);
     /* --muted is already a color, shadcn uses it for the component background */
@@ -29,7 +29,7 @@
     --muted-foreground: var(--text-dim);
     /* --accent is already a color, shadcn uses it for the component background */
     --accent-component-bg: var(--accent);
-    --accent-foreground: #0f1115;
+    --accent-foreground: #ffffff;
     --destructive: var(--danger);
     --destructive-foreground: var(--text);
     --border: var(--line);
