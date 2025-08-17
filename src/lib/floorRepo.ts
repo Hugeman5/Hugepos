@@ -2,7 +2,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { type FloorPlan, type Table, type Area } from './data';
+import { type FloorPlan, type Table, type Area, type Decor } from './data';
 
 const dataDir = path.join(process.cwd(), 'data');
 const floorPlanPath = path.join(dataDir, 'floor_plan.json');
@@ -13,14 +13,20 @@ const defaultFloorPlan: FloorPlan = {
   ],
   tables: [
     { id: "T1", areaId: "main", name: "T1", seats: 4, x: 100, y: 100, shape: "round" }
-  ]
+  ],
+  decor: []
 };
 
 async function readFloorPlan(): Promise<FloorPlan> {
   try {
     await fs.access(floorPlanPath);
     const data = await fs.readFile(floorPlanPath, 'utf-8');
-    return JSON.parse(data) as FloorPlan;
+    const plan = JSON.parse(data) as FloorPlan;
+    // Ensure decor array exists for backward compatibility
+    if (!plan.decor) {
+        plan.decor = [];
+    }
+    return plan;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       await writeFloorPlan(defaultFloorPlan);
@@ -102,5 +108,38 @@ export async function removeArea(areaId: string): Promise<void> {
         throw new Error("Cannot delete area: it still contains tables.");
     }
     floor.areas = floor.areas.filter(a => a.id !== areaId);
+    await saveFloor(floor);
+}
+
+// --- Decor CRUD ---
+export async function addDecor(decorData: Omit<Decor, 'id'>): Promise<Decor> {
+    const floor = await getFloor();
+    const newDecor: Decor = {
+        ...decorData,
+        id: `decor_${Date.now()}`
+    };
+    if (!floor.decor) floor.decor = [];
+    floor.decor.push(newDecor);
+    await saveFloor(floor);
+    return newDecor;
+}
+
+export async function updateDecor(decorId: string, patch: Partial<Decor>): Promise<Decor> {
+    const floor = await getFloor();
+    if (!floor.decor) throw new Error("No decor items exist to update.");
+    const decorIndex = floor.decor.findIndex(d => d.id === decorId);
+    if (decorIndex === -1) {
+        throw new Error(`Decor item ${decorId} not found.`);
+    }
+    const updatedDecor = { ...floor.decor[decorIndex], ...patch };
+    floor.decor[decorIndex] = updatedDecor;
+    await saveFloor(floor);
+    return updatedDecor;
+}
+
+export async function removeDecor(decorId: string): Promise<void> {
+    const floor = await getFloor();
+    if (!floor.decor) return;
+    floor.decor = floor.decor.filter(d => d.id !== decorId);
     await saveFloor(floor);
 }
