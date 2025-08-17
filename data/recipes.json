@@ -3,7 +3,7 @@
     {
       "id": "croissant",
       "name": "Croissant",
-      "yieldPortions": 12,
+      "yieldPortions": 1,
       "overheadPct": 0.1,
       "packagingCost": 2.5,
       "targetGpPct": 0.6,
@@ -44,7 +44,7 @@
   "links": [
     {
       "recipeId": "croissant",
-      "itemId": "croissant"
+      "itemId": "it_1755399215677_smuuz"
     }
   ]
 }

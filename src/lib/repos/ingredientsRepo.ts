@@ -11,14 +11,18 @@ export type Ingredient = {
     purchaseQty: number;
     baseUom: "g" | "ml" | "ea";
     yieldPct: number;
+    unitCost?: number; // Optional pre-calculated cost per baseUom
+    packCost?: number; // Alias for purchasePrice
+    packSize?: number; // Alias for purchaseQty
 };
 
 const P = path.join(process.cwd(), "data", "ingredients.json");
 
-export async function readIngredients(): Promise<Ingredient[]> {
+export async function getAllIngredients(): Promise<Ingredient[]> {
     try {
         await fs.access(P);
-        return JSON.parse(await fs.readFile(P, "utf8"));
+        const content = await fs.readFile(P, "utf8");
+        return JSON.parse(content || '[]');
     } catch {
         return [];
     }

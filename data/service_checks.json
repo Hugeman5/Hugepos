@@ -1,5 +1,19 @@
-
 [
+  {
+    "id": "chk_1755435079364",
+    "tableId": "T1",
+    "areaId": "main",
+    "guests": 1,
+    "server": {
+      "uid": "jwaiter",
+      "name": "Jane Waiter"
+    },
+    "openedAt": "2025-08-17T12:51:19.364Z",
+    "orderId": "ord_1755435079354",
+    "state": "seated",
+    "seats": 4,
+    "splits": []
+  },
   {
     "id": "chk_1755349456520",
     "tableId": "T2",

@@ -3,9 +3,23 @@
     {
       "id": "cat_1755399187235_qxnz1",
       "name": "Rise n Shine",
-      "color": "#5FB9A4",
+      "color": "#fbff00",
       "active": true,
       "sort": 10
+    },
+    {
+      "id": "cat_1755434858987_alwrm",
+      "name": "Midday Munch",
+      "color": "#05f401",
+      "active": true,
+      "sort": 20
+    },
+    {
+      "id": "cat_1755435013534_p17eb",
+      "name": "Beverage",
+      "color": "#dc961e",
+      "active": true,
+      "sort": 30
     }
   ],
   "items": [
@@ -16,7 +30,7 @@
       "sort": 10,
       "catId": "cat_1755399187235_qxnz1",
       "name": "Full Breakfast",
-      "priceCents": 150
+      "priceCents": 1500
     }
   ],
   "taxCodes": [
@@ -35,6 +49,7 @@
   ],
   "meta": {
     "version": 1,
-    "updatedAt": "2025-08-17T02:53:35.678Z"
-  }
+    "updatedAt": "2025-08-17T12:50:13.535Z"
+  },
+  "modifierSets": []
 }
