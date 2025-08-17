@@ -1,4 +1,5 @@
 
+
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -10,10 +11,16 @@ import { PlusCircle, Trash2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import IngredientPicker from "@/components/recipes/IngredientPicker";
 import { lineCostIncVat } from "@/lib/costing";
-import { type Ingredient } from "@/lib/repos/ingredientsRepo";
 
-
-export type IngredientLite = { id: string; name: string };
+export type IngredientLite = {
+  id: string;
+  name: string;
+  purchaseUom: "g" | "kg" | "ml" | "l" | "ea";
+  purchaseSize: number;
+  priceIncVat: number;
+  priceExVat?: number;
+  vatRate?: number;
+};
 export type BomRowEdit = { ingredientId: string; qty: number | ""; uom: string; wastePct: number | "" };
 
 export type RecipeEdit = {
@@ -26,7 +33,7 @@ export type RecipeEdit = {
   bom: BomRowEdit[];
 };
 
-type Pricing = Ingredient;
+type Pricing = Pick<IngredientLite, "purchaseUom" | "purchaseSize" | "priceIncVat" | "priceExVat" | "vatRate" | "name">;
 
 const VAT_DEFAULT = 0.15;
 const currency = "ZAR";
@@ -62,6 +69,8 @@ export default function RecipeDialog({
     () => ingredients.map(i => ({ id: i.id, name: i.name })),
     [ingredients]
   );
+  
+  const ingredientsMap = useMemo(() => new Map(ingredients.map(i => [i.id, i])), [ingredients]);
 
   useEffect(() => { if (open) setForm(initial ?? {
     id: "", name: "", yieldPortions:"", overheadPct:"", packagingCost:"", targetGpPct:"", bom:[]
@@ -72,11 +81,23 @@ export default function RecipeDialog({
   }
 
   function setBom(i:number, patch: Partial<BomRowEdit>) {
-    setForm(f => ({ ...f, bom: f.bom.map((r,idx)=> idx===i ? { ...r, ...patch } : r) }));
+    setForm(f => {
+       const newBom = [...f.bom];
+       newBom[i] = { ...newBom[i], ...patch };
+
+       if (patch.ingredientId) {
+          const ing = ingredientsMap.get(patch.ingredientId);
+          if (ing && !newBom[i].uom) {
+              newBom[i].uom = ing.purchaseUom;
+          }
+       }
+
+       return { ...f, bom: newBom };
+    });
   }
 
   function addRow() {
-    setForm(f => ({ ...f, bom: [...f.bom, { ingredientId: "", qty: "", uom: "g", wastePct: 0 }] }));
+    setForm(f => ({ ...f, bom: [...f.bom, { ingredientId: "", qty: "", uom: 'g', wastePct: 0 }] }));
   }
 
   function removeRow(i:number){
@@ -107,7 +128,7 @@ export default function RecipeDialog({
       const inc = lineCostIncVat({
           ingredient: ingredient,
           qty: Number(r.qty || 0),
-          uom: r.uom,
+          uom: r.uom || ingredient.purchaseUom,
           wastePct: Number(r.wastePct || 0)
       });
       const ex = inc / (1 + (ingredient.vatRate || VAT_DEFAULT));
@@ -216,7 +237,7 @@ export default function RecipeDialog({
                   costs.inc = lineCostIncVat({
                       ingredient: ingredient,
                       qty: Number(row.qty || 0),
-                      uom: row.uom,
+                      uom: row.uom || ingredient.purchaseUom,
                       wastePct: Number(row.wastePct || 0)
                   });
                   costs.ex = costs.inc / (1 + (ingredient.vatRate || VAT_DEFAULT));
@@ -234,7 +255,7 @@ export default function RecipeDialog({
                     <Input inputMode="decimal" value={row.qty} onChange={e=>setBom(i,{ qty: toNum(e.target.value) })}/>
                   </div>
                   <div>
-                    <Select value={row.uom} onValueChange={v=>setBom(i,{ uom: v })}>
+                    <Select value={row.uom || ingredient?.purchaseUom || ""} onValueChange={v=>setBom(i,{ uom: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="g">g</SelectItem>

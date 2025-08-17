@@ -7,6 +7,8 @@ import { toBase } from "@/lib/uom";
 
 function round2(n:number){ return Math.round((n + Number.EPSILON) * 100) / 100; }
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request){
   try{
     const { recipeId } = await req.json();
@@ -14,7 +16,7 @@ export async function POST(req: Request){
 
     const settings = await getSettings();
     const recipes = await getRecipesFile();
-    const ing = await getAllIngredients();
+    const allIngredients = await getAllIngredients();
 
     const r = recipes.recipes.find(x=>x.id===recipeId);
     if(!r) return NextResponse.json({error:"Recipe not found"},{status:404});
@@ -22,24 +24,35 @@ export async function POST(req: Request){
     let baseCost = 0;
 
     for(const row of (r.bom ?? [])){
-      const item = ing.find(i=>i.id===row.ingredientId);
+      const item = allIngredients.find(i=>i.id===row.ingredientId);
       if(!item) continue;
+      
+      const chosenUom = (row.uom || item.purchaseUom) as string;
+      if (!chosenUom) {
+        return NextResponse.json(
+          { error: `Missing UoM for ingredient "${item.name}".` },
+          { status: 400 }
+        );
+      }
 
+      // effective qty inc waste
       const waste = Number(row.wastePct ?? 0);
       const qty = Number(row.qty ?? 0);
-      const uom = String(row.uom ?? item.purchaseUom);
       const eff = qty * (1 + waste);
 
-      const recipeBase = toBase(eff, uom);
+      // convert recipe qty to the ingredient purchase base
+      const recipeBase = toBase(eff, chosenUom);
       const packBase   = toBase(item.purchaseSize, item.purchaseUom);
 
       if (recipeBase.kind !== packBase.kind) {
-        return NextResponse.json({ error:`UoM mismatch for ${item.name}: ${uom} vs ${item.purchaseUom}` }, { status:400 });
+        return NextResponse.json({ error:`UoM mismatch for ${item.name}: ${chosenUom} vs ${item.purchaseUom}` }, { status:400 });
       }
 
+      // price per base unit (Inc VAT)
       const packPriceInc = Number(item.priceIncVat ?? 0);
       const unitPriceInc = packPriceInc / packBase.base;
 
+      // line cost (Inc VAT) = base units used * price/base
       const lineCostInc = unitPriceInc * recipeBase.base;
 
       baseCost += lineCostInc;

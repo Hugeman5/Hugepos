@@ -1,21 +1,41 @@
 
+
 import { toBase } from "@/lib/uom";
 import type { Ingredient } from "@/lib/repos/ingredientsRepo";
 
-export function lineCostIncVat(args:{
-  ingredient: Ingredient; qty:number; uom:string; wastePct:number;
-}){
-  const { ingredient, qty, uom, wastePct } = args;
-  const eff = qty * (1 + (wastePct || 0));
-  
-  // Use the provided UOM, or fallback to the ingredient's default purchase UOM.
-  const uomToUse = uom || ingredient.purchaseUom;
-  
-  const recipeBase = toBase(eff, uomToUse);
+/**
+ * Compute line cost (Inc VAT) using the ingredient pack info.
+ * Falls back to ingredient.purchaseUom if row.uom is missing.
+ */
+export function lineCostIncVat(args: {
+  ingredient: Pick<Ingredient, "name" | "purchaseSize" | "purchaseUom" | "priceIncVat">;
+  qty: number | string;
+  uom?: string | null;
+  wastePct?: number | string;
+}) {
+  const { ingredient } = args;
+  const qty = Number(args.qty ?? 0);
+  const waste = Number(args.wastePct ?? 0) / 100;
+  const rowUom = (args.uom ?? ingredient.purchaseUom) as string;
+
+  if (!rowUom) {
+    throw new Error(`Missing UoM for "${ingredient.name}".`);
+  }
+  if (!ingredient.purchaseUom || !ingredient.purchaseSize) {
+    throw new Error(`Ingredient "${ingredient.name}" missing purchase info.`);
+  }
+
+  const effQty = qty * (1 + waste); // qty including waste
+  const recipeBase = toBase(effQty, rowUom);                     // g / ml / ea
   const packBase   = toBase(ingredient.purchaseSize, ingredient.purchaseUom);
-  
-  if (recipeBase.kind !== packBase.kind) throw new Error("UoM mismatch");
-  
-  const unitPriceInc = (ingredient.priceIncVat || 0) / packBase.base;
-  return unitPriceInc * recipeBase.base;
+
+  if (recipeBase.kind !== packBase.kind) {
+    throw new Error(
+      `UoM mismatch for "${ingredient.name}": row uses "${rowUom}" vs pack "${ingredient.purchaseUom}".`
+    );
+  }
+
+  const packPriceInc = Number(ingredient.priceIncVat ?? 0);
+  const unitPriceInc = packPriceInc / packBase.base;             // price per base unit
+  return unitPriceInc * recipeBase.base;                         // line cost (Inc VAT)
 }

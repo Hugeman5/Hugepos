@@ -1,4 +1,5 @@
 
+
 import path from "path";
 import { promises as fs } from "fs";
 import { type SupplierItem } from "./supplierItemsRepo";
@@ -50,17 +51,15 @@ export function withComputedUnitCosts(i: Ingredient): Ingredient {
   const vat = Number.isFinite(i.vatRate) ? (i.vatRate as number) : 0.15;
   const pack = Number(i.purchaseSize) > 0 ? Number(i.purchaseSize) : 1;
   
-  const inc = Number.isFinite(i.priceIncVat) ? i.priceIncVat :
-              (Number.isFinite(i.priceExVat) ? i.priceExVat! * (1 + vat) : 0);
-  
-  const ex = Number.isFinite(i.priceExVat) ? i.priceExVat : (inc / (1 + vat));
+  const ex = Number.isFinite(i.priceExVat) ? Number(i.priceExVat) : undefined;
+  const inc = Number.isFinite(i.priceIncVat) ? Number(i.priceIncVat) : (ex !== undefined ? ex * (1 + vat) : undefined);
 
   return {
     ...i,
-    priceIncVat: inc,
+    priceIncVat: inc as number,
     priceExVat: ex,
-    unitCostExVat: ex / pack,
-    unitCostIncVat: inc / pack,
+    unitCostExVat: ex !== undefined ? ex / pack : undefined,
+    unitCostIncVat: inc !== undefined ? inc / pack : undefined,
     vatRate: vat,
     purchaseSize: pack
   };

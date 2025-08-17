@@ -152,7 +152,16 @@ export default function RecipesPage() {
   }, [fetchData]);
 
   const ingredientsLite: IngredientLite[] = useMemo(
-    () => ingredients.map((i) => ({ id: i.id, name: i.name })),
+    () =>
+      ingredients.map(i => ({
+        id: i.id,
+        name: i.name,
+        purchaseUom: i.purchaseUom,
+        purchaseSize: i.purchaseSize,
+        priceIncVat: Number(i.priceIncVat ?? 0),
+        priceExVat: Number(i.priceExVat ?? 0),
+        vatRate: Number(i.vatRate ?? 0.15)
+      })),
     [ingredients]
   );
   
