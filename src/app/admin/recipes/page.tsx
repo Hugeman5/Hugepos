@@ -65,11 +65,11 @@ const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
     const { toast } = useToast();
 
     const fetchCost = useCallback(async () => {
-        if (!isOpen) return;
+        if (!isOpen || !recipeId) return;
         setIsLoading(true);
         try {
             const res = await fetch("/api/recipes/cost", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ recipeId }) });
-            if(!res.ok) throw new Error("Cost calc failed");
+            if(!res.ok) throw new Error("Cost calculation failed");
             const data = await res.json();
             setCost(data);
         } catch (e) {
@@ -80,8 +80,10 @@ const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
     }, [recipeId, isOpen, toast]);
     
     useEffect(() => {
-        fetchCost();
-    }, [fetchCost]);
+        if (isOpen) {
+            fetchCost();
+        }
+    }, [isOpen, fetchCost]);
 
     return (
         <div className="mt-2 border-t border-zinc-700 pt-2">
@@ -97,9 +99,9 @@ const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
                            <span className="text-zinc-400">Total Cost</span><span className="font-mono text-right">{formatMoney(cost.totalCost, cost.currency)}</span>
                            <span className="text-zinc-400">Cost/Portion</span><span className="font-mono text-right">{formatMoney(cost.costPerPortion, cost.currency)}</span>
                            <span className="text-zinc-400 col-span-2 border-b border-zinc-700 my-1"></span>
-                           <span className="text-zinc-400">Target GP</span><span className="font-mono text-right">{(cost.gpPct/100).toLocaleString(undefined, {style:'percent', minimumFractionDigits:0})}</span>
+                           <span className="text-zinc-400">Target GP</span><span className="font-mono text-right">{(cost.gpPct).toFixed(0)}%</span>
                            <span className="text-zinc-400">Ex-VAT RSP</span><span className="font-mono text-right">{formatMoney(cost.exVatRSP, cost.currency)}</span>
-                           <span className="text-zinc-400">VAT (15%)</span><span className="font-mono text-right">{formatMoney(cost.vatAmount, cost.currency)}</span>
+                           <span className="text-zinc-400">VAT ({(cost.vatRate * 100).toFixed(0)}%)</span><span className="font-mono text-right">{formatMoney(cost.vatAmount, cost.currency)}</span>
                            <span className="text-zinc-400 font-bold">Inc-VAT RSP</span><span className="font-mono text-right font-bold">{formatMoney(cost.incVatRSP, cost.currency)}</span>
                        </div>
                     )}
