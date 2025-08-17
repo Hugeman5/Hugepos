@@ -84,6 +84,34 @@ export async function adjustStock(data: { ingredientId: string; delta: number; n
     return item;
 }
 
+export async function receiveStock(data: { ingredientId: string; quantity: number; note?: string; user?: string }): Promise<InventoryItem> {
+     const levels = await getLevels();
+    const item = levels.find(l => l.ingredientId === data.ingredientId);
+
+    if (!item) {
+        // If it's not in inventory, add it
+        const newItem: InventoryItem = {
+            ingredientId: data.ingredientId,
+            onHand: data.quantity,
+            reorderPoint: 0
+        };
+        levels.push(newItem);
+    } else {
+        item.onHand += data.quantity;
+    }
+    
+    await appendMove({
+        ingredientId: data.ingredientId,
+        quantity: data.quantity,
+        type: 'receive',
+        note: data.note,
+        user: data.user,
+    });
+    
+    await saveLevels(levels);
+    return levels.find(l => l.ingredientId === data.ingredientId)!;
+}
+
 export async function applyUsageFromOrder(order: Order): Promise<number> {
     const levels = await getLevels();
     const recipes = await recipesRepo.getRecipes();
