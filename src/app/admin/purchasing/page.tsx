@@ -10,18 +10,32 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { type PurchaseOrder } from '@/lib/repos/purchaseOrdersRepo';
 import { formatMoney } from '@/lib/money';
+import { type Settings } from '@/lib/settingsRepo';
 
 export default function PurchaseOrdersPage() {
   const [pos, setPos] = useState<PurchaseOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
     async function fetchPOs() {
+      setIsLoading(true);
       try {
-        const res = await fetch('/api/purchase-orders');
-        if (!res.ok) throw new Error('Failed to load purchase orders');
-        setPos(await res.json());
+        const [poRes, settingsRes] = await Promise.all([
+            fetch('/api/purchase-orders'),
+            fetch('/api/settings')
+        ]);
+        
+        if (!poRes.ok) throw new Error('Failed to load purchase orders');
+        setPos(await poRes.json());
+
+        if (settingsRes.ok) {
+            setSettings(await settingsRes.json());
+        } else {
+            throw new Error("Failed to load settings");
+        }
+
       } catch (e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
       } finally {
@@ -30,12 +44,17 @@ export default function PurchaseOrdersPage() {
     }
     fetchPOs();
   }, [toast]);
+  
+  const money = (value: number) => {
+    if (!settings) return '...';
+    return formatMoney(value, { currency: settings.currency, locale: settings.locale });
+  }
 
   return (
     <AdminLayout title="Purchasing">
         <div className="flex justify-end gap-2 mb-4">
             <Button asChild><Link href="/admin/purchasing/suppliers">Manage Suppliers</Link></Button>
-            <Button asChild><Link href="/admin/purchasing/orders/new">New Purchase Order</Link></Button>
+            <Button asChild><Link href="/admin/purchasing/new">New Purchase Order</Link></Button>
         </div>
       <Card>
         <CardHeader>
@@ -61,10 +80,10 @@ export default function PurchaseOrdersPage() {
                   <TableCell>{po.supplierName}</TableCell>
                   <TableCell>{new Date(po.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell><Badge variant={po.status === 'sent' ? 'default' : 'secondary'}>{po.status}</Badge></TableCell>
-                  <TableCell>{formatMoney(po.totals.incVat)}</TableCell>
+                  <TableCell>{money(po.totals.incVat)}</TableCell>
                   <TableCell>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/admin/purchasing/orders/${po.id}`}>View</Link>
+                      <Link href={`/admin/purchasing/${po.id}`}>View</Link>
                     </Button>
                   </TableCell>
                 </TableRow>

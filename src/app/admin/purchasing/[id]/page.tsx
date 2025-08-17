@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { type PurchaseOrder } from '@/lib/repos/purchaseOrdersRepo';
 import { formatMoney } from '@/lib/money';
+import { type Settings } from '@/lib/settingsRepo';
 
 export default function ViewPurchaseOrderPage() {
   const [po, setPo] = useState<PurchaseOrder | null>(null);
@@ -16,19 +17,36 @@ export default function ViewPurchaseOrderPage() {
   const [isSending, setIsSending] = useState(false);
   const params = useParams();
   const { toast } = useToast();
+  const [settings, setSettings] = useState<Settings | null>(null);
 
   useEffect(() => {
-    async function fetchPO() {
-      const res = await fetch(`/api/purchase-orders/${params.id}`);
-      if (!res.ok) {
-        toast({ variant: 'destructive', title: 'Error', description: 'PO not found' });
-        return;
+    async function fetchInitialData() {
+      setIsLoading(true);
+      try {
+        const [poRes, settingsRes] = await Promise.all([
+            fetch(`/api/purchase-orders/${params.id}`),
+            fetch('/api/settings')
+        ]);
+        if (!poRes.ok) {
+            toast({ variant: 'destructive', title: 'Error', description: 'PO not found' });
+            return;
+        }
+        setPo(await poRes.json());
+        setSettings(await settingsRes.json());
+
+      } catch (e) {
+          toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+      } finally {
+        setIsLoading(false);
       }
-      setPo(await res.json());
-      setIsLoading(false);
     }
-    if (params.id) fetchPO();
+    if (params.id) fetchInitialData();
   }, [params.id, toast]);
+  
+  const money = (value: number) => {
+    if (!settings) return `...`;
+    return formatMoney(value, { currency: settings.currency, locale: settings.locale });
+  };
 
   const handleSendEmail = async () => {
     setIsSending(true);
@@ -78,18 +96,18 @@ export default function ViewPurchaseOrderPage() {
                 <TableRow key={line.itemId}>
                   <TableCell>{line.name}</TableCell>
                   <TableCell>{line.qty}</TableCell>
-                  <TableCell>{formatMoney(line.priceExVat)}</TableCell>
+                  <TableCell>{money(line.priceExVat)}</TableCell>
                   <TableCell>{(line.vatRate * 100).toFixed(0)}%</TableCell>
-                  <TableCell>{formatMoney(line.lineIncVat)}</TableCell>
+                  <TableCell>{money(line.lineIncVat)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
            <div className="flex justify-end mt-4">
                 <div className="w-80 space-y-2">
-                    <div className="flex justify-between"><span>Subtotal (Ex. VAT)</span><span>{formatMoney(po.totals.exVat)}</span></div>
-                    <div className="flex justify-between"><span>VAT</span><span>{formatMoney(po.totals.vat)}</span></div>
-                    <div className="flex justify-between font-bold text-lg"><span>Total (Inc. VAT)</span><span>{formatMoney(po.totals.incVat)}</span></div>
+                    <div className="flex justify-between"><span>Subtotal (Ex. VAT)</span><span>{money(po.totals.exVat)}</span></div>
+                    <div className="flex justify-between"><span>VAT</span><span>{money(po.totals.vat)}</span></div>
+                    <div className="flex justify-between font-bold text-lg"><span>Total (Inc. VAT)</span><span>{money(po.totals.incVat)}</span></div>
                 </div>
             </div>
             {po.notes && <div className="mt-4"><strong>Notes:</strong> {po.notes}</div>}

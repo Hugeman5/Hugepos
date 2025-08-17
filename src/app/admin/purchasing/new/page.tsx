@@ -13,6 +13,7 @@ import { type Supplier } from '@/lib/repos/suppliersRepo';
 import { type SupplierItem } from '@/lib/repos/supplierItemsRepo';
 import { toPOLines, totals as calculateTotals } from '@/lib/purchasing';
 import { formatMoney } from '@/lib/money';
+import { type Settings } from '@/lib/settingsRepo';
 
 export default function NewPurchaseOrderPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -22,15 +23,25 @@ export default function NewPurchaseOrderPage() {
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [settings, setSettings] = useState<Settings|null>(null);
   const router = useRouter();
   const { toast } = useToast();
+  
+  const money = (value: number) => {
+    if (!settings) return `...`;
+    return formatMoney(value, { currency: settings.currency, locale: settings.locale });
+  };
 
   useEffect(() => {
-    async function fetchSuppliers() {
-      const res = await fetch('/api/suppliers');
-      setSuppliers(await res.json());
+    async function fetchInitialData() {
+      const [suppliersRes, settingsRes] = await Promise.all([
+          fetch('/api/suppliers'),
+          fetch('/api/settings')
+      ]);
+      setSuppliers(await suppliersRes.json());
+      setSettings(await settingsRes.json());
     }
-    fetchSuppliers();
+    fetchInitialData();
   }, []);
 
   useEffect(() => {
@@ -59,7 +70,7 @@ export default function NewPurchaseOrderPage() {
       if (!res.ok) throw new Error(await res.text());
       const po = await res.json();
       toast({ title: 'Success', description: `PO ${po.id} created.` });
-      router.push(`/admin/purchasing/orders/${po.id}`);
+      router.push(`/admin/purchasing/${po.id}`);
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     } finally {
@@ -68,8 +79,8 @@ export default function NewPurchaseOrderPage() {
   };
 
   const [lines, totals] = (async () => {
-    if (!supplierItems.length) return [[], { exVat: 0, vat: 0, incVat: 0 }];
-    const poLines = await toPOLines(supplierItems, qtyById);
+    if (!supplierItems.length || !settings) return [[], { exVat: 0, vat: 0, incVat: 0 }];
+    const poLines = await toPOLines(supplierItems, qtyById, settings);
     return [poLines, calculateTotals(poLines)];
   })();
 
@@ -101,7 +112,7 @@ export default function NewPurchaseOrderPage() {
                     <TableRow key={item.id}>
                       <TableCell>{item.name}</TableCell>
                       <TableCell>{item.packSize} {item.uom}</TableCell>
-                      <TableCell>{formatMoney(item.priceExVat)}</TableCell>
+                      <TableCell>{money(item.priceExVat)}</TableCell>
                       <TableCell>
                         <Input type="number" className="w-20" value={qtyById[item.id] || ''} onChange={e => handleQtyChange(item.id, parseInt(e.target.value, 10))} />
                       </TableCell>
@@ -111,13 +122,13 @@ export default function NewPurchaseOrderPage() {
               </Table>
               <div className="flex justify-end">
                 <div className="w-80 space-y-2">
-                    <div className="flex justify-between"><span>Subtotal (Ex. VAT)</span><span>{formatMoney(totals.exVat)}</span></div>
-                    <div className="flex justify-between"><span>VAT</span><span>{formatMoney(totals.vat)}</span></div>
-                    <div className="flex justify-between font-bold"><span>Total (Inc. VAT)</span><span>{formatMoney(totals.incVat)}</span></div>
+                    <div className="flex justify-between"><span>Subtotal (Ex. VAT)</span><span>{money(totals.exVat)}</span></div>
+                    <div className="flex justify-between"><span>VAT</span><span>{money(totals.vat)}</span></div>
+                    <div className="flex justify-between font-bold"><span>Total (Inc. VAT)</span><span>{money(totals.incVat)}</span></div>
                 </div>
               </div>
               <Input placeholder="Optional notes..." value={notes} onChange={e => setNotes(e.target.value)} />
-              <Button onClick={handleCreatePO} disabled={isCreating || Object.keys(qtyById).length === 0}>
+              <Button onClick={handleCreatePO} disabled={isCreating || Object.keys(qtyById).filter(k=>qtyById[k] > 0).length === 0}>
                 {isCreating ? 'Creating...' : 'Create Purchase Order'}
               </Button>
             </>
