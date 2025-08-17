@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import DashboardHeader from '@/components/dashboard-header';
 import { type KdsTicket, type Station, type PrepStatus } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, CheckCircle2, PlayCircle, Utensils } from 'lucide-react';

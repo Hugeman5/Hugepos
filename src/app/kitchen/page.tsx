@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import DashboardHeader from '@/components/dashboard-header';
 import { type KdsTicket, type Station } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, CheckCircle2, Zap, RotateCcw } from 'lucide-react';
@@ -183,4 +183,3 @@ export default function KdsPage() {
     </div>
   );
 }
-
