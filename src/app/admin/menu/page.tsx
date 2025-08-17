@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { formatMoney } from '@/lib/money';
+import { Badge } from '@/components/ui/badge';
 
 export default function MenuBuilderPage() {
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -248,5 +249,7 @@ export default function MenuBuilderPage() {
     </AdminLayout>
   );
 }
+
+    
 
     

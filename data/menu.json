@@ -1,0 +1,40 @@
+{
+  "categories": [
+    {
+      "id": "cat_1755399187235_qxnz1",
+      "name": "Rise n Shine",
+      "color": "#5FB9A4",
+      "active": true,
+      "sort": 10
+    }
+  ],
+  "items": [
+    {
+      "id": "it_1755399215677_smuuz",
+      "taxCode": "STD15",
+      "active": true,
+      "sort": 10,
+      "catId": "cat_1755399187235_qxnz1",
+      "name": "Full Breakfast",
+      "priceCents": 150
+    }
+  ],
+  "taxCodes": [
+    {
+      "code": "STD15",
+      "name": "VAT 15%",
+      "rate": 0.15,
+      "priceIncludesVAT": true
+    },
+    {
+      "code": "ZERO",
+      "name": "Zero-rated",
+      "rate": 0,
+      "priceIncludesVAT": true
+    }
+  ],
+  "meta": {
+    "version": 1,
+    "updatedAt": "2025-08-17T02:53:35.678Z"
+  }
+}
