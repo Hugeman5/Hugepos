@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import Card from '@/components/ui/Card';
 import { useToast } from '@/hooks/use-toast';
 import { type ModifierSet, type ModifierOption } from '@/lib/menuRepo';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
@@ -55,6 +55,7 @@ export default function ModifiersPage() {
       if (!res.ok) throw new Error(await res.text());
       toast({ title: 'Success', description: 'Modifier set saved.' });
       setIsSetDialogOpen(false);
+      setEditingSet(null);
       fetchData();
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
@@ -66,6 +67,7 @@ export default function ModifiersPage() {
     try {
       await fetch(`/api/admin/menu/modifiers/${setId}`, { method: 'DELETE' });
       toast({ title: 'Success', description: 'Modifier set deleted.' });
+      setEditingSet(null);
       fetchData();
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
@@ -86,6 +88,7 @@ export default function ModifiersPage() {
         if (!res.ok) throw new Error(await res.text());
         toast({ title: 'Success', description: 'Option saved.' });
         setIsOptionDialogOpen(false);
+        setEditingOption(null);
         fetchData();
     } catch (e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
@@ -134,7 +137,7 @@ export default function ModifiersPage() {
         </div>
 
         <div className="md:col-span-2">
-            {editingSet && (
+            {editingSet && editingSet.id && (
               <Card>
                 <div className="p-4 border-b flex justify-between items-center">
                     <h2 className="font-semibold text-xl">{editingSet.name}</h2>

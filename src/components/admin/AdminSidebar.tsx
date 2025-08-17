@@ -2,7 +2,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, KeyRound, Package, UploadCloud, Warehouse, ChefHat, Route, BarChart3, Settings, Store, Map, HardDrive } from 'lucide-react';
+import { Home, Users, KeyRound, Package, UploadCloud, Warehouse, ChefHat, Route, BarChart3, Settings, Store, Map, HardDrive, SwatchBook } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
   { href: '/admin/orders', label: 'Orders', icon: Package },
   { href: '/admin/menu', label: 'Menu Items', icon: Package },
+  { href: '/admin/modifiers', label: 'Modifiers', icon: SwatchBook },
   { href: '/admin/inventory', label: 'Inventory', icon: Warehouse },
   { href: '/admin/customers', label: 'Customers', icon: Users },
   { href: '/admin/users', label: 'Staff Users', icon: Users },

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import Card from '@/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { type Category, type MenuItem, type Menu, type ModifierSet } from '@/lib/menuRepo';
@@ -138,6 +138,11 @@ export default function MenuBuilderPage() {
 
   return (
     <AdminLayout title="Menu Builder">
+      <div className="flex justify-end mb-4">
+        <Button asChild variant="secondary">
+          <Link href="/admin/menu/import-export">Import / Export</Link>
+        </Button>
+      </div>
       <div className="grid md:grid-cols-3 gap-8">
         {/* Categories Section */}
         <div className="md:col-span-1">
@@ -153,7 +158,10 @@ export default function MenuBuilderPage() {
                     <div key={cat.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-brand-muted">
                         <div className="w-4 h-4 rounded-full" style={{ backgroundColor: cat.color }}></div>
                         <span className="flex-1 font-medium">{cat.name}</span>
-                         <Switch checked={cat.active} onCheckedChange={(active) => { setEditingCategory({ id: cat.id, active }); handleSaveCategory(); }} />
+                         <Switch checked={cat.active} onCheckedChange={async (active) => {
+                             await updateCategory(cat.id, { active });
+                             fetchData();
+                         }} />
                         <Button size="icon" variant="ghost" onClick={() => { setEditingCategory(cat); setIsCategoryDialogOpen(true); }}>
                             <Edit className="h-4 w-4" />
                         </Button>
@@ -279,3 +287,4 @@ export default function MenuBuilderPage() {
     </AdminLayout>
   );
 }
+

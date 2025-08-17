@@ -12,6 +12,7 @@ const schema = z.object({
   taxCode: z.string().optional(),
   sku: z.string().optional(),
   active: z.boolean().optional(),
+  modifierSetIds: z.array(z.string()).optional()
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -21,7 +22,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         if (!validation.success) {
             return NextResponse.json({ message: "Invalid data", errors: validation.error.errors }, { status: 400 });
         }
-        const updated = await upsertItem({ ...validation.data, id: params.id, name: validation.data.name!, catId: validation.data.catId!, priceCents: validation.data.priceCents! });
+        const updated = await upsertItem({ ...validation.data, id: params.id });
         return NextResponse.json(updated);
     } catch(e) {
         return NextResponse.json({ message: "Failed to update item", error: (e as Error).message }, { status: 500 });

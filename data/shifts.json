@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "id": "shift_1",
+    "registerId": "checkout_counter",
+    "userIdOpen": "jcashier",
+    "userNameOpen": "John Cashier",
+    "tsOpen": "2025-08-17T08:05:40.131Z",
+    "floatAmount": 1500,
+    "status": "open",
+    "cashPayments": 0,
+    "cardPayments": 0,
+    "giftCardPayments": 0,
+    "cashExpected": 1500
+  }
+]

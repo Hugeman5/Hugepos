@@ -78,19 +78,27 @@ function ModifierDialog({ product, menu, open, onOpenChange, onAddToCart }: {
     const handleSubmit = () => {
         if (!isSelectionValid()) return;
         const modsForCart: CartLineMod[] = Object.entries(selectedMods)
-            .map(([setId, optionIds]) => ({ setId, optionIds }))
-            .filter(m => m.optionIds.length > 0);
+            .flatMap(([setId, optionIds]) => optionIds.map(optionId => ({ setId, optionId }))) // This needs to be transformed correctly for the cart
+            .reduce((acc, { setId, optionId }) => {
+                const existing = acc.find(m => m.setId === setId);
+                if (existing) {
+                    existing.optionIds.push(optionId);
+                } else {
+                    acc.push({ setId, optionIds: [optionId] });
+                }
+                return acc;
+            }, [] as CartLineMod[]);
         
         onAddToCart(product, modsForCart);
         onOpenChange(false);
     }
     
     // Reset state when dialog is re-opened for a new product
-    React.useEffect(() => {
+    useState(() => {
         if(open) {
             setSelectedMods({});
         }
-    }, [open, product]);
+    });
 
 
     return (
@@ -128,6 +136,7 @@ function ModifierDialog({ product, menu, open, onOpenChange, onAddToCart }: {
                                             <Checkbox 
                                                 id={`${set.id}-${opt.id}`}
                                                 onCheckedChange={(checked) => handleMultiSelect(set.id, opt.id, !!checked)}
+                                                checked={selectedMods[set.id]?.includes(opt.id)}
                                                 disabled={(selectedMods[set.id]?.length || 0) >= set.max && !selectedMods[set.id]?.includes(opt.id)}
                                             />
                                              <Label htmlFor={`${set.id}-${opt.id}`} className="flex-1">

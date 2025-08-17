@@ -2,6 +2,7 @@
 
 
 
+
 export type User = {
   id: string;
   name: string;
@@ -452,3 +453,4 @@ export type EmailOutboxItem = {
     status: 'queued' | 'sent' | 'error';
     error?: string;
 };
+

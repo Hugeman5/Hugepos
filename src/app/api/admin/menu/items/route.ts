@@ -12,6 +12,7 @@ const schema = z.object({
   taxCode: z.string().optional(),
   sku: z.string().optional(),
   active: z.boolean().optional(),
+  modifierSetIds: z.array(z.string()).optional()
 });
 
 export async function POST(req: Request) {
