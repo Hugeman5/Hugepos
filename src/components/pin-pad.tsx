@@ -1,7 +1,8 @@
+
 'use client';
 
 import type { Dispatch, SetStateAction } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/input';
 import { X } from 'lucide-react';
 
@@ -38,7 +39,7 @@ export function PinPad({ pin, setPin, isPending }: PinPadProps) {
             <Button
                 key={num}
                 type="button"
-                variant="outline"
+                variant="secondary"
                 className="h-16 w-16 text-2xl"
                 onClick={() => handleNumberClick(num.toString())}
                 disabled={isPending}
@@ -49,14 +50,14 @@ export function PinPad({ pin, setPin, isPending }: PinPadProps) {
             <div className="h-16 w-16"></div> {/* Placeholder */}
             <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 className="h-16 w-16 text-2xl"
                 onClick={() => handleNumberClick('0')}
                 disabled={isPending}
             >
             0
             </Button>
-            <Button type="button" variant="outline" className="h-16 w-16" onClick={handleBackspace} disabled={isPending}>
+            <Button type="button" variant="secondary" className="h-16 w-16" onClick={handleBackspace} disabled={isPending}>
                 <X className="h-8 w-8" />
             </Button>
         </div>

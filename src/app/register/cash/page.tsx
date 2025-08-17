@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +19,6 @@ export default function CashPage() {
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // For this simple example, we'll mock the user. In a real app, this would come from a session.
   const user = { id: 'jcashier', name: 'John Cashier' };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,7 +44,7 @@ export default function CashPage() {
             throw new Error(data.message || 'Failed to process cash movement.');
         }
         toast({ title: 'Success', description: `Successfully processed ${type} of $${amount}.` });
-        router.push('/cashier'); // Or back to a register menu
+        router.push('/cashier'); 
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
     } finally {
@@ -63,17 +63,17 @@ export default function CashPage() {
           </Link>
         </Button>
         <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-headline text-primary">Cash In / Out</CardTitle>
-            <CardDescription>Record a cash payment in or out of the drawer.</CardDescription>
-          </CardHeader>
-          <CardContent>
+          <div className="p-4 text-center border-b border-brand-line">
+            <h2 className="text-2xl font-headline text-primary">Cash In / Out</h2>
+            <p className="text-brand-mute">Record a cash payment in or out of the drawer.</p>
+          </div>
+          <div className="p-4">
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
-                    <Button type="button" variant={type === 'payin' ? 'default' : 'outline'} onClick={() => setType('payin')}>
+                    <Button type="button" variant={type === 'payin' ? 'primary' : 'secondary'} onClick={() => setType('payin')}>
                         Pay In
                     </Button>
-                     <Button type="button" variant={type === 'payout' ? 'default' : 'outline'} onClick={() => setType('payout')}>
+                     <Button type="button" variant={type === 'payout' ? 'primary' : 'secondary'} onClick={() => setType('payout')}>
                         Pay Out
                     </Button>
                 </div>
@@ -105,7 +105,7 @@ export default function CashPage() {
                 {isSubmitting ? 'Processing...' : 'Confirm Movement'} <Landmark className="ml-2 h-4 w-4" />
               </Button>
             </form>
-          </CardContent>
+          </div>
         </Card>
       </div>
     </main>

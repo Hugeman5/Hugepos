@@ -1,10 +1,11 @@
+
 'use server';
 import { getOrder } from '@/lib/ordersRepo';
 import { verifyReceipt } from '@/lib/signing';
 import { formatMoney } from '@/lib/money';
 import { getSettings } from '@/lib/settingsRepo';
 import { notFound } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import Card from '@/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default async function PublicReceiptPage({
@@ -32,10 +33,10 @@ export default async function PublicReceiptPage({
     return (
         <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-muted">
             <Card>
-                <CardHeader>
-                    <CardTitle>Invalid Link</CardTitle>
-                    <CardDescription>This receipt link is invalid or may have expired.</CardDescription>
-                </CardHeader>
+                <div className="p-4 border-b border-brand-line">
+                    <h2 className="text-xl font-semibold">Invalid Link</h2>
+                    <p className="text-brand-mute">This receipt link is invalid or may have expired.</p>
+                </div>
             </Card>
         </main>
     )
@@ -50,13 +51,13 @@ export default async function PublicReceiptPage({
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-muted">
         <Card className="w-full max-w-2xl">
-            <CardHeader>
-                <CardTitle>Receipt #{order.number}</CardTitle>
-                <CardDescription>
+            <div className="p-4 border-b border-brand-line">
+                <h2 className="text-xl font-semibold">Receipt #{order.number}</h2>
+                <p className="text-brand-mute">
                     {new Date(order.ts).toLocaleString(settings.locale)}
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
+                </p>
+            </div>
+            <div className="p-4">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -80,7 +81,7 @@ export default async function PublicReceiptPage({
                     <p>Tax: {formatMoney(order.totals.tax, settings.currency, settings.locale)}</p>
                     <p className="font-bold text-lg">Total: {formatMoney(order.totals.total, settings.currency, settings.locale)}</p>
                 </div>
-            </CardContent>
+            </div>
         </Card>
     </main>
   );

@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -142,13 +143,13 @@ export default function RolesPage() {
   const renderRoleTab = (role: keyof RolesMatrix) => (
     <TabsContent value={role} className="mt-4">
       <Card className="bg-brand-card border-brand-line">
-        <CardHeader>
-          <CardTitle className="capitalize">{role}</CardTitle>
-          <CardDescription className="text-brand-mute">
+        <div className="p-4 border-b border-brand-line">
+          <h2 className="text-xl font-semibold capitalize">{role}</h2>
+          <p className="text-brand-mute">
             {role === 'admin' ? 'Admins have all permissions. This role cannot be edited.' : `Set permissions for the ${role} role.`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-8">
+          </p>
+        </div>
+        <div className="p-4 space-y-8">
             {Object.entries(permissionGroups).map(([groupName, keys]) => (
                 <div key={groupName}>
                     <h3 className="text-lg font-semibold mb-4 font-headline">{groupName}</h3>
@@ -157,7 +158,7 @@ export default function RolesPage() {
                     </div>
                 </div>
             ))}
-        </CardContent>
+        </div>
       </Card>
     </TabsContent>
   );
@@ -179,7 +180,7 @@ export default function RolesPage() {
           {renderRoleTab('admin')}
         </Tabs>
         <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setRoles(initialRoles)} disabled={isSaving}>Cancel / Reset</Button>
+            <Button variant="secondary" onClick={() => setRoles(initialRoles)} disabled={isSaving}>Cancel / Reset</Button>
             <Button onClick={handleSaveChanges} disabled={isSaving} className="bg-brand-accent">
                 {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useActionState } from 'react';
@@ -5,11 +6,10 @@ import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { ArrowLeft, LogIn } from 'lucide-react';
 import { loginAdmin, type AdminLoginState } from '@/lib/actions';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 function LoginButton() {
@@ -26,46 +26,46 @@ export default function AdminLoginPage() {
   const [state, dispatch] = useActionState(loginAdmin, initialState);
  
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background text-foreground">
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-[--bg] text-[--text]">
       <div className="w-full max-w-md">
-        <Button variant="ghost" asChild className="absolute top-4 left-4">
-          <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
-          </Link>
-        </Button>
-        <Card className="bg-card">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-headline text-primary">Admin Login</CardTitle>
-            <CardDescription>Enter your credentials to access the admin dashboard.</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Link href="/">
+            <Button variant="secondary" className="absolute top-4 left-4">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Home
+            </Button>
+        </Link>
+        <Card>
+          <div className="p-6 text-center">
+            <h1 className="text-2xl font-bold text-[--accent]">Admin Login</h1>
+            <p className="text-[--text-dim]">Enter your credentials to access the admin dashboard.</p>
+          </div>
+          <div className="p-6 pt-0">
             <form action={dispatch} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
-                <Input id="username" name="username" placeholder="admin" required />
+                <Input id="username" name="username" placeholder="admin" required className="bg-[--muted] border-[--line] rounded-xl px-3 py-2" />
                  {state.errors?.username && (
-                  <p className="text-sm font-medium text-destructive">{state.errors.username[0]}</p>
+                  <p className="text-sm font-medium text-[--danger]">{state.errors.username[0]}</p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" name="email" type="email" placeholder="admin@hugepos.com" required />
+                <Input id="email" name="email" type="email" placeholder="admin@hugepos.com" required className="bg-[--muted] border-[--line] rounded-xl px-3 py-2" />
                  {state.errors?.email && (
-                  <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>
+                  <p className="text-sm font-medium text-[--danger]">{state.errors.email[0]}</p>
                 )}
               </div>
 
                {state.message && (
-                 <Alert variant="destructive">
-                   <AlertTitle>Login Failed</AlertTitle>
-                   <AlertDescription>{state.message}</AlertDescription>
-                 </Alert>
+                 <div className="p-3 rounded-lg bg-[--danger]/10 text-center text-[--danger]">
+                   <h3 className="font-semibold">Login Failed</h3>
+                   <p className="text-sm">{state.message}</p>
+                 </div>
               )}
               
               <LoginButton />
             </form>
-          </CardContent>
+          </div>
         </Card>
       </div>
     </main>

@@ -2,8 +2,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -58,16 +58,16 @@ function TaxSettingsCard() {
     }
 
     if (isLoading || !settings) {
-        return <Card><CardHeader><CardTitle>Loading Settings...</CardTitle></CardHeader></Card>;
+        return <Card><div className="p-4"><h2 className="text-xl font-semibold">Loading Settings...</h2></div></Card>;
     }
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Currency & VAT</CardTitle>
-                <CardDescription>Configure your store's currency and tax settings.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid md:grid-cols-2 gap-8">
+            <div className="p-4 border-b border-brand-line">
+                <h2 className="text-xl font-semibold">Currency & VAT</h2>
+                <p className="text-brand-mute">Configure your store's currency and tax settings.</p>
+            </div>
+            <div className="p-4 grid md:grid-cols-2 gap-8">
                 <div className="space-y-6">
                     <div className="flex items-center justify-between">
                         <Label htmlFor="priceIncludesVAT">Prices include VAT</Label>
@@ -97,7 +97,7 @@ function TaxSettingsCard() {
                         <p>...and <strong>{formatMoney(exampleTax, settings.currency)}</strong> in VAT.</p>
                     </div>
                 </div>
-            </CardContent>
+            </div>
         </Card>
     );
 }
@@ -108,10 +108,10 @@ export default function SettingsPage() {
       <div className="space-y-8">
         <TaxSettingsCard />
         <Card>
-            <CardHeader><CardTitle>Other Settings</CardTitle></CardHeader>
-            <CardContent>
+            <div className="p-4 border-b border-brand-line"><h2 className="text-xl font-semibold">Other Settings</h2></div>
+            <div className="p-4">
                 <p className="text-muted-foreground">Other sections like outlet management, receipt templates, etc., are under construction.</p>
-            </CardContent>
+            </div>
         </Card>
       </div>
     </AdminLayout>

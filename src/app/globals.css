@@ -4,66 +4,50 @@
 
 @layer base {
   :root {
-    --background: 220 14% 5%; /* #0B0B0F */
-    --foreground: 220 10% 93%; /* #EDEEF1 */
-    --card: 220 14% 8%; /* #121319 */
-    --card-foreground: 220 10% 93%; /* #EDEEF1 */
-    --popover: 220 14% 8%; /* #121319 */
-    --popover-foreground: 220 10% 93%; /* #EDEEF1 */
-    --primary: 38 92% 50%; /* #FF9500 */
-    --primary-foreground: 220 14% 5%;
-    --secondary: 220 14% 12%; /* #1E212B */
-    --secondary-foreground: 220 10% 93%; /* #EDEEF1 */
-    --muted: 220 14% 12%; /* #1E212B */
-    --muted-foreground: 220 4% 67%; /* #A6A7AC */
-    --accent: 48 100% 52%; /* #FFD60A */
-    --accent-foreground: 220 14% 5%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 220 14% 12%; /* #1E212B */
-    --input: 220 14% 12%; /* #1E212B */
-    --ring: 38 92% 50%;
-    --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-  }
-
-  .dark {
-    --background: 220 14% 5%; /* #0B0B0F */
-    --foreground: 220 10% 93%; /* #EDEEF1 */
-    --card: 220 14% 8%; /* #121319 */
-    --card-foreground: 220 10% 93%; /* #EDEEF1 */
-    --popover: 220 14% 8%; /* #121319 */
-    --popover-foreground: 220 10% 93%; /* #EDEEF1 */
-    --primary: 38 92% 50%; /* #FF9500 */
-    --primary-foreground: 220 14% 5%;
-    --secondary: 220 14% 12%; /* #1E212B */
-    --secondary-foreground: 220 10% 93%; /* #EDEEF1 */
-    --muted: 220 14% 12%; /* #1E212B */
-    --muted-foreground: 220 4% 67%; /* #A6A7AC */
-    --accent: 48 100% 52%; /* #FFD60A */
-    --accent-foreground: 220 14% 5%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 220 14% 12%; /* #1E212B */
-    --input: 220 14% 12%; /* #1E212B */
-    --ring: 38 92% 50%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --bg: #0f1115;
+    --panel: #151821;
+    --muted: #222632;
+    --line: #2b3040;
+    --text: #e6e7ea;
+    --text-dim: #a9afc3;
+    --accent: #66c2a3;
+    --danger: #ff5f5f;
+    --ok: #7ee29b;
+    
+    --background: var(--bg);
+    --foreground: var(--text);
+    --card: var(--panel);
+    --card-foreground: var(--text);
+    --popover: var(--panel);
+    --popover-foreground: var(--text);
+    --primary: var(--accent);
+    --primary-foreground: #0f1115;
+    --secondary: var(--muted);
+    --secondary-foreground: var(--text);
+    /* --muted is already a color, shadcn uses it for the component background */
+    --muted-component-bg: var(--muted);
+    --muted-foreground: var(--text-dim);
+    /* --accent is already a color, shadcn uses it for the component background */
+    --accent-component-bg: var(--accent);
+    --accent-foreground: #0f1115;
+    --destructive: var(--danger);
+    --destructive-foreground: var(--text);
+    --border: var(--line);
+    --input: var(--muted);
+    --ring: var(--accent);
+    --radius: 0.8rem;
   }
 }
 
 @layer base {
   * {
     @apply border-border;
+    outline-color: var(--accent);
   }
   body {
     @apply bg-background text-foreground;
+  }
+  h1,h2,h3,h4,h5,h6 {
+      font-weight: 600;
   }
 }

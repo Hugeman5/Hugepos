@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { type InventoryMove, type Ingredient } from '@/lib/data';
@@ -19,16 +20,13 @@ export default function InventoryMovesPage() {
   useEffect(() => {
     const fetchMovesAndIngredients = async () => {
       try {
-        // Assuming an endpoint exists for ingredients. If not, this needs to be created.
-        // For now, we might have to live without the name if the endpoint isn't there.
         const movesRes = await fetch('/api/inventory/moves?limit=100');
         const movesData = await movesRes.json();
         if (!movesRes.ok) throw new Error(movesData.message || 'Failed to fetch moves');
         
-        // This part is a nice-to-have, will degrade gracefully if it fails
         let ingredientsMap = new Map<string, string>();
         try {
-            const ingredientsRes = await fetch('/api/inventory/summary'); // Re-use summary to get names
+            const ingredientsRes = await fetch('/api/inventory/summary');
             const ingredientsData = await ingredientsRes.json();
             if(ingredientsRes.ok) {
                  ingredientsMap = new Map<string, string>(ingredientsData.map((i: Ingredient) => [i.id, i.name]));
@@ -57,7 +55,7 @@ export default function InventoryMovesPage() {
   return (
     <AdminLayout title="Inventory History">
         <div className="flex items-center gap-4 mb-4">
-            <Button variant="outline" size="icon" asChild>
+            <Button variant="secondary" size="icon" asChild>
                 <Link href="/admin/inventory">
                     <ArrowLeft className="h-4 w-4" />
                 </Link>
@@ -65,11 +63,11 @@ export default function InventoryMovesPage() {
             <h1 className="font-semibold text-lg md:text-xl">Inventory Movements</h1>
         </div>
         <Card className="bg-brand-card border-brand-line">
-          <CardHeader>
-            <CardTitle>Movement Log</CardTitle>
-            <CardDescription className="text-brand-mute">A log of all inventory transactions.</CardDescription>
-          </CardHeader>
-          <CardContent>
+          <div className="p-4 border-b border-brand-line">
+            <h2 className="text-xl font-semibold">Movement Log</h2>
+            <p className="text-brand-mute">A log of all inventory transactions.</p>
+          </div>
+          <div className="p-4">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -102,7 +100,7 @@ export default function InventoryMovesPage() {
                 )}
               </TableBody>
             </Table>
-          </CardContent>
+          </div>
         </Card>
     </AdminLayout>
   );

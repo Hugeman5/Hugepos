@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,7 +20,6 @@ export default function OpenRegisterPage() {
   const [floatAmount, setFloatAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // For this simple example, we'll mock the user. In a real app, this would come from a session.
   const user = { id: 'jcashier', name: 'John Cashier' };
 
   useEffect(() => {
@@ -71,11 +71,11 @@ export default function OpenRegisterPage() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md">
         <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-headline text-primary">Open Register</CardTitle>
-            <CardDescription>Start a new shift by selecting a register and entering the opening cash float.</CardDescription>
-          </CardHeader>
-          <CardContent>
+          <div className="p-4 text-center border-b border-brand-line">
+            <h2 className="text-2xl font-headline text-primary">Open Register</h2>
+            <p className="text-brand-mute">Start a new shift by selecting a register and entering the opening cash float.</p>
+          </div>
+          <div className="p-4">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="register">Register</Label>
@@ -107,7 +107,7 @@ export default function OpenRegisterPage() {
                 {isSubmitting ? 'Opening...' : 'Open Shift'} <DoorOpen className="ml-2 h-4 w-4" />
               </Button>
             </form>
-          </CardContent>
+          </div>
         </Card>
       </div>
     </main>

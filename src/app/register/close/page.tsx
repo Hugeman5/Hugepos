@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +22,6 @@ export default function CloseRegisterPage() {
   const [actualCash, setActualCash] = useState('');
   const [isClosing, setIsClosing] = useState(false);
   
-  // For this simple example, we'll mock the user. In a real app, this would come from a session.
   const user = { id: 'jcashier', name: 'John Cashier' };
 
   useEffect(() => {
@@ -95,16 +95,16 @@ export default function CloseRegisterPage() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
       <div className="w-full max-w-2xl">
         <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-headline text-primary">Close Register</CardTitle>
-            <CardDescription>Review totals and enter final cash count to close the shift.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid md:grid-cols-2 gap-8">
+          <div className="p-4 text-center border-b border-brand-line">
+            <h2 className="text-2xl font-headline text-primary">Close Register</h2>
+            <p className="text-brand-mute">Review totals and enter final cash count to close the shift.</p>
+          </div>
+          <div className="p-4 grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
                 <h3 className="font-semibold text-lg">Actions</h3>
-                <Button className="w-full justify-start" variant="outline" asChild><Link href="/cashier"><LandPlot className="mr-2"/> Back to Sales</Link></Button>
-                <Button className="w-full justify-start" variant="outline" asChild><Link href="/register/cash"><Plus className="mr-2"/> Pay In</Link></Button>
-                <Button className="w-full justify-start" variant="outline" asChild><Link href="/register/cash"><Minus className="mr-2"/> Pay Out</Link></Button>
+                <Button className="w-full justify-start" variant="secondary" asChild><Link href="/cashier"><LandPlot className="mr-2"/> Back to Sales</Link></Button>
+                <Button className="w-full justify-start" variant="secondary" asChild><Link href="/register/cash"><Plus className="mr-2"/> Pay In</Link></Button>
+                <Button className="w-full justify-start" variant="secondary" asChild><Link href="/register/cash"><Minus className="mr-2"/> Pay Out</Link></Button>
             </div>
             
             <div className="space-y-4">
@@ -140,7 +140,7 @@ export default function CloseRegisterPage() {
 
             </div>
 
-          </CardContent>
+          </div>
         </Card>
       </div>
     </main>

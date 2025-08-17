@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -112,10 +113,10 @@ export default function InventoryPage() {
   return (
     <AdminLayout title="Inventory Management">
         <Card className="bg-brand-card border-brand-line">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex flex-row items-center justify-between p-4 border-b border-brand-line">
             <div>
-              <CardTitle>Inventory Summary</CardTitle>
-              <CardDescription className="text-brand-mute">Current stock levels for all ingredients.</CardDescription>
+              <h2 className="text-xl font-semibold">Inventory Summary</h2>
+              <p className="text-brand-mute">Current stock levels for all ingredients.</p>
             </div>
             <div className="flex gap-2">
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -123,7 +124,7 @@ export default function InventoryPage() {
                     <Button onClick={() => setDialogMode('receive')}>Receive Stock</Button>
                   </DialogTrigger>
                   <DialogTrigger asChild>
-                    <Button variant="outline" onClick={() => setDialogMode('adjust')}>Adjust Stock</Button>
+                    <Button variant="secondary" onClick={() => setDialogMode('adjust')}>Adjust Stock</Button>
                   </DialogTrigger>
                   <DialogContent>
                     <form onSubmit={handleFormSubmit}>
@@ -179,12 +180,12 @@ export default function InventoryPage() {
                     </form>
                   </DialogContent>
                 </Dialog>
-              <Button variant="outline" asChild>
+              <Button variant="secondary" asChild>
                   <Link href="/admin/inventory/moves">View History</Link>
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div className="p-4">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -213,7 +214,7 @@ export default function InventoryPage() {
                 )}
               </TableBody>
             </Table>
-          </CardContent>
+          </div>
         </Card>
     </AdminLayout>
   );

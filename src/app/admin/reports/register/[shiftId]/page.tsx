@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { useToast } from '@/hooks/use-toast';
 import { type RegisterReport } from '@/lib/data';
 import { Separator } from '@/components/ui/separator';
@@ -62,21 +63,20 @@ export default function RegisterReportPage() {
   return (
     <AdminLayout title={`Register Report: ${shiftId}`}>
         <div className="flex items-center gap-4 mb-4">
-            <Button variant="outline" size="icon" asChild>
+            <Button variant="secondary" size="icon" asChild>
                 <Link href="/admin/registers">
                     <ArrowLeft className="h-4 w-4" />
                 </Link>
             </Button>
             <h1 className="font-semibold text-lg md:text-xl">Z Report for Shift <span className="font-mono">{shiftId}</span></h1>
-            <Button variant="outline" className="ml-auto" onClick={() => window.print()}><Printer className="mr-2"/> Print</Button>
+            <Button variant="secondary" className="ml-auto" onClick={() => window.print()}><Printer className="mr-2"/> Print</Button>
         </div>
         <Card className="bg-brand-card border-brand-line">
-            <CardHeader>
-                <CardTitle>Shift Summary</CardTitle>
-                <CardDescription>Generated on {new Date(report.ts).toLocaleString()}</CardDescription>
-            </CardHeader>
-            <CardContent className="grid md:grid-cols-3 gap-8">
-                {/* Column 1: Sales */}
+            <div className="p-4 border-b border-brand-line">
+                <h2 className="text-xl font-semibold">Shift Summary</h2>
+                <p className="text-brand-mute">Generated on {new Date(report.ts).toLocaleString()}</p>
+            </div>
+            <div className="p-4 grid md:grid-cols-3 gap-8">
                 <div className="space-y-2">
                     <h3 className="font-semibold text-lg">Sales Summary</h3>
                     <Separator/>
@@ -89,7 +89,6 @@ export default function RegisterReportPage() {
                      {renderDetailRow('Total Payments', f.format(report.cashPaymentsTotal + report.cardPaymentsTotal), 'font-bold border-t')}
                 </div>
                 
-                 {/* Column 2: Cash Drawer */}
                  <div className="space-y-2">
                     <h3 className="font-semibold text-lg">Cash Drawer</h3>
                     <Separator/>
@@ -104,8 +103,7 @@ export default function RegisterReportPage() {
                     {renderDetailRow('Difference', f.format(report.difference), `font-bold ${report.difference !== 0 ? 'text-destructive' : 'text-green-400'}`)}
                  </div>
                  
-                  {/* Column 3: Movements */}
-                 <div className="space-y-2">
+                  <div className="space-y-2">
                     <h3 className="font-semibold text-lg">Cash Movements</h3>
                     <Separator/>
                     <div className="text-sm max-h-60 overflow-y-auto">
@@ -117,7 +115,7 @@ export default function RegisterReportPage() {
                         )) : <p className="text-muted-foreground py-2">No cash movements recorded.</p>}
                     </div>
                  </div>
-            </CardContent>
+            </div>
         </Card>
     </AdminLayout>
   );

@@ -1,11 +1,12 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,7 +21,7 @@ import { ArrowLeft } from 'lucide-react';
 const userFormSchema = z.object({
   id: z.string().min(1, 'ID is required'),
   name: z.string().min(1, 'Name is required'),
-  role: z.enum(['admin', 'manager', 'cashier']),
+  role: z.enum(['admin', 'manager', 'cashier', 'waiter', 'kitchen']),
   active: z.boolean(),
   exposeOnPinLogin: z.boolean(),
   pin: z.string().regex(/^\d{4}$/, 'PIN must be 4 digits').optional().or(z.literal('')),
@@ -97,7 +98,7 @@ export default function UserEditPage({ params }: { params: { id: string } }) {
   return (
     <AdminLayout title={isNewUser ? 'Add New User' : 'Edit User'}>
          <div className="flex items-center gap-4 mb-4">
-          <Button variant="outline" size="icon" asChild>
+          <Button variant="secondary" size="icon" asChild>
             <Link href="/admin/users">
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -105,11 +106,11 @@ export default function UserEditPage({ params }: { params: { id: string } }) {
           <h1 className="font-semibold text-lg md:text-xl">{isNewUser ? 'Create New User Profile' : 'Edit User Profile'}</h1>
         </div>
         <Card className="bg-brand-card border-brand-line">
-            <CardHeader>
-                <CardTitle>User Details</CardTitle>
-                <CardDescription className="text-brand-mute">Fill in the details for the user account.</CardDescription>
-            </CardHeader>
-          <CardContent>
+            <div className="p-4 border-b border-brand-line">
+                <h2 className="text-xl font-semibold">User Details</h2>
+                <p className="text-brand-mute">Fill in the details for the user account.</p>
+            </div>
+          <div className="p-4">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -132,6 +133,8 @@ export default function UserEditPage({ params }: { params: { id: string } }) {
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="cashier">Cashier</SelectItem>
+                                        <SelectItem value="waiter">Waiter</SelectItem>
+                                        <SelectItem value="kitchen">Kitchen</SelectItem>
                                         <SelectItem value="manager">Manager</SelectItem>
                                         <SelectItem value="admin">Admin</SelectItem>
                                     </SelectContent>
@@ -165,13 +168,13 @@ export default function UserEditPage({ params }: { params: { id: string } }) {
                 </div>
 
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+                <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
                 <Button type="submit" disabled={isSubmitting} className="bg-brand-accent">
                     {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
             </form>
-          </CardContent>
+          </div>
         </Card>
     </AdminLayout>
   );

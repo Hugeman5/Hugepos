@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -64,7 +65,6 @@ export default function RegistersPage() {
   };
 
   const handleRemoveRegister = (id: string) => {
-    // Prevent removing a register if it has shifts associated
     if (shifts.some(s => s.registerId === id)) {
         toast({ variant: 'destructive', title: 'Error', description: 'Cannot delete a register that has associated shifts.' });
         return;
@@ -97,11 +97,11 @@ export default function RegistersPage() {
     <AdminLayout title="Register Management">
         <div className="grid md:grid-cols-2 gap-8">
             <Card className="bg-brand-card border-brand-line">
-              <CardHeader>
-                <CardTitle>Manage Registers</CardTitle>
-                <CardDescription className="text-brand-mute">Add or remove cash registers for your outlets.</CardDescription>
-              </CardHeader>
-              <CardContent>
+              <div className="p-4 border-b border-brand-line">
+                <h2 className="text-xl font-semibold">Manage Registers</h2>
+                <p className="text-brand-mute">Add or remove cash registers for your outlets.</p>
+              </div>
+              <div className="p-4">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -118,7 +118,7 @@ export default function RegistersPage() {
                         <TableCell className="font-medium">{register.name}</TableCell>
                         <TableCell className="font-mono text-muted-foreground">{register.id}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => handleRemoveRegister(register.id)}>
+                          <Button variant="secondary" size="icon" onClick={() => handleRemoveRegister(register.id)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </TableCell>
@@ -136,20 +136,20 @@ export default function RegistersPage() {
                      <Button onClick={handleAddRegister} className="bg-brand-accent"><PlusCircle className="mr-2"/> Add</Button>
                 </div>
                  <div className="flex justify-end gap-2 mt-4">
-                    <Button variant="outline" onClick={fetchData}>Cancel</Button>
+                    <Button variant="secondary" onClick={fetchData}>Cancel</Button>
                     <Button onClick={handleSaveChanges} disabled={isSaving} className="bg-brand-accent">
                         {isSaving ? 'Saving...' : 'Save Changes'}
                     </Button>
                 </div>
-              </CardContent>
+              </div>
             </Card>
 
             <Card className="bg-brand-card border-brand-line">
-                <CardHeader>
-                    <CardTitle>Recent Shifts</CardTitle>
-                    <CardDescription>A log of the most recent register shifts.</CardDescription>
-                </CardHeader>
-                <CardContent>
+                <div className="p-4 border-b border-brand-line">
+                    <h2 className="text-xl font-semibold">Recent Shifts</h2>
+                    <p className="text-brand-mute">A log of the most recent register shifts.</p>
+                </div>
+                <div className="p-4">
                      <Table>
                         <TableHeader>
                             <TableRow>
@@ -178,7 +178,7 @@ export default function RegistersPage() {
                             ))}
                         </TableBody>
                      </Table>
-                </CardContent>
+                </div>
             </Card>
         </div>
     </AdminLayout>

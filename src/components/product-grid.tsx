@@ -3,8 +3,8 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -68,7 +68,7 @@ export default function ProductGrid({
         optionId: value.optionId,
         count: value.count,
       }))
-      .filter((m) => (m.optionId || (m.count && m.count > 0))); // Only add if selected/counted
+      .filter((m) => (m.optionId || (m.count && m.count > 0)));
 
     onAddToCart(selectedProduct, modsForCart);
     setIsModifierDialogOpen(false);
@@ -107,9 +107,9 @@ export default function ProductGrid({
             <Card
               key={product.id}
               onClick={() => handleProductClick(product)}
-              className="overflow-hidden flex flex-col hover:shadow-md transition-shadow cursor-pointer"
+              className="overflow-hidden flex flex-col hover:shadow-md transition-shadow cursor-pointer p-0"
             >
-              <CardHeader className="p-0 relative h-32">
+              <div className="p-0 relative h-32">
                 <Image
                   src={
                     product.imageUrl ||
@@ -120,21 +120,20 @@ export default function ProductGrid({
                   sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                   className="object-cover"
                 />
-              </CardHeader>
-              <CardContent className="p-3 flex-1 flex flex-col">
+              </div>
+              <div className="p-3 flex-1 flex flex-col">
                 <h3 className="font-semibold leading-tight">{product.name}</h3>
-              </CardContent>
-               <CardContent className="p-3 pt-0">
+              </div>
+               <div className="p-3 pt-0">
                  <p className="text-muted-foreground text-sm font-bold">
                   ${product.price.toFixed(2)}
                 </p>
-               </CardContent>
+               </div>
             </Card>
           ))}
         </div>
       </div>
 
-      {/* Modifier Dialog */}
       <Dialog open={isModifierDialogOpen} onOpenChange={setIsModifierDialogOpen}>
         <DialogContent>
           <DialogHeader>

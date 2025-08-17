@@ -7,7 +7,7 @@ import { Calendar as CalendarIcon } from "lucide-react"
 import { type DateRange } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/Button"
 import { Calendar } from "@/components/ui/calendar"
 import {
   Popover,
@@ -31,7 +31,7 @@ export function DateRangePicker({
         <PopoverTrigger asChild>
           <Button
             id="date"
-            variant={"outline"}
+            variant={"secondary"}
             className={cn(
               "w-[300px] justify-start text-left font-normal",
               !date && "text-muted-foreground"

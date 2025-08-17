@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import DashboardHeader from '@/components/dashboard-header';
@@ -61,8 +62,6 @@ export default function CashierDashboardPage() {
 
   const handleBarcodeScan = useCallback(async (barcode: string) => {
     try {
-        // This endpoint doesn't exist, we will need a lookup mechanism.
-        // For now, let's assume we can search the products we have.
         const allProducts = Object.values(menuData?.productsByCategory || {}).flat();
         const product = allProducts.find(p => p.barcode === barcode);
 
@@ -77,18 +76,17 @@ export default function CashierDashboardPage() {
     }
   }, [menuData, toast]);
 
-  // Keyboard listener for quantity and barcode scanner
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
-          if (scanBuffer.current.length > 3) { // Simple heuristic for a barcode
+          if (scanBuffer.current.length > 3) {
               handleBarcodeScan(scanBuffer.current);
           }
           scanBuffer.current = '';
           return;
       }
 
-      if (e.key.length === 1) { // Alphanumeric or symbol
+      if (e.key.length === 1) { 
           scanBuffer.current += e.key;
       } else if (e.key === 'Backspace') {
            scanBuffer.current = scanBuffer.current.slice(0, -1);

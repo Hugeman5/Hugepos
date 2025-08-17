@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,7 +11,7 @@ import { DateRangePicker } from '@/components/DateRangePicker';
 import { addDays, format } from 'date-fns';
 import { type DateRange } from 'react-day-picker';
 import KpiCard from '@/components/admin/KpiCard';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Donut, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Pie, Cell } from 'recharts';
 
 const f = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 const n = new Intl.NumberFormat('en-US');
@@ -36,7 +37,7 @@ function useReportData<T>(endpoint: string, params: URLSearchParams): { data: T 
       }
     };
     fetchData();
-  }, [endpoint, params.toString()]); // Re-run when endpoint or params change
+  }, [endpoint, params.toString()]);
 
   return { data, isLoading };
 }
@@ -80,11 +81,11 @@ export default function ReportsPage() {
         </TabsList>
         <TabsContent value="overview" className="mt-4">
             <Card>
-                <CardHeader>
-                    <CardTitle>Sales Overview</CardTitle>
-                    <CardDescription>A summary of sales performance for the selected period.</CardDescription>
-                </CardHeader>
-                <CardContent>
+                <div className="p-4 border-b border-brand-line">
+                    <h2 className="text-xl font-semibold">Sales Overview</h2>
+                    <p className="text-brand-mute">A summary of sales performance for the selected period.</p>
+                </div>
+                <div className="p-4">
                     {loadingOverview ? <p>Loading...</p> : overview ? (
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             <KpiCard label="Net Sales" value={f.format(overview.net)} />
@@ -97,13 +98,13 @@ export default function ReportsPage() {
                             <KpiCard label="Items per Order" value={overview.itemsPerOrder.toFixed(2)} />
                         </div>
                     ) : <p>No overview data available.</p>}
-                </CardContent>
+                </div>
             </Card>
         </TabsContent>
         <TabsContent value="sales" className="mt-4">
             <Card>
-                <CardHeader><CardTitle>Sales by Day</CardTitle></CardHeader>
-                <CardContent className="h-96">
+                <div className="p-4 border-b border-brand-line"><h2 className="text-xl font-semibold">Sales by Day</h2></div>
+                <div className="p-4 h-96">
                     {loadingByDay ? <p>Loading chart...</p> : salesByDay?.items?.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={salesByDay.items}>
@@ -118,14 +119,14 @@ export default function ReportsPage() {
                             </BarChart>
                         </ResponsiveContainer>
                     ) : <p>No sales data to display.</p>}
-                </CardContent>
+                </div>
             </Card>
         </TabsContent>
          <TabsContent value="items" className="mt-4">
             <div className="grid md:grid-cols-2 gap-4">
                  <Card>
-                    <CardHeader><CardTitle>Sales by Category</CardTitle></CardHeader>
-                    <CardContent>
+                    <div className="p-4 border-b border-brand-line"><h2 className="text-xl font-semibold">Sales by Category</h2></div>
+                    <div className="p-4">
                         {loadingByCategory ? <p>Loading...</p> : byCategory?.items?.length > 0 ? (
                            <Table>
                                <TableHeader><TableRow><TableHead>Category</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Net Sales</TableHead></TableRow></TableHeader>
@@ -140,11 +141,11 @@ export default function ReportsPage() {
                                </TableBody>
                            </Table>
                         ) : <p>No data.</p>}
-                    </CardContent>
+                    </div>
                 </Card>
                 <Card>
-                    <CardHeader><CardTitle>Top Selling Items</CardTitle></CardHeader>
-                    <CardContent>
+                    <div className="p-4 border-b border-brand-line"><h2 className="text-xl font-semibold">Top Selling Items</h2></div>
+                    <div className="p-4">
                         {loadingByItem ? <p>Loading...</p> : byItem?.items?.length > 0 ? (
                            <Table>
                                <TableHeader><TableRow><TableHead>Product</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Net Sales</TableHead></TableRow></TableHeader>
@@ -159,18 +160,18 @@ export default function ReportsPage() {
                                </TableBody>
                            </Table>
                         ) : <p>No data.</p>}
-                    </CardContent>
+                    </div>
                 </Card>
             </div>
          </TabsContent>
          <TabsContent value="payments" className="mt-4">
             <Card>
-                <CardHeader><CardTitle>Payment Mix</CardTitle></CardHeader>
-                <CardContent className="h-96">
+                <div className="p-4 border-b border-brand-line"><h2 className="text-xl font-semibold">Payment Mix</h2></div>
+                <div className="p-4 h-96">
                      {loadingPaymentMix ? <p>Loading...</p> : paymentMix?.items?.length > 0 ? (
                        <ResponsiveContainer width="100%" height="100%">
                          <PieChart>
-                           <Pie data={paymentMix.items} dataKey="amount" nameKey="type" cx="50%" cy="50%" outerRadius={100} fill="#8884d8" label={(entry) => `${entry.type} (${entry.sharePct.toFixed(1)}%)`}>
+                           <Pie data={paymentMix.items} dataKey="amount" nameKey="type" cx="50%" cy="50%" outerRadius={100} fill="#8884d8" label={(entry: any) => `${entry.type} (${entry.sharePct.toFixed(1)}%)`}>
                              {paymentMix.items.map((entry:any, index:number) => (
                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                              ))}
@@ -180,13 +181,13 @@ export default function ReportsPage() {
                          </PieChart>
                        </ResponsiveContainer>
                      ) : <p>No payment data.</p>}
-                </CardContent>
+                </div>
             </Card>
          </TabsContent>
          <TabsContent value="registers" className="mt-4">
             <Card>
-                <CardHeader><CardTitle>Register Closures</CardTitle></CardHeader>
-                <CardContent>
+                <div className="p-4 border-b border-brand-line"><h2 className="text-xl font-semibold">Register Closures</h2></div>
+                <div className="p-4">
                      {loadingClosures ? <p>Loading...</p> : registerClosures?.items?.length > 0 ? (
                            <Table>
                                <TableHeader><TableRow><TableHead>Shift</TableHead><TableHead>Register</TableHead><TableHead className="text-right">Expected</TableHead><TableHead className="text-right">Counted</TableHead><TableHead className="text-right">Discrepancy</TableHead></TableRow></TableHeader>
@@ -203,7 +204,7 @@ export default function ReportsPage() {
                                </TableBody>
                            </Table>
                         ) : <p>No register closure data.</p>}
-                </CardContent>
+                </div>
             </Card>
          </TabsContent>
       </Tabs>

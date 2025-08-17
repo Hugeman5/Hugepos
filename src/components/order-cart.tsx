@@ -1,7 +1,7 @@
 
 'use client';
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import Card from '@/components/ui/Card';
 import { type CartLine, type Order, type OrderTotal, type Shift } from '@/lib/data';
 import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CreditCard, Landmark, AlertCircle, FileDown, Mail, Printer } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -115,18 +115,32 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
             ...(paymentType === 'cash' && { tendered: parseFloat(tenderedAmount) })
         }];
         
-        const res = await fetch(`/api/orders/[id]/pay`, { // Using a placeholder ID, needs adjustment in API layer to handle creation + payment
+        // This needs to be a two-step process: create order, then pay.
+        // For simplicity now, we assume a combined endpoint or a two-step flow.
+        const createRes = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user, items: cartLines, shiftId: openShift.id })
+        });
+
+        if (!createRes.ok) {
+            throw new Error('Failed to create draft order');
+        }
+
+        const draftOrder = await createRes.json();
+        
+        const payRes = await fetch(`/api/orders/${draftOrder.id}/pay`, {
              method: 'POST',
              headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ payments: paymentsPayload, user, items: cartLines, shiftId: openShift.id }),
+             body: JSON.stringify({ payments: paymentsPayload, user }),
         });
         
-        if (!res.ok) {
-            const errorData = await res.json();
+        if (!payRes.ok) {
+            const errorData = await payRes.json();
             throw new Error(errorData.message || 'Payment failed');
         }
 
-        const paymentResult = await res.json();
+        const paymentResult = await payRes.json();
         const orderData = await fetch(`/api/orders/${paymentResult.orderId}`).then(r => r.json());
         setCreatedOrder(orderData);
         setIsPostPayment(true);
@@ -175,9 +189,9 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
       <div className="w-full text-center p-4 space-y-4">
           <h3 className="font-semibold text-lg">Order #{createdOrder?.number} Completed</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <Button variant="outline"><Printer className="mr-2"/> Print Receipt</Button>
-            <Button variant="outline"><Mail className="mr-2"/> Email Receipt</Button>
-            <Button variant="outline"><FileDown className="mr-2"/> Download PDF</Button>
+            <Button variant="secondary"><Printer className="mr-2"/> Print Receipt</Button>
+            <Button variant="secondary"><Mail className="mr-2"/> Email Receipt</Button>
+            <Button variant="secondary"><FileDown className="mr-2"/> Download PDF</Button>
           </div>
           <Button onClick={resetCart} className="w-full">New Order</Button>
       </div>
@@ -186,12 +200,12 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
   return (
     <Card className="h-full flex flex-col relative">
       {renderNoShiftOverlay()}
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 font-headline">
+      <div className="p-4 border-b border-brand-line">
+        <h2 className="text-xl font-semibold flex items-center gap-2 font-headline">
           <ShoppingCart className="h-6 w-6" /> Current Order
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto p-4">
+        </h2>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
         {cartLines.length === 0 ? (
           <div className="text-center text-muted-foreground h-full flex items-center justify-center">
             <p>Click on products to add them to the order.</p>
@@ -236,8 +250,8 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
             ))}
           </div>
         )}
-      </CardContent>
-      <CardFooter className="flex flex-col gap-4 mt-auto border-t p-4">
+      </div>
+      <div className="flex flex-col gap-4 mt-auto border-t p-4">
         {isLoading && <p>Calculating...</p>}
         {totals && !isLoading && !isPostPayment && (
             <div className="w-full space-y-2 text-sm">
@@ -308,7 +322,7 @@ export default function OrderCart({ cartLines, onUpdateCart, user }: OrderCartPr
                 </Dialog>
             </div>
         }
-      </CardFooter>
+      </div>
     </Card>
   );
 }

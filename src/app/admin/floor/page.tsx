@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { useToast } from '@/hooks/use-toast';
 import { type FloorPlan, type Table, type Area } from '@/lib/data';
 import { PlusCircle, Trash2, Edit } from 'lucide-react';
@@ -88,11 +89,11 @@ export default function FloorPlanAdminPage() {
   return (
     <AdminLayout title="Floor Plan Editor">
       <Card>
-        <CardHeader>
-          <CardTitle>Manage Floor Plan</CardTitle>
-          <CardDescription>Visually arrange your restaurant's tables and service areas.</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <div className="p-4 border-b border-brand-line">
+          <h2 className="text-xl font-semibold">Manage Floor Plan</h2>
+          <p className="text-brand-mute">Visually arrange your restaurant's tables and service areas.</p>
+        </div>
+        <div className="p-4">
             <div className="flex justify-end mb-4">
                  <Button onClick={() => handleOpenTableDialog()}><PlusCircle className="mr-2"/> Add Table</Button>
             </div>
@@ -122,7 +123,7 @@ export default function FloorPlanAdminPage() {
                 </div>
               ))}
             </div>
-        </CardContent>
+        </div>
       </Card>
       
       <Dialog open={isTableDialogOpen} onOpenChange={setIsTableDialogOpen}>

@@ -1,7 +1,8 @@
+
 'use client';
 import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -50,13 +51,13 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-muted">
       <Card className="w-full max-w-lg">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Receipt</CardTitle>
+        <div className="flex flex-row items-center justify-between p-4 border-b border-brand-line">
+          <h2 className="text-xl font-semibold">Receipt</h2>
           <Button onClick={handlePrint} disabled={!receiptHtml || isLoading}>
             <Printer className="mr-2" /> Print
           </Button>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-4">
           {isLoading && <p>Loading receipt...</p>}
           {receiptHtml && (
             <div className="border rounded-md overflow-hidden">
@@ -68,7 +69,7 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
             </div>
           )}
           {!isLoading && !receiptHtml && <p>Could not load receipt.</p>}
-        </CardContent>
+        </div>
       </Card>
     </main>
   );

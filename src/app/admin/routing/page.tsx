@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { type RoutingRules, type Station, type Product, type Category } from '@/lib/data';
@@ -87,11 +88,11 @@ export default function RoutingPage() {
   return (
     <AdminLayout title="KDS Routing Management">
         <Card className="bg-brand-card border-brand-line">
-          <CardHeader>
-            <CardTitle>Default Station</CardTitle>
-            <CardDescription className="text-brand-mute">The station to use when no other rules match.</CardDescription>
-          </CardHeader>
-          <CardContent>
+          <div className="p-4 border-b border-brand-line">
+            <h2 className="text-xl font-semibold">Default Station</h2>
+            <p className="text-brand-mute">The station to use when no other rules match.</p>
+          </div>
+          <div className="p-4">
             <Select
               value={routing.defaultStation}
               onValueChange={(val) => setRouting(r => r ? {...r, defaultStation: val} : null)}
@@ -103,16 +104,16 @@ export default function RoutingPage() {
                 {stations.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
-          </CardContent>
+          </div>
         </Card>
 
         <div className="grid md:grid-cols-2 gap-8 mt-8">
             <Card className="bg-brand-card border-brand-line">
-                <CardHeader>
-                    <CardTitle>Routing by Product</CardTitle>
-                    <CardDescription className="text-brand-mute">Override routing for specific products. This has the highest priority.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                <div className="p-4 border-b border-brand-line">
+                    <h2 className="text-xl font-semibold">Routing by Product</h2>
+                    <p className="text-brand-mute">Override routing for specific products. This has the highest priority.</p>
+                </div>
+                <div className="p-4 space-y-4">
                    {Object.entries(routing.byProduct).map(([productId, stationId]) => (
                        <div key={productId} className="flex items-center gap-4">
                            <span className="flex-1 font-medium">{products.find(p=>p.id === productId)?.name || productId}</span>
@@ -120,7 +121,7 @@ export default function RoutingPage() {
                                <SelectTrigger className="w-[180px]"><SelectValue/></SelectTrigger>
                                <SelectContent>{stations.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                            </Select>
-                            <Button variant="ghost" size="icon" onClick={() => setRouting(r => {
+                            <Button variant="secondary" size="icon" onClick={() => setRouting(r => {
                                 if (!r) return null;
                                 const newByProduct = {...r.byProduct};
                                 delete newByProduct[productId];
@@ -136,14 +137,14 @@ export default function RoutingPage() {
                            {products.filter(p => !routing.byProduct[p.id]).map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                        </SelectContent>
                    </Select>
-                </CardContent>
+                </div>
             </Card>
              <Card className="bg-brand-card border-brand-line">
-                <CardHeader>
-                    <CardTitle>Routing by Category</CardTitle>
-                    <CardDescription className="text-brand-mute">Set a default station for all items in a category.</CardDescription>
-                </CardHeader>
-                 <CardContent className="space-y-4">
+                <div className="p-4 border-b border-brand-line">
+                    <h2 className="text-xl font-semibold">Routing by Category</h2>
+                    <p className="text-brand-mute">Set a default station for all items in a category.</p>
+                </div>
+                 <div className="p-4 space-y-4">
                    {Object.entries(routing.byCategory).map(([catId, stationId]) => (
                        <div key={catId} className="flex items-center gap-4">
                            <span className="flex-1 font-medium">{categories.find(c=>c.id === catId)?.name || catId}</span>
@@ -151,7 +152,7 @@ export default function RoutingPage() {
                                <SelectTrigger className="w-[180px]"><SelectValue/></SelectTrigger>
                                <SelectContent>{stations.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                            </Select>
-                            <Button variant="ghost" size="icon" onClick={() => setRouting(r => {
+                            <Button variant="secondary" size="icon" onClick={() => setRouting(r => {
                                 if (!r) return null;
                                 const newByCategory = {...r.byCategory};
                                 delete newByCategory[catId];
@@ -167,13 +168,13 @@ export default function RoutingPage() {
                            {categories.filter(c => !routing.byCategory[c.id]).map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                        </SelectContent>
                    </Select>
-                </CardContent>
+                </div>
             </Card>
         </div>
 
 
         <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={fetchData}>Cancel</Button>
+            <Button variant="secondary" onClick={fetchData}>Cancel</Button>
             <Button onClick={handleSaveChanges} disabled={isSaving} className="bg-brand-accent">
                 {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>

@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 
@@ -63,45 +64,37 @@ export default function HardwarePage() {
         </TabsList>
 
         <TabsContent value="printers" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Printers</CardTitle>
-              <CardDescription>This section is under construction. Manage printers here.</CardDescription>
-            </CardHeader>
+          <Card className="p-4">
+            <h3 className="text-xl font-semibold">Printers</h3>
+            <p className="text-brand-mute">This section is under construction. Manage printers here.</p>
           </Card>
         </TabsContent>
         <TabsContent value="drawers" className="mt-4">
-           <Card>
-            <CardHeader>
-              <CardTitle>Cash Drawers</CardTitle>
-              <CardDescription>This section is under construction. Manage drawers here.</CardDescription>
-            </CardHeader>
+           <Card className="p-4">
+            <h3 className="text-xl font-semibold">Cash Drawers</h3>
+            <p className="text-brand-mute">This section is under construction. Manage drawers here.</p>
           </Card>
         </TabsContent>
         <TabsContent value="scanners" className="mt-4">
-           <Card>
-            <CardHeader>
-              <CardTitle>Scanners</CardTitle>
-              <CardDescription>This section is under construction. Manage scanners here.</CardDescription>
-            </CardHeader>
+           <Card className="p-4">
+            <h3 className="text-xl font-semibold">Scanners</h3>
+            <p className="text-brand-mute">This section is under construction. Manage scanners here.</p>
           </Card>
         </TabsContent>
         <TabsContent value="templates" className="mt-4">
-           <Card>
-            <CardHeader>
-              <CardTitle>Templates</CardTitle>
-              <CardDescription>This section is under construction. Edit templates here.</CardDescription>
-            </CardHeader>
+           <Card className="p-4">
+            <h3 className="text-xl font-semibold">Templates</h3>
+            <p className="text-brand-mute">This section is under construction. Edit templates here.</p>
           </Card>
         </TabsContent>
 
         <TabsContent value="test" className="mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Hardware Testing</CardTitle>
-              <CardDescription>Send test commands to your configured hardware.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <div className="p-4 border-b border-brand-line">
+              <h3 className="text-xl font-semibold">Hardware Testing</h3>
+              <p className="text-brand-mute">Send test commands to your configured hardware.</p>
+            </div>
+            <div className="p-4 space-y-4">
                 <div className="space-x-2">
                     <Button onClick={() => handleTestPrint('test', 'rcpt1')}>Print Test Receipt (rcpt1)</Button>
                 </div>
@@ -111,7 +104,7 @@ export default function HardwarePage() {
                  <div className="space-x-2">
                     <Button onClick={() => handleSimulateScan('869123000111')}>Simulate Scan</Button>
                 </div>
-            </CardContent>
+            </div>
           </Card>
         </TabsContent>
       </Tabs>

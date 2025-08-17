@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { timeSince } from '@/lib/utils';
 
 
@@ -93,7 +93,7 @@ export default function AdminHome(){
                                 <TableCell>{i.name}</TableCell>
                                 <TableCell className="text-right font-mono">{i.onHand} / {i.reorderPoint} {i.unit||''}</TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="outline" size="sm" asChild>
+                                    <Button variant="secondary" size="sm" asChild>
                                         <Link href="/admin/inventory">Receive</Link>
                                     </Button>
                                 </TableCell>

@@ -1,6 +1,6 @@
 'use client';
 import { User } from '@/lib/data';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 
 type StaffGridProps = {
     users: User[];
@@ -30,8 +30,7 @@ export default function StaffGrid({ users, selected, onSelect, disabled=false }:
           >
             <div className="flex items-center gap-3">
               <Avatar className="h-12 w-12 text-xl">
-                 <AvatarImage src={`https://avatar.vercel.sh/${u.name.replace(/\s/g, '')}.png`} alt={u.name} />
-                 <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
+                 { (u as any).imageUrl ? <img src={(u as any).imageUrl} alt={u.name} className="h-full w-full object-cover" /> : <span className="text-xl">{u.name.charAt(0)}</span> }
               </Avatar>
               <div className="min-w-0">
                 <div className="font-semibold text-brand-text">{u.name}</div>

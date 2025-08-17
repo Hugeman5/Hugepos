@@ -1,8 +1,9 @@
+
 'use client';
 import { useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -94,14 +95,14 @@ function ImportExportTab({ dataType }: { dataType: string }) {
     
     return (
         <Card className="bg-brand-card border-brand-line">
-            <CardHeader>
-                <CardTitle className="capitalize">{dataType}</CardTitle>
-                <CardDescription className="text-brand-mute">
+            <div className="p-4 border-b border-brand-line">
+                <h2 className="text-xl font-semibold capitalize">{dataType}</h2>
+                <p className="text-brand-mute">
                     Export current {dataType} as a CSV file, or import a CSV file to bulk add/update {dataType}.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <Button onClick={handleExport} disabled={isExporting} variant="outline">
+                </p>
+            </div>
+            <div className="p-4 space-y-4">
+                <Button onClick={handleExport} disabled={isExporting} variant="secondary">
                     <Download className="mr-2" /> {isExporting ? 'Exporting...' : `Export ${dataType}`}
                 </Button>
                 <div className="border-t pt-4 space-y-2 border-brand-line">
@@ -122,7 +123,7 @@ function ImportExportTab({ dataType }: { dataType: string }) {
                 <Button onClick={handleImport} disabled={isImporting || !csvData} className="bg-brand-accent">
                     <Upload className="mr-2" /> {isImporting ? 'Importing...' : `Import ${dataType}`}
                 </Button>
-            </CardContent>
+            </div>
         </Card>
     )
 }

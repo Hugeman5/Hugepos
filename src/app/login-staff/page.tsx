@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import StaffGrid from "@/components/login/StaffGrid";
-import PinPad from "@/components/login/PinPad";
-import type { User } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { routeForRole } from '@/lib/roles';
+import { type User } from '@/lib/data';
 
-// Mock session management
+import Avatar from '@/components/ui/Avatar';
+import Card from '@/components/ui/Card';
+import Keypad from '@/components/ui/Keypad';
+
 const setSession = (user: { uid: string, name: string, role: string }) => {
     if (typeof window !== 'undefined') {
         sessionStorage.setItem('mockUser', JSON.stringify(user));
@@ -24,8 +25,7 @@ export default function StaffLoginPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const rootRef = useRef<HTMLDivElement>(null);
+
   const didSubmitRef = useRef(false);
 
   useEffect(() => {
@@ -43,31 +43,20 @@ export default function StaffLoginPage() {
     }
     fetchUsers();
   }, [toast]);
-
-  useEffect(() => {
-    if (rootRef.current) {
-      rootRef.current.focus();
-    }
-  }, []);
-
-  const press = (key: string) => {
+  
+  const pressKey = (key: string) => {
     if (submitting) return;
     if (key === 'C') {
       setPin('');
+      setError(null);
       return;
+    }
+    if (key === '↵') {
+        handleSubmit();
+        return;
     }
     if (pin.length < 4) {
       setPin(p => p + key);
-    }
-  };
-
-  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key >= '0' && e.key <= '9') {
-      press(e.key);
-    } else if (e.key === 'Backspace') {
-      setPin(p => p.slice(0, -1));
-    } else if (e.key === 'Enter') {
-      handleSubmit();
     }
   };
 
@@ -78,9 +67,9 @@ export default function StaffLoginPage() {
   }
 
   const handleSubmit = useCallback(async () => {
-    if (!selectedUser || pin.length !== 4 || submitting) {
+    if (!selectedUser || pin.length !== 4) {
       if (!selectedUser) setError("Please select a user.");
-      if (pin.length !== 4) setError("PIN must be 4 digits.");
+      else if (pin.length !== 4) setError("PIN must be 4 digits.");
       return;
     }
 
@@ -111,9 +100,8 @@ export default function StaffLoginPage() {
         setPin('');
         didSubmitRef.current = false;
     }
-  }, [pin, router, selectedUser, submitting]);
+  }, [pin, router, selectedUser]);
 
-  // Effect to automatically submit when PIN is complete
   useEffect(() => {
     if (pin.length === 4 && selectedUser && !didSubmitRef.current) {
         handleSubmit();
@@ -122,49 +110,49 @@ export default function StaffLoginPage() {
 
 
   return (
-    <div
-      ref={rootRef}
-      tabIndex={0}
-      onKeyDown={onKeyDown}
-      className="min-h-screen bg-brand-bg text-brand-text focus:outline-none"
-    >
-      <header className="max-w-6xl mx-auto px-6 py-6 flex items-center gap-3">
-        <img src="/logo-hugepos.svg" alt="HugePOS" className="h-8 w-auto hidden sm:block" />
+    <div className="min-h-screen bg-[--bg] text-[--text] px-6 py-8">
+      <header className="max-w-6xl mx-auto flex items-center gap-3 mb-8">
         <h1 className="text-2xl font-bold tracking-tight">HugePOS</h1>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 pb-10 grid gap-8 md:grid-cols-2">
-        <section className="rounded-2xl border border-brand-line bg-brand-card p-5">
-          <h2 className="text-lg font-semibold mb-3">Select user</h2>
+      <main className="max-w-6xl mx-auto grid gap-8 md:grid-cols-2">
+        <Card className="p-5">
+          <h2 className="text-lg font-semibold mb-4 text-[--text-dim]">Select User</h2>
           {loading ? (
-            <div className="text-sm text-brand-mute">Loading users…</div>
-          ) : users.length === 0 ? (
-            <div className="text-sm text-brand-mute">
-              No users found.
-            </div>
+            <div className="text-sm text-[--text-dim]">Loading users…</div>
           ) : (
-            <StaffGrid
-              users={users}
-              selected={selectedUser?.id.toString() || ''}
-              onSelect={(id) => {
-                const user = users.find(u => u.id.toString() === id);
-                if (user) handleSelectUser(user);
-              }}
-              disabled={submitting}
-            />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {users.map(user => (
+                <button 
+                  key={user.id} 
+                  onClick={() => handleSelectUser(user)}
+                  disabled={submitting}
+                  className={`p-3 rounded-2xl border transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+                              ${selectedUser?.id === user.id ? 'border-[--accent] ring-2 ring-[--accent]' : 'border-[--line] hover:border-[--accent]'}`}
+                >
+                  <div className="flex flex-col items-center gap-3">
+                    <Avatar name={user.name} src={(user as any).imageUrl} size={84} />
+                    <div className="text-center">
+                      <div className="font-semibold text-[--text]">{user.name}</div>
+                      <div className="text-xs text-[--text-dim] capitalize">{user.role}</div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
           )}
-        </section>
+        </Card>
         
-        <div>
-            <PinPad
-                pin={pin}
-                maxLen={4}
-                submitting={submitting}
-                err={error ?? undefined}
-                onKey={press}
-                onSubmit={handleSubmit}
-            />
-        </div>
+        <Card className="p-5">
+             <h2 className="text-lg font-semibold mb-4 text-[--text-dim]">Enter PIN</h2>
+             <div className="flex justify-center items-center gap-3 h-10 mb-6">
+                {Array.from({length: 4}).map((_, i) => (
+                    <div key={i} className={`h-4 w-4 rounded-full ${i < pin.length ? 'bg-[--accent]' : 'bg-[--muted]'}`} />
+                ))}
+             </div>
+             {error && <p className="text-center text-[--danger] mb-4">{error}</p>}
+             <Keypad onPress={pressKey} disabled={!selectedUser || submitting} />
+        </Card>
       </main>
     </div>
   );

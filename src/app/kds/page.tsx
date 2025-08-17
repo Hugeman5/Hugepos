@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardHeader from '@/components/dashboard-header';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { type Station } from '@/lib/data';
 import { ChefHat } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
