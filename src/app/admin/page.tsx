@@ -1,3 +1,4 @@
+
 'use client';
 import AdminLayout from '@/components/admin/AdminLayout';
 import KpiCard from '@/components/admin/KpiCard';
@@ -7,36 +8,46 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { timeSince } from '@/lib/utils';
+import { type Settings } from '@/lib/settingsRepo';
+import { formatMoney } from '@/lib/money';
 
 
 export default function AdminHome(){
   const [kpi,setKpi]=useState<any>({});
   const [orders,setOrders]=useState<any[]>([]);
   const [low,setLow]=useState<any[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(()=>{
     (async()=>{
       setLoading(true);
-      const [sales, lowStock, openTickets, recentOrders, activeUsers] = await Promise.all([
+      const [sales, lowStock, openTickets, recentOrders, activeUsers, appSettings] = await Promise.all([
         fetch('/api/admin/metrics/sales-today').then(r=>r.json()).catch(()=>({total:0,orders:0,avg:0})),
         fetch('/api/admin/metrics/low-stock').then(r=>r.json()).catch(()=>({count:0,items:[]})),
         fetch('/api/admin/metrics/open-tickets').then(r=>r.json()).catch(()=>({count:0})),
         fetch('/api/admin/orders/recent').then(r=>r.json()).catch(()=>({items:[]})),
-        fetch('/api/admin/users/active-count').then(x=>x.json()).catch(()=>({count:0}))
+        fetch('/api/admin/users/active-count').then(x=>x.json()).catch(()=>({count:0})),
+        fetch('/api/settings').then(r=>r.json()).catch(()=>null)
       ]);
       setKpi({ sales, low: lowStock, open: openTickets, users: activeUsers });
       setOrders(recentOrders.items || []);
       setLow(lowStock.items || []);
+      setSettings(appSettings);
       setLoading(false);
     })();
   },[]);
 
+  const money = (val: number) => {
+    if (!settings) return `$${(val || 0).toFixed(2)}`;
+    return formatMoney(val || 0, settings.currency, settings.locale);
+  }
+
   return (
       <AdminLayout title="Dashboard">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <KpiCard label="Sales Today" value={`$${(kpi.sales?.total ?? 0).toFixed(2)}`} hint={`Orders: ${kpi.sales?.orders ?? 0}`} tone="ok"/>
-          <KpiCard label="Avg Ticket" value={`$${(kpi.sales?.avg ?? 0).toFixed(2)}`} />
+          <KpiCard label="Sales Today" value={money(kpi.sales?.total)} hint={`Orders: ${kpi.sales?.orders ?? 0}`} tone="ok"/>
+          <KpiCard label="Avg Ticket" value={money(kpi.sales?.avg)} />
           <KpiCard label="Open Kitchen Tickets" value={kpi.open?.count ?? 0} tone="info"/>
           <KpiCard label="Low-Stock Items" value={kpi.low?.count ?? 0} tone="warn"/>
           <KpiCard label="Active Users" value={kpi.users?.count ?? 0}/>
@@ -64,7 +75,7 @@ export default function AdminHome(){
                                 <TableCell>#{o.number}</TableCell>
                                 <TableCell><Badge variant={o.status === 'PAID' ? 'default' : 'secondary'}>{o.status}</Badge></TableCell>
                                 <TableCell>{timeSince(o.ts)}</TableCell>
-                                <TableCell className="text-right font-mono">${o.totals?.total?.toFixed(2) ?? '0.00'}</TableCell>
+                                <TableCell className="text-right font-mono">{money(o.totals?.total)}</TableCell>
                            </TableRow>
                         ))
                     ) : (
