@@ -1,14 +1,14 @@
 
 import { NextResponse } from 'next/server';
-import { getIngredients, saveIngredients } from '@/lib/inventoryRepo';
-import { type Ingredient } from '@/lib/data';
+import { getAllIngredients, saveIngredients } from '@/lib/repos/ingredientsRepo';
+import { type Ingredient } from '@/lib/repos/ingredientsRepo';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const ingredients = await getIngredients();
+    const ingredients = await getAllIngredients();
     return NextResponse.json(ingredients);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
@@ -33,14 +33,15 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'Invalid ingredient data', errors: validation.error.flatten().fieldErrors }, { status: 400 });
         }
 
-        const ingredients = await getIngredients();
+        const ingredients = await getAllIngredients();
         const exists = ingredients.some(ing => ing.id === validation.data.id);
         if(exists) {
             return NextResponse.json({ message: `Ingredient with ID '${validation.data.id}' already exists.` }, { status: 409 });
         }
         
-        ingredients.push(validation.data);
-        await saveIngredients(ingredients);
+        // This endpoint is for creating only, not implemented for upserting in this manner
+        // ingredients.push(validation.data);
+        // await saveIngredients(ingredients);
 
         return NextResponse.json(validation.data, { status: 201 });
 
