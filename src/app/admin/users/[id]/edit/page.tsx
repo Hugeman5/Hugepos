@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -35,7 +35,7 @@ export default function UserEditPage({ params }: { params: { id: string } }) {
   const { id: userId } = params;
   const isNewUser = userId === 'new';
 
-  const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<User>({
+  const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<z.infer<typeof userFormSchema>>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
       id: '',
@@ -73,7 +73,7 @@ export default function UserEditPage({ params }: { params: { id: string } }) {
     }
   }, [userId, isNewUser, reset, router, toast]);
   
-  const onSubmit = async (data: User) => {
+  const onSubmit = async (data: z.infer<typeof userFormSchema>) => {
     try {
         const res = await fetch('/api/admin/users', {
             method: 'POST',
@@ -105,8 +105,8 @@ export default function UserEditPage({ params }: { params: { id: string } }) {
           </Button>
           <h1 className="font-semibold text-lg md:text-xl">{isNewUser ? 'Create New User Profile' : 'Edit User Profile'}</h1>
         </div>
-        <Card className="bg-brand-card border-brand-line">
-            <div className="p-4 border-b border-brand-line">
+        <Card>
+            <div className="p-4 border-b">
                 <h2 className="text-xl font-semibold">User Details</h2>
                 <p className="text-brand-mute">Fill in the details for the user account.</p>
             </div>
@@ -169,7 +169,7 @@ export default function UserEditPage({ params }: { params: { id: string } }) {
 
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="secondary" onClick={() => router.back()}>Cancel</Button>
-                <Button type="submit" disabled={isSubmitting} className="bg-brand-accent">
+                <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>

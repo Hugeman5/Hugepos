@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,7 +6,7 @@ import Link from 'next/link';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
-import Avatar from '@/components/ui/Avatar';
+import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/badge';
 import { type User } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
@@ -67,7 +68,7 @@ export default function UsersPage() {
       key: 'active', 
       label: 'Status',
       render: (user: User) => (
-        <Badge variant={user.active ? 'default' : 'outline'} className={user.active ? 'bg-[--ok]/20 text-[--ok]' : 'bg-transparent text-[--text-dim]'}>
+        <Badge variant={user.active ? 'default' : 'outline'} className={user.active ? 'bg-green-500/20 text-green-400' : 'bg-transparent text-[--text-dim]'}>
           {user.active ? 'Active' : 'Inactive'}
         </Badge>
       )

@@ -2,8 +2,8 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { type Order, type Cart, type User, type OrderLine, type Product } from './data';
-import * as catalogRepo from './catalogRepo';
+import { type Order, type Cart, type User, type OrderLine, type Product, type CartLineMod } from './data';
+import * as menuRepo from './menuRepo';
 import * as pricing from './pricing';
 import * as stationsRepo from './stationsRepo';
 
@@ -58,8 +58,7 @@ export async function nextOrderNumber(): Promise<number> {
     }
 }
 
-async function backfillLegacyOrder(order: Order, products: Product[]): Promise<Order> {
-    const productMap = new Map(products.map(p => [p.id, p]));
+async function backfillLegacyOrder(order: Order, menu: menuRepo.Menu): Promise<Order> {
     let modified = false;
 
     const newLines = await Promise.all(order.lines.map(async (line: any) => {
@@ -67,8 +66,8 @@ async function backfillLegacyOrder(order: Order, products: Product[]): Promise<O
             return line as OrderLine;
         }
         modified = true;
-        const product = productMap.get(line.productId);
-        const stationId = await stationsRepo.resolveStationForProduct(line.productId, product?.categoryId);
+        const product = menu.items.find(i => i.id === line.productId);
+        const stationId = await stationsRepo.resolveStationForProduct(line.productId, product?.catId);
 
         return {
             ...line,
@@ -90,27 +89,33 @@ async function backfillLegacyOrder(order: Order, products: Product[]): Promise<O
 }
 
 export async function createDraft(user: { uid: string, name: string }, cart: Cart, shiftId?: string): Promise<Order> {
-  const [products, allModifiers, taxes] = await Promise.all([
-    catalogRepo.getProducts(),
-    catalogRepo.getModifiers(),
-    catalogRepo.getTaxes(),
-  ]);
+  const menu = await menuRepo.getMenu();
 
-  const productMap = new Map(products.map(p => [p.id, p]));
-  const modifierMap = new Map(allModifiers.map(m => [m.id, m]));
-  const taxMap = new Map(taxes.map(t => [t.id, t]));
+  // Validate modifiers before creating the order
+  for (const line of cart.lines) {
+      const item = menu.items.find(i => i.id === line.productId);
+      if (item?.modifierSetIds) {
+          for (const setId of item.modifierSetIds) {
+              const set = menu.modifierSets.find(ms => ms.id === setId);
+              if (set?.required) {
+                  const selection = line.mods.find(m => m.setId === setId);
+                  if (!selection || selection.optionIds.length < set.min) {
+                       throw new Error(`Missing required modifier from set "${set.name}" for item "${item.name}"`);
+                  }
+              }
+          }
+      }
+  }
 
-  const totals = await pricing.computeOrder(cart, productMap, modifierMap, taxMap);
+  const totals = await pricing.computeOrder(cart, menu);
 
   const orderLines = await Promise.all(cart.lines.map(async (line) => {
-    const product = productMap.get(line.productId);
+    const product = menu.items.find(i => i.id === line.productId);
     if (!product) throw new Error(`Invalid product ID in cart: ${line.productId}`);
     
-    const lineModifiers = product.modifierIds?.map(id => modifierMap.get(id)).filter(Boolean) as any[];
-
-    const computedLine = await pricing.computeLine(line, product, lineModifiers);
+    const computedLine = await pricing.computeLine(line, product, menu);
     
-    const stationId = await stationsRepo.resolveStationForProduct(product.id, product.categoryId);
+    const stationId = await stationsRepo.resolveStationForProduct(product.id, product.catId);
 
     return {
       id: line.id,
@@ -118,21 +123,8 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
       productId: product.id,
       name: product.name,
       qty: line.qty,
-      unitPrice: product.price,
-      mods: (await Promise.all(line.mods.map(async mod => {
-        const modDef = modifierMap.get(mod.id);
-        if (!modDef) return null;
-        const modDelta = await pricing.getModDelta(mod, modifierMap);
-
-        if (modDef.type === 'choice' && mod.optionId) {
-            const opt = modDef.options?.find(o => o.id === mod.optionId);
-            return { id: mod.id, name: opt?.name ?? 'Unknown', delta: modDelta, optionId: mod.optionId };
-        }
-        if (modDef.type === 'count' && mod.count) {
-             return { id: mod.id, name: modDef.name, delta: modDelta, count: mod.count };
-        }
-        return null;
-      }))).filter(Boolean) as any[],
+      unitPrice: product.priceCents,
+      mods: computedLine.mods,
       lineTotal: computedLine.total,
       prep: {
           stationId: stationId,
@@ -163,8 +155,8 @@ export async function getOrder(id: string): Promise<Order | null> {
 
     // Check for legacy format and backfill if necessary
     if (order.lines.length > 0 && !(order.lines[0].prep)) {
-        const products = await catalogRepo.getProducts();
-        return backfillLegacyOrder(order, products);
+        const menu = await menuRepo.getMenu();
+        return backfillLegacyOrder(order, menu);
     }
     
     return order;

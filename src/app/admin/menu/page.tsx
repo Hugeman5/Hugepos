@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { type Category, type MenuItem, type Menu } from '@/lib/menuRepo';
+import { type Category, type MenuItem, type Menu, type ModifierSet } from '@/lib/menuRepo';
 import Link from 'next/link';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { formatMoney } from '@/lib/money';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function MenuBuilderPage() {
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -123,6 +124,18 @@ export default function MenuBuilderPage() {
     return <AdminLayout title="Menu Builder">Loading...</AdminLayout>;
   }
 
+  const handleModifierSetSelection = (setId: string, checked: boolean) => {
+    setEditingItem(currentItem => {
+        if (!currentItem) return null;
+        const existingIds = currentItem.modifierSetIds || [];
+        if (checked) {
+            return { ...currentItem, modifierSetIds: [...existingIds, setId] };
+        } else {
+            return { ...currentItem, modifierSetIds: existingIds.filter(id => id !== setId) };
+        }
+    });
+  };
+
   return (
     <AdminLayout title="Menu Builder">
       <div className="grid md:grid-cols-3 gap-8">
@@ -131,7 +144,7 @@ export default function MenuBuilderPage() {
           <Card>
             <div className="p-4 border-b border-brand-line flex justify-between items-center">
               <h2 className="text-xl font-semibold">Categories</h2>
-              <Button size="icon" variant="secondary" onClick={() => { setEditingCategory({name: '', color: '#5FB9A4', active: true}); setIsCategoryDialogOpen(true); }}>
+              <Button size="icon" variant="ghost" onClick={() => { setEditingCategory({name: '', color: '#5FB9A4', active: true, sort: 0}); setIsCategoryDialogOpen(true); }}>
                 <PlusCircle className="h-5 w-5" />
               </Button>
             </div>
@@ -187,29 +200,46 @@ export default function MenuBuilderPage() {
       
       {/* Item Edit Dialog */}
       <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
               <DialogHeader><DialogTitle>{editingItem?.id ? 'Edit Item' : 'Add Item'}</DialogTitle></DialogHeader>
               {editingItem && (
-                  <div className="grid gap-4 py-4">
-                      <div className="space-y-2">
-                          <Label>Name</Label>
-                          <Input value={editingItem.name} onChange={e => setEditingItem(i => i ? {...i, name: e.target.value} : null)} />
+                  <div className="grid md:grid-cols-2 gap-8 py-4">
+                      <div className="space-y-4">
+                          <div className="space-y-2">
+                              <Label>Name</Label>
+                              <Input value={editingItem.name} onChange={e => setEditingItem(i => i ? {...i, name: e.target.value} : null)} />
+                          </div>
+                          <div className="space-y-2">
+                              <Label>Category</Label>
+                              <Select value={editingItem.catId} onValueChange={catId => setEditingItem(i => i ? {...i, catId} : null)}>
+                                  <SelectTrigger><SelectValue/></SelectTrigger>
+                                  <SelectContent>{menu.categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                              </Select>
+                          </div>
+                          <div className="space-y-2">
+                              <Label>Price (in cents)</Label>
+                              <Input type="number" value={editingItem.priceCents} onChange={e => setEditingItem(i => i ? {...i, priceCents: parseInt(e.target.value)} : null)} />
+                          </div>
+                           <div className="flex items-center space-x-2">
+                               <Switch id="item-active" checked={!!editingItem.active} onCheckedChange={active => setEditingItem(i => i ? {...i, active} : null)} />
+                               <Label htmlFor="item-active">Active</Label>
+                           </div>
                       </div>
-                      <div className="space-y-2">
-                          <Label>Category</Label>
-                          <Select value={editingItem.catId} onValueChange={catId => setEditingItem(i => i ? {...i, catId} : null)}>
-                              <SelectTrigger><SelectValue/></SelectTrigger>
-                              <SelectContent>{menu.categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                          </Select>
+                      <div className="space-y-4">
+                        <h3 className="font-semibold">Modifier Sets</h3>
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                           {menu.modifierSets.map(set => (
+                               <div key={set.id} className="flex items-center space-x-3">
+                                   <Checkbox 
+                                        id={`mod-set-${set.id}`}
+                                        checked={editingItem.modifierSetIds?.includes(set.id)}
+                                        onCheckedChange={(checked) => handleModifierSetSelection(set.id, !!checked)}
+                                   />
+                                   <Label htmlFor={`mod-set-${set.id}`}>{set.name}</Label>
+                               </div>
+                           ))}
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                          <Label>Price (in cents)</Label>
-                          <Input type="number" value={editingItem.priceCents} onChange={e => setEditingItem(i => i ? {...i, priceCents: parseInt(e.target.value)} : null)} />
-                      </div>
-                       <div className="flex items-center space-x-2">
-                           <Switch id="item-active" checked={editingItem.active} onCheckedChange={active => setEditingItem(i => i ? {...i, active} : null)} />
-                           <Label htmlFor="item-active">Active</Label>
-                       </div>
                   </div>
               )}
               <DialogFooter>
@@ -234,7 +264,7 @@ export default function MenuBuilderPage() {
                           <Input type="color" value={editingCategory.color} onChange={e => setEditingCategory(c => c ? {...c, color: e.target.value} : null)} />
                       </div>
                        <div className="flex items-center space-x-2">
-                           <Switch id="cat-active" checked={editingCategory.active} onCheckedChange={active => setEditingCategory(c => c ? {...c, active} : null)} />
+                           <Switch id="cat-active" checked={!!editingCategory.active} onCheckedChange={active => setEditingCategory(c => c ? {...c, active} : null)} />
                            <Label htmlFor="cat-active">Visible</Label>
                        </div>
                   </div>
@@ -249,7 +279,3 @@ export default function MenuBuilderPage() {
     </AdminLayout>
   );
 }
-
-    
-
-    

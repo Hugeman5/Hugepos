@@ -26,7 +26,7 @@ export type RolesMatrix = {
 };
 
 
-// --- CATALOG ---
+// --- CATALOG (Legacy, see menuRepo for new structure) ---
 export type Tax = {
   id: string;
   name: string;
@@ -73,44 +73,17 @@ export type Modifier = {
   deltaPerUnit?: number; // For 'count'
 };
 
-// --- MENU SCREENS ---
-export type MenuScreenItem = {
-    productId: string; // SKU
-    position: number;
-}
-export type MenuScreenSection = {
-    id: string;
-    name: string;
-    items: MenuScreenItem[];
-}
-export type MenuScreen = {
-    id:string;
-    name: string;
-    sections: MenuScreenSection[];
-}
-export type MenuLayout = MenuScreen[];
-
-// --- PRICE LISTS ---
-export type PriceListInstruction = {
-    productId: string; // SKU
-    price: number;
-}
-export type PriceList = {
-    id: string;
-    name: string;
-    instructions: PriceListInstruction[];
-}
 
 // --- ORDER ---
 export type OrderStatus = 'DRAFT' | 'PAID' | 'VOID' | 'PENDING' | 'COMPLETED';
 export type PrepStatus = 'queued' | 'in_progress' | 'done';
 
 export type OrderLineMod = {
-  id: string;
-  name: string;
-  delta: number;
-  optionId?: string;
-  count?: number;
+  setId: string;
+  setName: string;
+  optionId: string;
+  optionName: string;
+  deltaCents: number;
 };
 
 export type SeatLine = { lineId:string; seatNo:number }
@@ -121,9 +94,9 @@ export type OrderLine = {
   productId: string;
   name:string;
   qty: number;
-  unitPrice: number;
+  unitPrice: number; // in cents
   mods?: OrderLineMod[];
-  lineTotal: number;
+  lineTotal: number; // in cents
   prep: {
       stationId: string;
       status: PrepStatus;
@@ -137,7 +110,7 @@ export type Order = {
   user: { uid: string; name: string };
   status: OrderStatus;
   lines: OrderLine[];
-  totals: { subtotal: number; tax: number; total: number; discount?: number };
+  totals: OrderTotal;
   notes?: string;
   shiftId?: string;
   customer?: { id: string; name: string; groupId?: string };
@@ -167,9 +140,8 @@ export type Payment = {
 
 // --- CART (Client-side) ---
 export type CartLineMod = {
-    id: string; // modifierId
-    optionId?: string; // For choice
-    count?: number; // For count
+    setId: string;
+    optionIds: string[];
 };
 
 export type CartLine = {
