@@ -9,7 +9,7 @@
       "targetGpPct": 0.6,
       "bom": [
         {
-          "ingredientId": "ing_oil-more_flour-cake-snowflake",
+          "ingredientId": "ing_flour",
           "qty": 300,
           "uom": "g",
           "wastePct": 1

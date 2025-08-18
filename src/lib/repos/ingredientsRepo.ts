@@ -1,5 +1,4 @@
 
-
 import path from "path";
 import { promises as fs } from "fs";
 import { type SupplierItem } from "./supplierItemsRepo";
@@ -10,9 +9,9 @@ export type Uom = "g" | "kg" | "ml" | "l" | "ea" | string;
 export type Ingredient = {
   id: string;
   name: string;
-  purchaseUom: "g"|"kg"|"ml"|"l"|"ea";
   
   // Purchase info (single source of truth from supplier catalog or manual entry)
+  purchaseUom: "g"|"kg"|"ml"|"l"|"ea";
   purchaseSize: number;
   priceExVat?: number;
   priceIncVat: number;
@@ -27,6 +26,7 @@ export type Ingredient = {
   supplierId?: string;
   supplierItemId?: string;
   sku?: string;
+  priceHistory?: Array<{ at:string; supplierId:string; priceIncVat:number }>;
 };
 
 
@@ -51,15 +51,21 @@ export function withComputedUnitCosts(i: Ingredient): Ingredient {
   const vat = Number.isFinite(i.vatRate) ? (i.vatRate as number) : 0.15;
   const pack = Number(i.purchaseSize) > 0 ? Number(i.purchaseSize) : 1;
   
-  const ex = Number.isFinite(i.priceExVat) ? Number(i.priceExVat) : undefined;
-  let inc = Number.isFinite(i.priceIncVat) ? Number(i.priceIncVat) : (ex !== undefined ? ex * (1 + vat) : undefined);
+  let ex: number | undefined = Number.isFinite(i.priceExVat) ? Number(i.priceExVat) : undefined;
+  let inc: number | undefined = Number.isFinite(i.priceIncVat) ? Number(i.priceIncVat) : undefined;
   
+  if (ex !== undefined && inc === undefined) {
+      inc = ex * (1 + vat);
+  } else if (ex === undefined && inc !== undefined) {
+      ex = inc / (1 + vat);
+  }
+
   // Ensure inc has a value if possible
   if (inc === undefined) inc = 0;
 
   return {
     ...i,
-    priceIncVat: inc as number,
+    priceIncVat: inc,
     priceExVat: ex,
     unitCostExVat: ex !== undefined ? ex / pack : undefined,
     unitCostIncVat: inc !== undefined ? inc / pack : undefined,
@@ -79,7 +85,7 @@ export async function upsertManyFromSupplierItems(supplierId: string, items: Sup
         const newIngredient: Ingredient = {
             id: ingId,
             name: item.name,
-            purchaseUom: item.uom as any,
+            purchaseUom: item.purchaseUom as any,
             purchaseSize: item.packSize,
             priceExVat: item.priceExVat,
             priceIncVat: item.priceIncVat!, // CSV import ensures this exists

@@ -78,27 +78,39 @@ export function computeRecipeCost(p: ComputeParams) {
 
 /** Helper for a single line in the dialog preview (incl VAT). */
 export function lineCostIncVat(args: {
-  ingredient: Pick<IngredientPricing, "name" | "purchaseSize" | "purchaseUom" | "priceIncVat">;
+  ingredient: IngredientPricing;
   qty: number | string;
   uom?: string | null;
   wastePct?: number | string;
 }) {
   const { ingredient } = args;
-  const rowUom = (args.uom || ingredient.purchaseUom) as string;
-
-  if (!rowUom || !ingredient.purchaseUom || !ingredient.purchaseSize) {
-    // If purchase info is missing, we can't calculate cost. Return 0 to avoid crash.
-    return 0;
-  }
-
   const qty = Number(args.qty ?? 0);
   const waste = Number(args.wastePct ?? 0);
-  const eff = qty * (1 + waste);
+  const rowUom = (args.uom || ingredient.purchaseUom) as string;
 
-  const rb = toBase(eff, rowUom);
+  if (!rowUom) {
+    // Cannot calculate without a UOM. Returning 0 prevents crashing the UI.
+    // The calling component should handle this gracefully.
+    return 0;
+  }
+  
+  if (!ingredient.purchaseUom || !ingredient.purchaseSize) {
+    console.warn(`Ingredient "${ingredient.name}" missing purchase info.`);
+    return 0; // Cannot calculate cost without purchase info.
+  }
+
+  const effQty = qty * (1 + waste); // qty including waste
+
+  const rb = toBase(effQty, rowUom);
   const pb = toBase(ingredient.purchaseSize, ingredient.purchaseUom);
-  if (rb.kind !== pb.kind) throw new Error(`UoM mismatch for "${ingredient.name}".`);
 
-  const pricePerBaseInc = Number(ingredient.priceIncVat || 0) / pb.base;
-  return pricePerBaseInc * rb.base;
+  if (rb.kind !== pb.kind) {
+    throw new Error(
+      `UoM mismatch for "${ingredient.name}": row uses "${rowUom}" vs pack "${ingredient.purchaseUom}".`
+    );
+  }
+
+  const packPriceInc = Number(ingredient.priceIncVat || 0);
+  const unitPriceInc = packPriceInc / pb.base;
+  return unitPriceInc * rb.base;
 }

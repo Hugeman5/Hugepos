@@ -3,13 +3,15 @@ import path from "path";
 import { promises as fs } from "fs";
 
 export type Supplier = {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
+  id:string;
+  name:string;
+  contact?: { email?:string; phone?:string };
   address?: string;
-  vatRate?: number;   // default from settings if missing
   notes?: string;
+  currency?: 'ZAR';
+  defaultVatId?: string;   // link to TaxRate
+  leadTimeDays?: number;
+  vatRate?: number;
 };
 
 const FILE = path.join(process.cwd(), "data", "suppliers.json");

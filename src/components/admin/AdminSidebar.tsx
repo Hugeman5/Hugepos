@@ -2,7 +2,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, KeyRound, Package, Warehouse, ChefHat, Route, BarChart3, Settings, Store, Map, HardDrive, SwatchBook, TicketPercent, Combine, ShoppingCart, FilePlus } from 'lucide-react';
+import { Home, Users, KeyRound, Package, Warehouse, ChefHat, Route, BarChart3, Settings, Store, Map, HardDrive, SwatchBook, TicketPercent, Combine, ShoppingCart, FilePlus, Landmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
@@ -24,9 +24,13 @@ const inventoryItems = [
 ];
 
 const purchasingItems = [
-    { href: '/admin/purchasing/orders', label: 'Orders', icon: ShoppingCart },
-    { href: '/admin/purchasing/suppliers', label: 'Suppliers', icon: Users },
-    { href: '/admin/purchasing/new', label: 'New Order', icon: FilePlus },
+    { href: '/admin/purchasing', label: 'Orders', icon: ShoppingCart },
+    { href: '/admin/suppliers', label: 'Suppliers', icon: Users },
+];
+
+const accountingItems = [
+    { href: '/admin/accounting/accounts', label: 'Chart of Accounts', icon: Landmark },
+    { href: '/admin/accounting/taxes', label: 'Tax Rates', icon: TicketPercent },
 ];
 
 const usersItems = [
@@ -48,7 +52,7 @@ const settingsItems = [
 
 const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) => {
   const pathname = usePathname();
-  const isActive = pathname.startsWith(href) && (href !== '/admin' || pathname === '/admin');
+  const isActive = pathname === href || (href !== '/admin' && pathname.startsWith(href));
   return (
     <Link
       href={href}
@@ -78,8 +82,6 @@ const NavGroup = ({ title, items }: { title: string; items: { href: string; labe
 
 
 export default function AdminSidebar() {
-  const pathname = usePathname();
-
   return (
     <div className="flex flex-col h-full bg-brand-card p-4">
       <div className="text-2xl font-bold text-brand-accent mb-8">HUGEPOS</div>
@@ -88,6 +90,7 @@ export default function AdminSidebar() {
         <NavGroup title="Catalog" items={catalogItems} />
         <NavGroup title="Inventory" items={inventoryItems} />
         <NavGroup title="Purchasing" items={purchasingItems} />
+        <NavGroup title="Accounting" items={accountingItems} />
         <NavGroup title="Users" items={usersItems} />
         <NavGroup title="Operations" items={operationsItems} />
         <NavGroup title="Settings" items={settingsItems} />

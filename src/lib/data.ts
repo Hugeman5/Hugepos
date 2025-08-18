@@ -1,11 +1,4 @@
 
-
-
-
-
-
-
-
 export type User = {
   id: string;
   name: string;
@@ -149,22 +142,35 @@ export type OrderTotal = {
 export type Ingredient = {
   id: string;
   name: string;
-  uom: 'kg' | 'g' | 'l' | 'ml' | 'ea';
-  packSize: number;
-  costCents: number;
+  purchaseUom: "g"|"kg"|"ml"|"l"|"ea";
+  
+  // Purchase info (single source of truth from supplier catalog or manual entry)
+  purchaseSize: number;
+  priceExVat?: number;
+  priceIncVat: number;
+  vatRate?: number;
+  
+  // computed convenience
+  unitCostExVat?: number;
+  unitCostIncVat?: number;
+  
+  // source linkage
+  source?: "supplier" | "manual";
+  supplierId?: string;
+  supplierItemId?: string;
+  sku?: string;
 };
 
-export type RecipeItem = {
+export type RecipeBomRow = {
   ingredientId: string;
   qty: number;
   uom: string;
+  wastePct?: number;
 };
 
 export type Recipe = {
-  id: string;
-  name: string;
-  yield: string;
-  bom: RecipeItem[];
+  id:string; name:string; bom:RecipeBomRow[];
+  yieldPortions:number; overheadPct:number; packagingCost:number; targetGpPct:number;
 };
 
 export type RecipeLink = {
@@ -175,9 +181,6 @@ export type RecipeLink = {
 export type RecipesFile = {
   recipes: Recipe[];
   links: RecipeLink[];
-  settings: {
-    decrementOn: 'send' | 'pay';
-  };
 };
 
 export type InventoryItem = {
