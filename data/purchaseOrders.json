@@ -1,2 +1,53 @@
-
-[]
+[
+  {
+    "id": "PO-1755496316025",
+    "supplierId": "oil-more",
+    "supplierName": "Oil & More",
+    "createdAt": "2025-08-18T05:51:56.025Z",
+    "status": "draft",
+    "lines": [
+      {
+        "itemId": "oil-more_tea_five_roses",
+        "name": "Tea Five Roses",
+        "qty": 1,
+        "uom": "",
+        "packSize": 1,
+        "priceExVat": 1,
+        "vatRate": 15,
+        "lineExVat": 1,
+        "lineVat": 15,
+        "lineIncVat": 16
+      },
+      {
+        "itemId": "oil-more_nougat_damascus_original_150g_x",
+        "name": "Nougat Damascus Original 150g x",
+        "qty": 1,
+        "uom": "150g",
+        "packSize": 1,
+        "priceExVat": 24,
+        "vatRate": 15,
+        "lineExVat": 24,
+        "lineVat": 360,
+        "lineIncVat": 384
+      },
+      {
+        "itemId": "oil-more_pepper_sachets",
+        "name": "Pepper Sachets",
+        "qty": 1,
+        "uom": "",
+        "packSize": 1,
+        "priceExVat": 1000,
+        "vatRate": 15,
+        "lineExVat": 1000,
+        "lineVat": 15000,
+        "lineIncVat": 16000
+      }
+    ],
+    "totals": {
+      "exVat": 1025,
+      "vat": 15375,
+      "incVat": 16400
+    },
+    "notes": ""
+  }
+]
