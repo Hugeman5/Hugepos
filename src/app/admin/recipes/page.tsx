@@ -14,12 +14,13 @@ import { type MenuItem, type Menu } from "@/lib/menuRepo";
 import { type RecipesFile } from '@/lib/repos/recipesRepo';
 
 
-import RecipeDialog, { type RecipeEdit } from "@/components/recipes/RecipeDialog";
+import RecipeDialog, { type RecipeEdit, type IngredientLite } from "@/components/recipes/RecipeDialog";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
 import { PlusCircle, Trash2, Edit, ChevronDown, ChevronUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatMoney } from "@/lib/money";
+import { computeRecipeCost } from "@/lib/costing";
 
 type CostingResult = {
   currency: string;
@@ -35,30 +36,35 @@ type CostingResult = {
   gpPct: number;
 };
 
-const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
+const CostingDisplay = ({ recipe, ingredients }: { recipe: Recipe; ingredients: Record<string, FullIngredient> }) => {
   const [cost, setCost] = useState<CostingResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchCost = useCallback(async () => {
-    if (!isOpen || !recipeId) return;
+    if (!isOpen || !recipe.id) return;
     setIsLoading(true);
     try {
-      const res = await fetch("/api/recipes/cost", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipeId }),
+      // Re-implementing client-side for immediate feedback
+      const result = computeRecipeCost({
+        bom: recipe.bom || [],
+        ingredients: ingredients,
+        overheadPct: Number(recipe.overheadPct || 0),
+        packagingCostInc: Number(recipe.packagingCost || 0),
+        targetGpPct: Number(recipe.targetGpPct || 0.6),
+        vatRate: 0.15,
+        yieldPortions: Number(recipe.yieldPortions || 1),
+        currency: "ZAR",
       });
-      if (!res.ok) throw new Error("Cost calculation failed");
-      const data = await res.json();
-      setCost(data);
+      setCost(result);
     } catch (e) {
       toast({ variant: "destructive", title: "Costing Error", description: (e as Error).message });
+      setCost(null);
     } finally {
       setIsLoading(false);
     }
-  }, [recipeId, isOpen, toast]);
+  }, [recipe, isOpen, toast, ingredients]);
 
   useEffect(() => {
     if (isOpen) fetchCost();
@@ -80,10 +86,10 @@ const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
           {cost && (
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               <span className="text-zinc-400">Total Cost</span>
-              <span className="font-mono text-right">{formatMoney(cost.totalCostInc)}</span>
+              <span className="font-mono text-right">{formatMoney(cost.totalCostInc, "ZAR")}</span>
 
               <span className="text-zinc-400">Cost/Portion</span>
-              <span className="font-mono text-right">{formatMoney(cost.costPerPortionInc)}</span>
+              <span className="font-mono text-right">{formatMoney(cost.costPerPortionInc, "ZAR")}</span>
 
               <span className="text-zinc-400 col-span-2 border-b border-zinc-700 my-1"></span>
 
@@ -91,16 +97,16 @@ const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
               <span className="font-mono text-right">{cost.gpPct.toFixed(0)}%</span>
 
               <span className="text-zinc-400">GP / Portion</span>
-              <span className="font-mono text-right">{formatMoney(cost.gp)}</span>
+              <span className="font-mono text-right">{formatMoney(cost.gp, "ZAR")}</span>
 
               <span className="text-zinc-400">Ex-VAT RSP</span>
-              <span className="font-mono text-right">{formatMoney(cost.exVatRSP)}</span>
+              <span className="font-mono text-right">{formatMoney(cost.exVatRSP, "ZAR")}</span>
 
               <span className="text-zinc-400">VAT ({(cost.vatRate * 100).toFixed(0)}%)</span>
-              <span className="font-mono text-right">{formatMoney(cost.vatAmount)}</span>
+              <span className="font-mono text-right">{formatMoney(cost.vatAmount, "ZAR")}</span>
 
               <span className="text-zinc-400 font-bold">Inc-VAT RSP</span>
-              <span className="font-mono text-right font-bold">{formatMoney(cost.incVatRSP)}</span>
+              <span className="font-mono text-right font-bold">{formatMoney(cost.incVatRSP, "ZAR")}</span>
             </div>
           )}
         </div>
@@ -151,8 +157,20 @@ export default function RecipesPage() {
     fetchData();
   }, [fetchData]);
 
-  const ingredientsPricing = useMemo<Record<string, FullIngredient>>(
+  const ingById = useMemo<Record<string, FullIngredient>>(
     () => Object.fromEntries(ingredients.map(i => [i.id, i])),
+    [ingredients]
+  );
+  
+  const ingredientsLite: IngredientLite[] = useMemo(
+    () =>
+      ingredients.map(i => ({
+        id: i.id,
+        name: i.name,
+        purchaseUom: i.purchaseUom,
+        purchaseSize: i.purchaseSize,
+        priceIncVat: Number(i.priceIncVat ?? 0),
+      })),
     [ingredients]
   );
   
@@ -301,7 +319,7 @@ export default function RecipesPage() {
                     })}
                   </ul>
 
-                  <CostingDisplay recipeId={recipe.id} />
+                  <CostingDisplay recipeId={recipe.id} ingredients={ingById} />
                 </div>
               );
             })}
@@ -313,7 +331,8 @@ export default function RecipesPage() {
         open={!!dialogMode}
         mode={dialogMode || "create"}
         initial={selectedRecipe ?? undefined}
-        ingredients={ingredientsPricing}
+        ingredients={ingredientsLite}
+        ingredientsPricing={ingById}
         onClose={() => setDialogMode(null)}
         onSaved={fetchData}
       />

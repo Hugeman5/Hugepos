@@ -1,4 +1,5 @@
 
+
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -30,9 +31,6 @@ export type RecipeEdit = {
   bom: BomRowEdit[];
 };
 
-const VAT_DEFAULT = 0.15;
-const CURRENCY = "ZAR";
-
 export type IngredientLite = { 
   id: string; 
   name: string;
@@ -40,6 +38,7 @@ export type IngredientLite = {
   purchaseSize: number;
   priceIncVat: number;
 };
+
 type Pricing = Partial<Omit<Ingredient, 'id' | 'name'>>;
 
 
@@ -149,7 +148,7 @@ export default function RecipeDialog({
         wastePct: Number(r.wastePct || 0),
       });
 
-      const vatRate = ingredient.vatRate ?? VAT_DEFAULT;
+      const vatRate = ingredient.vatRate ?? 0.15;
       acc.inc += inc;
       acc.ex += inc / (1 + vatRate);
       return acc;
@@ -260,7 +259,7 @@ export default function RecipeDialog({
                     uom: row.uom || ingredient.purchaseUom,
                     wastePct: Number(row.wastePct || 0),
                   });
-                  const vatRate = ingredient.vatRate ?? VAT_DEFAULT;
+                  const vatRate = ingredient.vatRate ?? 0.15;
                   costs = { inc, ex: inc / (1 + vatRate) };
                 }
               } catch (e) {
@@ -299,10 +298,10 @@ export default function RecipeDialog({
                       onChange={e => setBom(i, { wastePct: toNum(e.target.value) })} />
                   </div>
                   <div className="text-right font-mono text-sm pr-2">
-                    {costs.ex > 0 ? formatMoney(costs.ex, CURRENCY) : "-"}
+                    {costs.ex > 0 ? formatMoney(costs.ex, "ZAR") : "-"}
                   </div>
                   <div className="text-right font-mono text-sm pr-2">
-                    {costs.inc > 0 ? formatMoney(costs.inc, CURRENCY) : "-"}
+                    {costs.inc > 0 ? formatMoney(costs.inc, "ZAR") : "-"}
                   </div>
                   <div>
                     <Button type="button" variant="ghost" onClick={() => removeRow(i)} aria-label="Remove row">
@@ -317,9 +316,9 @@ export default function RecipeDialog({
 
           <div className="mt-3 border-t border-zinc-700 pt-2 text-sm grid grid-cols-2 gap-y-1 max-w-sm ml-auto">
             <div className="text-zinc-400">Total Cost ex VAT</div>
-            <div className="text-right font-mono">{formatMoney(bomTotals.ex, CURRENCY)}</div>
+            <div className="text-right font-mono">{formatMoney(bomTotals.ex, "ZAR")}</div>
             <div className="text-zinc-400">Total Cost inc VAT</div>
-            <div className="text-right font-mono">{formatMoney(bomTotals.inc, CURRENCY)}</div>
+            <div className="text-right font-mono">{formatMoney(bomTotals.inc, "ZAR")}</div>
           </div>
         </div>
 
