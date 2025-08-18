@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -103,17 +104,7 @@ export default function NewPurchaseOrderPage() {
   const poLines = useMemo(() => {
     if (!supplierItems.length || !settings) return [];
     const filteredItems = supplierItems.filter(item => qtyById[item.id] > 0);
-    // This is a bit of a hack since toPOLines is async.
-    // A full solution would use a separate effect to calculate lines.
-    // For now, we make it sync for immediate feedback, assuming settings are loaded.
-    return filteredItems.map(it => {
-        const qty = qtyById[it.id] ?? 0;
-        const vat = it.vatRate ?? settings.defaultVatRate ?? 0.15;
-        const ex = qty * it.priceExVat;
-        const v = ex * vat;
-        const inc = ex + v;
-        return { itemId: it.id, name: it.name, sku: it.sku, qty, uom: it.uom, packSize: it.packSize, priceExVat: it.priceExVat, vatRate: vat, lineExVat: ex, lineVat: v, lineIncVat: inc };
-      });
+    return toPOLines(filteredItems, qtyById, settings);
   }, [supplierItems, qtyById, settings]);
 
   const totals = useMemo(() => calculateTotals(poLines), [poLines]);

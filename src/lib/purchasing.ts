@@ -1,12 +1,13 @@
 
+
 import { type SupplierItem } from "./repos/supplierItemsRepo";
 import { round2 } from "@/lib/money";
-import { getSettings } from "@/lib/settings";
+import { type Settings } from "./settingsRepo";
 
 export function priceIncFromEx(priceEx:number, vatRate:number){ return round2(priceEx * (1 + vatRate)); }
 
-export async function toPOLines(items: SupplierItem[], qtyById: Record<string, number>) {
-  const { defaultVatRate } = await getSettings();
+export function toPOLines(items: SupplierItem[], qtyById: Record<string, number>, settings: Settings) {
+  const { defaultVatRate } = settings.vat;
   return items.map(it => {
     const qty = qtyById[it.id] ?? 0;
     const vat = it.vatRate ?? defaultVatRate ?? 0.15;

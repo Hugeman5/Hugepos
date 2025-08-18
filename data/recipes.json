@@ -15,6 +15,22 @@
           "wastePct": 1
         }
       ]
+    },
+    {
+      "id": "rec_1755496035768",
+      "name": "Breakkie",
+      "yieldPortions": 1,
+      "overheadPct": 0.1,
+      "packagingCost": 0,
+      "targetGpPct": 0.6,
+      "bom": [
+        {
+          "ingredientId": "ing_oil-more_bacon-streaky",
+          "qty": 100,
+          "uom": "g",
+          "wastePct": 0
+        }
+      ]
     }
   ],
   "links": []
