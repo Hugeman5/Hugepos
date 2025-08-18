@@ -32,14 +32,20 @@ export type RecipeEdit = {
 const VAT_DEFAULT = 0.15;
 const CURRENCY = "ZAR";
 
+export type IngredientLite = { id: string; name: string };
+type Pricing = Partial<Omit<IngredientPricing, 'id' | 'name'>>;
+
+
 export default function RecipeDialog({
-  open, mode, initial, ingredients: ingredientsPricing,
+  open, mode, initial, ingredients: ingOptions,
+  ingredientsPricing = {},
   onClose, onSaved
 }: {
   open: boolean;
   mode: "create" | "edit";
   initial?: RecipeEdit;
-  ingredients: Record<string, IngredientPricing>;
+  ingredients: IngredientLite[];
+  ingredientsPricing?: Record<string, Pricing>;
   onClose: () => void;
   onSaved: () => Promise<void> | void;
 }) {
@@ -55,12 +61,7 @@ export default function RecipeDialog({
       bom: []
     }
   );
-
-  const ingOptions = useMemo(
-    () => Object.values(ingredientsPricing).map(i => ({ id: i.id, name: i.name })),
-    [ingredientsPricing]
-  );
-
+  
   useEffect(() => {
     if (open) {
       setForm(initial ?? {
@@ -87,6 +88,7 @@ export default function RecipeDialog({
       if (patch.ingredientId) {
         const ing = ingredientsPricing[patch.ingredientId];
         if (ing && !newRow.uom) {
+          // @ts-ignore
           newRow.uom = ing.purchaseUom;
         }
       }
@@ -99,7 +101,7 @@ export default function RecipeDialog({
   function addRow() {
     setForm(f => ({
       ...f,
-      bom: [...f.bom, { ingredientId: "", qty: "", uom: "", wastePct: 0 }]
+      bom: [...f.bom, { ingredientId: "", qty: "", uom: "g", wastePct: 0 }]
     }));
   }
 
@@ -127,13 +129,13 @@ export default function RecipeDialog({
       const ingredient = ingredientsPricing[r.ingredientId];
       if (!ingredient) return acc;
       const inc = lineCostIncVat({
-        ingredient,
+        ingredient: { ...ingredient, id: r.ingredientId, name: 'temp' },
         qty: Number(r.qty || 0),
         uom: r.uom || ingredient.purchaseUom,
         wastePct: Number(r.wastePct || 0),
       });
       acc.inc += inc;
-      acc.ex += inc / (1 + VAT_DEFAULT); // Simple ex-vat for preview
+      acc.ex += inc / (1 + (ingredient.vatRate ?? VAT_DEFAULT));
       return acc;
     }, { ex: 0, inc: 0 });
   }, [form.bom, ingredientsPricing]);
@@ -236,12 +238,13 @@ export default function RecipeDialog({
               try {
                 if (ingredient) {
                   const inc = lineCostIncVat({
-                    ingredient,
+                    ingredient: { ...ingredient, id: row.ingredientId, name: 'temp' },
                     qty: Number(row.qty || 0),
                     uom: row.uom || ingredient.purchaseUom,
                     wastePct: Number(row.wastePct || 0),
                   });
-                  costs = { inc, ex: inc / (1 + VAT_DEFAULT) };
+                  const vatRate = ingredient.vatRate ?? VAT_DEFAULT;
+                  costs = { inc, ex: inc / (1 + vatRate) };
                 }
               } catch (e) {
                 // Silently fail for preview, validation will catch it

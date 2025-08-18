@@ -8,6 +8,7 @@ export type IngredientPricing = {
   purchaseSize: number;          // e.g. 12.5 (kg) or 30 (ea)
   purchaseUom: "g" | "kg" | "ml" | "l" | "ea";
   priceIncVat: number;           // R per pack, incl VAT
+  vatRate?: number;
 };
 
 export type BomRow = {
@@ -36,27 +37,13 @@ export function computeRecipeCost(p: ComputeParams) {
   for (const row of p.bom || []) {
     const ing = p.ingredients[row.ingredientId];
     if (!ing) continue;
-    const rowUom = (row.uom || ing.purchaseUom) as string;
-
-    const qty = Number(row.qty ?? 0);
-    const waste = Number(row.wastePct ?? 0);
-    const effectiveQty = qty * (1 + waste); // qty incl. waste
-
-    // Convert recipe qty and purchase pack to base units
-    const rb = toBase(effectiveQty, rowUom);
-    const pb = toBase(ing.purchaseSize, ing.purchaseUom);
-
-    if (rb.kind !== pb.kind) {
-      throw new Error(
-        `UoM mismatch for "${ing.name}": row "${rowUom}" vs pack "${ing.purchaseUom}".`
-      );
-    }
-
-    // price per base unit (incl VAT)
-    const pricePerBaseInc = Number(ing.priceIncVat || 0) / pb.base;
-
-    // line cost (incl VAT)
-    baseCostInc += pricePerBaseInc * rb.base;
+    
+    baseCostInc += lineCostIncVat({
+        ingredient: ing,
+        qty: row.qty,
+        uom: row.uom,
+        wastePct: row.wastePct,
+    });
   }
 
   const overheadInc = baseCostInc * Number(p.overheadPct || 0);
@@ -91,17 +78,17 @@ export function computeRecipeCost(p: ComputeParams) {
 
 /** Helper for a single line in the dialog preview (incl VAT). */
 export function lineCostIncVat(args: {
-  ingredient: IngredientPricing;
+  ingredient: Pick<IngredientPricing, "name" | "purchaseSize" | "purchaseUom" | "priceIncVat">;
   qty: number | string;
   uom?: string | null;
   wastePct?: number | string;
 }) {
-  const rowUom = (args.uom || args.ingredient.purchaseUom) as string;
-  if (!rowUom) {
-    throw new Error(`Missing UoM for "${args.ingredient.name}".`);
-  }
-  if (!args.ingredient.purchaseUom || !args.ingredient.purchaseSize) {
-    throw new Error(`Ingredient "${args.ingredient.name}" missing purchase info.`);
+  const { ingredient } = args;
+  const rowUom = (args.uom || ingredient.purchaseUom) as string;
+
+  if (!rowUom || !ingredient.purchaseUom || !ingredient.purchaseSize) {
+    // If purchase info is missing, we can't calculate cost. Return 0 to avoid crash.
+    return 0;
   }
 
   const qty = Number(args.qty ?? 0);
@@ -109,9 +96,9 @@ export function lineCostIncVat(args: {
   const eff = qty * (1 + waste);
 
   const rb = toBase(eff, rowUom);
-  const pb = toBase(args.ingredient.purchaseSize, args.ingredient.purchaseUom);
-  if (rb.kind !== pb.kind) throw new Error(`UoM mismatch for "${args.ingredient.name}".`);
+  const pb = toBase(ingredient.purchaseSize, ingredient.purchaseUom);
+  if (rb.kind !== pb.kind) throw new Error(`UoM mismatch for "${ingredient.name}".`);
 
-  const pricePerBaseInc = Number(args.ingredient.priceIncVat || 0) / pb.base;
+  const pricePerBaseInc = Number(ingredient.priceIncVat || 0) / pb.base;
   return pricePerBaseInc * rb.base;
 }
