@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -86,10 +85,10 @@ const CostingDisplay = ({ recipe, ingredients }: { recipe: Recipe; ingredients: 
           {cost && (
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               <span className="text-zinc-400">Total Cost</span>
-              <span className="font-mono text-right">{formatMoney(cost.totalCostInc, "ZAR")}</span>
+              <span className="font-mono text-right">{formatMoney(cost.totalCostInc)}</span>
 
               <span className="text-zinc-400">Cost/Portion</span>
-              <span className="font-mono text-right">{formatMoney(cost.costPerPortionInc, "ZAR")}</span>
+              <span className="font-mono text-right">{formatMoney(cost.costPerPortionInc)}</span>
 
               <span className="text-zinc-400 col-span-2 border-b border-zinc-700 my-1"></span>
 
@@ -97,16 +96,16 @@ const CostingDisplay = ({ recipe, ingredients }: { recipe: Recipe; ingredients: 
               <span className="font-mono text-right">{cost.gpPct.toFixed(0)}%</span>
 
               <span className="text-zinc-400">GP / Portion</span>
-              <span className="font-mono text-right">{formatMoney(cost.gp, "ZAR")}</span>
+              <span className="font-mono text-right">{formatMoney(cost.gp)}</span>
 
               <span className="text-zinc-400">Ex-VAT RSP</span>
-              <span className="font-mono text-right">{formatMoney(cost.exVatRSP, "ZAR")}</span>
+              <span className="font-mono text-right">{formatMoney(cost.exVatRSP)}</span>
 
               <span className="text-zinc-400">VAT ({(cost.vatRate * 100).toFixed(0)}%)</span>
-              <span className="font-mono text-right">{formatMoney(cost.vatAmount, "ZAR")}</span>
+              <span className="font-mono text-right">{formatMoney(cost.vatAmount)}</span>
 
               <span className="text-zinc-400 font-bold">Inc-VAT RSP</span>
-              <span className="font-mono text-right font-bold">{formatMoney(cost.incVatRSP, "ZAR")}</span>
+              <span className="font-mono text-right font-bold">{formatMoney(cost.incVatRSP)}</span>
             </div>
           )}
         </div>
@@ -319,7 +318,7 @@ export default function RecipesPage() {
                     })}
                   </ul>
 
-                  <CostingDisplay recipeId={recipe.id} ingredients={ingById} />
+                  <CostingDisplay recipe={recipe} ingredients={ingById} />
                 </div>
               );
             })}
