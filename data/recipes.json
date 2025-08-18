@@ -1,4 +1,21 @@
 {
-  "recipes": [],
+  "recipes": [
+    {
+      "id": "rec_1755468470714",
+      "name": "Croissant",
+      "yieldPortions": 1,
+      "overheadPct": 0.1,
+      "packagingCost": 0,
+      "targetGpPct": 0.6,
+      "bom": [
+        {
+          "ingredientId": "ing_oil-more_flour-cake-snowflake",
+          "qty": 300,
+          "uom": "g",
+          "wastePct": 1
+        }
+      ]
+    }
+  ],
   "links": []
 }

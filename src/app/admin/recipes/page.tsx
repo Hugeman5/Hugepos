@@ -14,7 +14,7 @@ import { type MenuItem, type Menu } from "@/lib/menuRepo";
 import { type RecipesFile } from '@/lib/repos/recipesRepo';
 
 
-import RecipeDialog, { type RecipeEdit, type IngredientLite } from "@/components/recipes/RecipeDialog";
+import RecipeDialog, { type RecipeEdit } from "@/components/recipes/RecipeDialog";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
 import { PlusCircle, Trash2, Edit, ChevronDown, ChevronUp } from "lucide-react";
@@ -24,10 +24,10 @@ import { formatMoney } from "@/lib/money";
 type CostingResult = {
   currency: string;
   vatRate: number;
-  baseCost: number;
-  overhead: number;
-  totalCost: number;
-  costPerPortion: number;
+  baseCostInc: number;
+  overheadInc: number;
+  totalCostInc: number;
+  costPerPortionInc: number;
   exVatRSP: number;
   incVatRSP: number;
   vatAmount: number;
@@ -80,10 +80,10 @@ const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
           {cost && (
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               <span className="text-zinc-400">Total Cost</span>
-              <span className="font-mono text-right">{formatMoney(cost.totalCost, { currency: cost.currency })}</span>
+              <span className="font-mono text-right">{formatMoney(cost.totalCostInc)}</span>
 
               <span className="text-zinc-400">Cost/Portion</span>
-              <span className="font-mono text-right">{formatMoney(cost.costPerPortion, { currency: cost.currency })}</span>
+              <span className="font-mono text-right">{formatMoney(cost.costPerPortionInc)}</span>
 
               <span className="text-zinc-400 col-span-2 border-b border-zinc-700 my-1"></span>
 
@@ -91,16 +91,16 @@ const CostingDisplay = ({ recipeId }: { recipeId: string }) => {
               <span className="font-mono text-right">{cost.gpPct.toFixed(0)}%</span>
 
               <span className="text-zinc-400">GP / Portion</span>
-              <span className="font-mono text-right">{formatMoney(cost.gp, { currency: cost.currency })}</span>
+              <span className="font-mono text-right">{formatMoney(cost.gp)}</span>
 
               <span className="text-zinc-400">Ex-VAT RSP</span>
-              <span className="font-mono text-right">{formatMoney(cost.exVatRSP, { currency: cost.currency })}</span>
+              <span className="font-mono text-right">{formatMoney(cost.exVatRSP)}</span>
 
               <span className="text-zinc-400">VAT ({(cost.vatRate * 100).toFixed(0)}%)</span>
-              <span className="font-mono text-right">{formatMoney(cost.vatAmount, { currency: cost.currency })}</span>
+              <span className="font-mono text-right">{formatMoney(cost.vatAmount)}</span>
 
               <span className="text-zinc-400 font-bold">Inc-VAT RSP</span>
-              <span className="font-mono text-right font-bold">{formatMoney(cost.incVatRSP, { currency: cost.currency })}</span>
+              <span className="font-mono text-right font-bold">{formatMoney(cost.incVatRSP)}</span>
             </div>
           )}
         </div>
@@ -151,25 +151,11 @@ export default function RecipesPage() {
     fetchData();
   }, [fetchData]);
 
-  const ingredientsLite: IngredientLite[] = useMemo(
-    () =>
-      ingredients.map(i => ({
-        id: i.id,
-        name: i.name,
-        purchaseUom: i.purchaseUom,
-        purchaseSize: i.purchaseSize,
-        priceIncVat: Number(i.priceIncVat ?? 0),
-        priceExVat: Number(i.priceExVat ?? 0),
-        vatRate: Number(i.vatRate ?? 0.15)
-      })),
-    [ingredients]
-  );
-  
   const ingredientsPricing = useMemo<Record<string, FullIngredient>>(
     () => Object.fromEntries(ingredients.map(i => [i.id, i])),
     [ingredients]
   );
-
+  
 
   const handleOpenNewDialog = () => {
     setSelectedRecipe({
@@ -327,8 +313,7 @@ export default function RecipesPage() {
         open={!!dialogMode}
         mode={dialogMode || "create"}
         initial={selectedRecipe ?? undefined}
-        ingredients={ingredientsLite}
-        ingredientsPricing={ingredientsPricing}
+        ingredients={ingredientsPricing}
         onClose={() => setDialogMode(null)}
         onSaved={fetchData}
       />

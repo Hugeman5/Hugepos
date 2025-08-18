@@ -10,10 +10,10 @@ export type Uom = "g" | "kg" | "ml" | "l" | "ea" | string;
 export type Ingredient = {
   id: string;
   name: string;
-
+  purchaseUom: "g"|"kg"|"ml"|"l"|"ea";
+  
   // Purchase info (single source of truth from supplier catalog or manual entry)
   purchaseSize: number;
-  purchaseUom: "g"|"kg"|"ml"|"l"|"ea" | string;
   priceExVat?: number;
   priceIncVat: number;
   vatRate?: number;
@@ -52,7 +52,10 @@ export function withComputedUnitCosts(i: Ingredient): Ingredient {
   const pack = Number(i.purchaseSize) > 0 ? Number(i.purchaseSize) : 1;
   
   const ex = Number.isFinite(i.priceExVat) ? Number(i.priceExVat) : undefined;
-  const inc = Number.isFinite(i.priceIncVat) ? Number(i.priceIncVat) : (ex !== undefined ? ex * (1 + vat) : undefined);
+  let inc = Number.isFinite(i.priceIncVat) ? Number(i.priceIncVat) : (ex !== undefined ? ex * (1 + vat) : undefined);
+  
+  // Ensure inc has a value if possible
+  if (inc === undefined) inc = 0;
 
   return {
     ...i,
@@ -76,7 +79,7 @@ export async function upsertManyFromSupplierItems(supplierId: string, items: Sup
         const newIngredient: Ingredient = {
             id: ingId,
             name: item.name,
-            purchaseUom: item.uom,
+            purchaseUom: item.uom as any,
             purchaseSize: item.packSize,
             priceExVat: item.priceExVat,
             priceIncVat: item.priceIncVat!, // CSV import ensures this exists
@@ -89,5 +92,5 @@ export async function upsertManyFromSupplierItems(supplierId: string, items: Sup
         ingredientsMap.set(ingId, newIngredient);
     }
     
-    await saveAllIngredients(Array.from(ingredientsMap.values()));
+    await saveAllIngredients(Array.from(ingredientsMap.values()).map(withComputedUnitCosts));
 }
