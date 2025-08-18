@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PlusCircle, Trash2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import IngredientPicker from "@/components/recipes/IngredientPicker";
-import { lineCostIncVat, type IngredientPricing } from "@/lib/costing";
+import { lineCostIncVat } from "@/lib/costing";
+import type { Ingredient } from "@/lib/repos/ingredientsRepo";
 
 
 export type BomRowEdit = {
@@ -32,12 +33,18 @@ export type RecipeEdit = {
 const VAT_DEFAULT = 0.15;
 const CURRENCY = "ZAR";
 
-export type IngredientLite = { id: string; name: string };
-type Pricing = Partial<Omit<IngredientPricing, 'id' | 'name'>>;
+export type IngredientLite = { 
+  id: string; 
+  name: string;
+  purchaseUom: "g" | "kg" | "ml" | "l" | "ea";
+  purchaseSize: number;
+  priceIncVat: number;
+};
+type Pricing = Partial<Omit<Ingredient, 'id' | 'name'>>;
 
 
 export default function RecipeDialog({
-  open, mode, initial, ingredients: ingOptions,
+  open, mode, initial, ingredients,
   ingredientsPricing = {},
   onClose, onSaved
 }: {
@@ -60,6 +67,11 @@ export default function RecipeDialog({
       targetGpPct: "",
       bom: []
     }
+  );
+
+  const ingOptions = useMemo(
+    () => ingredients.map(i => ({ id: i.id, name: i.name })),
+    [ingredients]
   );
   
   useEffect(() => {
@@ -128,14 +140,18 @@ export default function RecipeDialog({
     return (form.bom || []).reduce((acc, r) => {
       const ingredient = ingredientsPricing[r.ingredientId];
       if (!ingredient) return acc;
+      
       const inc = lineCostIncVat({
+        // @ts-ignore
         ingredient: { ...ingredient, id: r.ingredientId, name: 'temp' },
         qty: Number(r.qty || 0),
         uom: r.uom || ingredient.purchaseUom,
         wastePct: Number(r.wastePct || 0),
       });
+
+      const vatRate = ingredient.vatRate ?? VAT_DEFAULT;
       acc.inc += inc;
-      acc.ex += inc / (1 + (ingredient.vatRate ?? VAT_DEFAULT));
+      acc.ex += inc / (1 + vatRate);
       return acc;
     }, { ex: 0, inc: 0 });
   }, [form.bom, ingredientsPricing]);
@@ -238,7 +254,8 @@ export default function RecipeDialog({
               try {
                 if (ingredient) {
                   const inc = lineCostIncVat({
-                    ingredient: { ...ingredient, id: row.ingredientId, name: 'temp' },
+                    // @ts-ignore
+                    ingredient: ingredient,
                     qty: Number(row.qty || 0),
                     uom: row.uom || ingredient.purchaseUom,
                     wastePct: Number(row.wastePct || 0),
@@ -282,10 +299,10 @@ export default function RecipeDialog({
                       onChange={e => setBom(i, { wastePct: toNum(e.target.value) })} />
                   </div>
                   <div className="text-right font-mono text-sm pr-2">
-                    {costs.ex > 0 ? formatMoney(costs.ex) : "-"}
+                    {costs.ex > 0 ? formatMoney(costs.ex, CURRENCY) : "-"}
                   </div>
                   <div className="text-right font-mono text-sm pr-2">
-                    {costs.inc > 0 ? formatMoney(costs.inc) : "-"}
+                    {costs.inc > 0 ? formatMoney(costs.inc, CURRENCY) : "-"}
                   </div>
                   <div>
                     <Button type="button" variant="ghost" onClick={() => removeRow(i)} aria-label="Remove row">
@@ -300,9 +317,9 @@ export default function RecipeDialog({
 
           <div className="mt-3 border-t border-zinc-700 pt-2 text-sm grid grid-cols-2 gap-y-1 max-w-sm ml-auto">
             <div className="text-zinc-400">Total Cost ex VAT</div>
-            <div className="text-right font-mono">{formatMoney(bomTotals.ex)}</div>
+            <div className="text-right font-mono">{formatMoney(bomTotals.ex, CURRENCY)}</div>
             <div className="text-zinc-400">Total Cost inc VAT</div>
-            <div className="text-right font-mono">{formatMoney(bomTotals.inc)}</div>
+            <div className="text-right font-mono">{formatMoney(bomTotals.inc, CURRENCY)}</div>
           </div>
         </div>
 
