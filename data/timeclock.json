@@ -1,6 +1,36 @@
-
 {
-  "punches": [],
+  "punches": [
+    {
+      "id": "tc_dmu4qjis",
+      "userId": "jwaiter",
+      "type": "in",
+      "ts": "2025-08-19T13:34:30.368Z"
+    },
+    {
+      "id": "tc_obtc65ex",
+      "userId": "jwaiter",
+      "type": "out",
+      "ts": "2025-08-19T13:34:45.793Z"
+    },
+    {
+      "id": "tc_pa5ncqye",
+      "userId": "jwaiter",
+      "type": "in",
+      "ts": "2025-08-19T13:34:50.185Z"
+    },
+    {
+      "id": "tc_4o2ym0ve",
+      "userId": "jwaiter",
+      "type": "breakStart",
+      "ts": "2025-08-19T13:35:07.320Z"
+    },
+    {
+      "id": "tc_gaj7cm1p",
+      "userId": "jwaiter",
+      "type": "breakEnd",
+      "ts": "2025-08-19T13:35:14.485Z"
+    }
+  ],
   "settings": {
     "timezone": "Africa/Johannesburg",
     "roundingMinutes": 1

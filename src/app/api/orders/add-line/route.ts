@@ -29,12 +29,16 @@ export async function POST(req: Request) {
         }
 
         const { orderId, productId, qty, mods = [] } = validation.data;
-        const order = await ordersRepo.getOrder(orderId);
+        
+        const [order, menu] = await Promise.all([
+            ordersRepo.getOrder(orderId),
+            menuRepo.getMenu()
+        ]);
+
         if (!order) {
             return NextResponse.json({ message: "Order not found" }, { status: 404 });
         }
 
-        const menu = await menuRepo.getMenu();
         const product = menu.items.find(i => i.id === productId);
         if (!product) {
             return NextResponse.json({ message: "Product not found" }, { status: 404 });

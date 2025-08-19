@@ -31,6 +31,15 @@
       "catId": "cat_1755399187235_qxnz1",
       "name": "Full Breakfast",
       "priceCents": 1500
+    },
+    {
+      "id": "it_1755610642453_mlyna",
+      "taxCode": "STD15",
+      "active": true,
+      "sort": 20,
+      "catId": "cat_1755399187235_qxnz1",
+      "name": "Breakfast Roll",
+      "priceCents": 85
     }
   ],
   "taxCodes": [
@@ -49,7 +58,7 @@
   ],
   "meta": {
     "version": 1,
-    "updatedAt": "2025-08-17T12:50:13.535Z"
+    "updatedAt": "2025-08-19T13:37:22.454Z"
   },
   "modifierSets": []
 }
