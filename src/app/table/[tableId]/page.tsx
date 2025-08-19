@@ -11,6 +11,7 @@ import {
   type ServiceCheck,
   type Order,
   type FloorPlan,
+  type User,
 } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
 import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
@@ -19,6 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { GitCommitHorizontal } from 'lucide-react';
 import { type Settings } from '@/lib/settingsRepo';
 import { newId } from '@/lib/utils';
+import { getSession } from '@/lib/session';
 
 
 export default function TableOrderPage() {
@@ -35,13 +37,13 @@ export default function TableOrderPage() {
   const [isSplitView, setIsSplitView] = useState(false);
   const { toast } = useToast();
   
-  const [user, setUser] = useState<{ uid: string, name: string, role: string } | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   
   useEffect(() => {
     // On mount, get user from session storage
-    const storedSession = sessionStorage.getItem('mockUser');
+    const storedSession = getSession();
     if (storedSession) {
-        setUser(JSON.parse(storedSession));
+        setUser(storedSession);
     }
   }, []);
 
@@ -185,8 +187,7 @@ export default function TableOrderPage() {
     <div className="flex h-screen w-full flex-col bg-muted/40">
       <DashboardHeader
         title={`Table ${check.tableId}`}
-        userName={user.name}
-        userRole="Waiter"
+        user={user}
       />
       
       {isSplitView ? (
@@ -211,6 +212,7 @@ export default function TableOrderPage() {
                 onOrderUpdate={handleOrderUpdate} 
                 user={user}
                 settings={settings}
+                onNewOrder={() => {}}
                 onSplitClick={() => setIsSplitView(true)}
             />
           </div>
@@ -219,4 +221,3 @@ export default function TableOrderPage() {
     </div>
   );
 }
-
