@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
@@ -54,10 +55,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
     if (!line) return;
 
     const newQty = line.qty + delta;
-    if (newQty <= 0) {
-      await handleRemoveLine(lineId);
-      return;
-    }
+    if (newQty < 0) return; // Prevent negative quantity
 
     try {
         const res = await fetch('/api/orders/line', {
@@ -74,18 +72,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
   };
   
   const handleRemoveLine = async (lineId: string) => {
-    try {
-        const res = await fetch('/api/orders/line', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId: order.id, lineId: lineId, qty: 0 })
-        });
-        if (!res.ok) throw new Error('Failed to remove line');
-        const updatedOrder = await res.json();
-        onOrderUpdate(updatedOrder.order);
-    } catch(e) {
-        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
-    }
+     await handleUpdateQuantity(lineId, -Infinity);
   }
   
   const handlePay = async () => {
@@ -201,11 +188,11 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
         ) : (
           <div className="space-y-4">
             {(order.lines || []).map((line) => (
-              <div key={line.lineId || line.id} className="flex items-start gap-4">
+              <div key={line.lineId} className="flex items-start gap-4">
                 <div className="flex-1">
                   <p className="font-medium">{line.qty}x {line.name}</p>
                    {line.mods && line.mods.length > 0 && <p className="text-sm text-muted-foreground">{line.mods.map(m => m.optionName).join(', ')}</p>}
-                   {line.lineIncVat != null && <p className="text-sm font-semibold">{money(line.lineIncVat)}</p>}
+                   {line.lineTotal != null && <p className="text-sm font-semibold">{money(line.lineTotal)}</p>}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -241,7 +228,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
             <div className="w-full space-y-2 text-sm">
                 <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>{money(order.totals?.exVat)}</span>
+                    <span>{money(order.totals?.subtotal)}</span>
                 </div>
                  <div className="flex justify-between">
                     <span>Tax</span>
@@ -249,7 +236,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
                 </div>
                 <div className="w-full flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total</span>
-                    <span>{money(order.totals?.incVat)}</span>
+                    <span>{money(order.totals?.total)}</span>
                 </div>
             </div>
         )}

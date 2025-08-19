@@ -1,4 +1,5 @@
 
+
 export type User = {
   id: string;
   name: string;
@@ -82,7 +83,6 @@ export type Order = {
   discounts?: AppliedDiscount[];
   notes?: string;
   shiftId?: string;
-  customer?: { id: string; name: string; groupId?: string };
   service?: { 
     type: "dine_in", 
     tableId: string, 
@@ -115,6 +115,7 @@ export type CartLineMod = {
 
 export type CartLine = {
     id: string; // A unique ID for this specific line in the cart
+    lineId: string; // The permanent ID for this line
     productId: string;
     qty: number;
     mods: CartLineMod[];

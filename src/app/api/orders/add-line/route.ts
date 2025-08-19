@@ -1,12 +1,13 @@
 
+
 import { NextResponse } from "next/server";
-import { getMenu } from "@/lib/menuRepo";                // must return { items, modifierSets, taxCodes, currency, defaultTaxRate }
+import { getMenu } from "@/lib/menuRepo";
 import { computeLine } from "@/lib/orders/computeLine";
 import { addLineToOrder } from "@/lib/orders/orderRepo"; // local JSON order storage
 
 export const dynamic = "force-dynamic";
 
-function newLineId() { return "l_" + Math.random().toString(36).slice(2,10); }
+function newId(prefix="l_") { return prefix + Math.random().toString(36).slice(2,10); }
 
 export async function POST(req: Request) {
   try {
@@ -17,22 +18,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "itemId required" }, { status: 400 });
     }
 
-    // Load FULL menu (items + modifierSets + taxCodes + currency + defaultTaxRate)
     const menu = await getMenu();
-
-    // Compute line w/ safe defaults
     const computed = computeLine({ menu, itemId, qty: Number(qty || 1), choices });
 
     const line = {
         ...computed,
-        id: newLineId(),
+        id: newId('cart_'),
+        lineId: newId('line_'),
         choices,
         station: "kitchen",
         state: "queued" as const,
     };
 
-
-    // Persist (create order if not exists)
     const order = await addLineToOrder({ orderId, tableId, line });
     return NextResponse.json({ ok: true, order, line });
   } catch (e: any) {
