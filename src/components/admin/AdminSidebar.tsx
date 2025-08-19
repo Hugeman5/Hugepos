@@ -2,14 +2,14 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, KeyRound, Package, Warehouse, ChefHat, Route, BarChart3, Settings, Store, Map, HardDrive, SwatchBook, TicketPercent, Combine, ShoppingCart, FilePlus, Landmark } from 'lucide-react';
+import { Home, Users, KeyRound, Package, Warehouse, ChefHat, Route, BarChart3, Settings, Store, Map, HardDrive, SwatchBook, TicketPercent, Combine, ShoppingCart, FilePlus, Landmark, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
 const navItems = [
   { href: '/admin', label: 'Overview', icon: Home },
-  { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/admin/reports', label: 'Sales Reports', icon: BarChart3 },
 ];
 
 const catalogItems = [
@@ -25,7 +25,7 @@ const inventoryItems = [
 
 const purchasingItems = [
     { href: '/admin/purchasing', label: 'Orders', icon: ShoppingCart },
-    { href: '/admin/suppliers', label: 'Suppliers', icon: Users },
+    { href: '/admin/purchasing/suppliers', label: 'Suppliers', icon: Users },
 ];
 
 const accountingItems = [
@@ -50,15 +50,23 @@ const settingsItems = [
     { href: '/admin/settings', label: 'General', icon: Settings },
 ]
 
+const reportsItems = [
+    { href: '/admin/reports', label: 'Sales', icon: BarChart3 },
+    { href: '/admin/reports/timeclock', label: 'Time & Attendance', icon: Clock },
+];
+
 const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) => {
   const pathname = usePathname();
-  const isActive = pathname === href || (href !== '/admin' && pathname.startsWith(href));
+  const isActive = pathname === href || (href !== '/admin' && pathname.startsWith(href) && href !== '/admin/reports');
+  const isReportsActive = pathname.startsWith('/admin/reports') && href === '/admin/reports';
+
+
   return (
     <Link
       href={href}
       className={cn(
         'flex items-center gap-3 rounded-lg px-3 py-2 text-brand-mute transition-all hover:text-brand-text hover:bg-brand-line',
-        isActive && 'bg-brand-line text-brand-text'
+        (isActive || isReportsActive) && 'bg-brand-line text-brand-text'
       )}
     >
       <Icon className="h-4 w-4" />
@@ -86,7 +94,8 @@ export default function AdminSidebar() {
     <div className="flex flex-col h-full bg-brand-card p-4">
       <div className="text-2xl font-bold text-brand-accent mb-8">HUGEPOS</div>
       <nav className="flex flex-col gap-1">
-        {navItems.map((item) => <NavLink key={item.href} {...item} />)}
+        <NavLink href="/admin" label="Dashboard" icon={Home}/>
+        <NavGroup title="Reports" items={reportsItems} />
         <NavGroup title="Catalog" items={catalogItems} />
         <NavGroup title="Inventory" items={inventoryItems} />
         <NavGroup title="Purchasing" items={purchasingItems} />

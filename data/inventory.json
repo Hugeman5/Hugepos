@@ -1,5 +1,12 @@
-
 [
-    { "ingredientId": "ing_flour", "onHand": 25, "reorderPoint": 5 },
-    { "ingredientId": "ing_eggs", "onHand": 10, "reorderPoint": 2 }
+  {
+    "ingredientId": "ing_flour",
+    "onHand": 25,
+    "reorderPoint": 5
+  },
+  {
+    "ingredientId": "ing_eggs",
+    "onHand": 40,
+    "reorderPoint": 2
+  }
 ]

@@ -1,2 +1,10 @@
-
-[]
+[
+  {
+    "ingredientId": "ing_eggs",
+    "quantity": 30,
+    "type": "adjust",
+    "note": "",
+    "id": "move_1755578279495_wsdcvi8",
+    "timestamp": "2025-08-19T04:37:59.495Z"
+  }
+]

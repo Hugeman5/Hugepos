@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import Avatar from '@/components/ui/Avatar';
+import ShiftWidget from '@/components/timeclock/ShiftWidget';
 
 
 type DashboardHeaderProps = {
@@ -30,6 +31,7 @@ export default function DashboardHeader({ title, userName, userRole, shiftStatus
                 <p className="text-xs text-muted-foreground">Shift: {shiftStatus.shiftId}</p>
             </div>
         )}
+         {userRole !== 'Admin' && <ShiftWidget compact />}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" className="relative h-10 w-10 rounded-full !p-0">

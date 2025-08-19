@@ -1,0 +1,63 @@
+"use client";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { useToast } from "@/hooks/use-toast";
+
+export default function ShiftWidget({ compact=false }: { compact?: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const [last, setLast] = useState<"in"|"out"|"breakStart"|"breakEnd"|null>(null);
+  const { toast } = useToast();
+
+  async function refresh() {
+    // Pull last 1 day punches for status
+    const from = new Date(Date.now()-24*3600e3).toISOString();
+    try {
+        const r = await fetch(`/api/timeclock/punches?from=${from}`, { cache:"no-store" });
+        if (!r.ok) return;
+        const rows: Array<{type:string; ts:string}> = await r.json();
+        const lastType = rows.length ? rows[rows.length-1].type as any : null;
+        setLast(lastType);
+    } catch (e) {
+        // fail silently on refresh
+    }
+  }
+  useEffect(()=>{ refresh(); },[]);
+
+  async function punch(type:"in"|"out") {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/timeclock/punch", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ type })
+      });
+      if (res.ok) {
+        toast({ title: "Success", description: `You have been clocked ${type}.` });
+        await refresh();
+      } else {
+        const err = await res.json();
+        throw new Error(err.error || "Punch failed");
+      }
+    } catch(e) {
+        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+    } finally { 
+        setBusy(false); 
+    }
+  }
+
+  const clockedIn = last === "in" || last === "breakEnd";
+  const onBreak = last === "breakStart";
+  
+  return (
+    <div className={compact ? "flex items-center gap-2" : "flex items-center gap-8"}>
+      <div className="text-xs opacity-70">
+        Status: {clockedIn ? "Clocked in" : (onBreak ? "On Break" : "Clocked out")}
+      </div>
+      {!clockedIn && !onBreak ? (
+        <Button size="sm" disabled={busy} onClick={()=>punch("in")}>Clock In</Button>
+      ) : (
+        <Button size="sm" variant="secondary" disabled={busy} onClick={()=>punch("out")}>Clock Out</Button>
+      )}
+    </div>
+  );
+}
