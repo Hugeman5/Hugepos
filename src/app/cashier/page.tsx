@@ -11,9 +11,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
 import { type Settings } from '@/lib/settingsRepo';
-import { getSession } from '@/lib/session'; // Client-side session retrieval is different
 import ShiftControls from '@/components/staff/ShiftControls';
 
+// A constant for the cashier register ID. In a real app, this might be dynamic.
+const CASHIER_REGISTER_ID = 'checkout_counter';
 
 export default function CashierDashboardPage() {
   const [menuData, setMenuData] = useState<Menu | null>(null);
@@ -40,7 +41,7 @@ export default function CashierDashboardPage() {
        const res = await fetch('/api/orders', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ user, items: [] }),
+         body: JSON.stringify({ user, items: [], shiftId: openShift?.id }),
        });
        if (!res.ok) throw new Error('Failed to create a new order.');
        const newOrder = await res.json();
@@ -48,14 +49,14 @@ export default function CashierDashboardPage() {
      } catch(e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
      }
-  }, [user, toast]);
+  }, [user, toast, openShift]);
 
   useEffect(() => {
     async function fetchInitialData() {
       try {
         const [menuRes, shiftRes, settingsRes] = await Promise.all([
             fetch('/api/admin/menu'),
-            fetch('/api/register/open-shift'),
+            fetch(`/api/register/open-shift?registerId=${CASHIER_REGISTER_ID}`),
             fetch('/api/settings'),
         ]);
 
@@ -63,6 +64,7 @@ export default function CashierDashboardPage() {
         setMenuData(await menuRes.json());
         
         if (shiftRes.ok) setOpenShift(await shiftRes.json());
+        else setOpenShift(null);
 
         if (!settingsRes.ok) throw new Error('Failed to fetch settings');
         setSettings(await settingsRes.json());
@@ -144,17 +146,17 @@ export default function CashierDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId: order.id,
-          productId: product.id,
+          itemId: product.id,
           qty: qtyBuffer,
           mods: mods
         }),
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || 'Failed to add item to order.');
+        throw new Error(errorData.error || 'Failed to add item to order.');
       }
-      const updatedOrder = await res.json();
-      setOrder(updatedOrder);
+      const {order: updatedOrder} = await res.json();
+      onOrderUpdate(updatedOrder);
     } catch(e) {
       toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     }

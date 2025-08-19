@@ -35,9 +35,10 @@ type TableGridProps = {
     floorPlan: FloorPlan;
     openChecks: ServiceCheck[];
     user: { uid: string; name: string; role: string };
+    shiftId?: string;
 };
 
-export default function TableGrid({ floorPlan, openChecks, user }: TableGridProps) {
+export default function TableGrid({ floorPlan, openChecks, user, shiftId }: TableGridProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [isSeatDialogOpen, setIsSeatDialogOpen] = useState(false);
@@ -49,6 +50,10 @@ export default function TableGrid({ floorPlan, openChecks, user }: TableGridProp
         if (check) {
           router.push(`/table/${table.id}`);
         } else {
+          if (!shiftId) {
+            toast({ variant: 'destructive', title: 'Shift Required', description: 'A shift must be open to seat a new table.' });
+            return;
+          }
           setSelectedTable(table);
           setGuestCount('1');
           setIsSeatDialogOpen(true);
@@ -56,7 +61,7 @@ export default function TableGrid({ floorPlan, openChecks, user }: TableGridProp
     };
 
     const handleSeatGuests = async () => {
-      if (!selectedTable || !guestCount) return;
+      if (!selectedTable || !guestCount || !shiftId) return;
       
       try {
         const res = await fetch('/api/service/open', {
@@ -66,6 +71,7 @@ export default function TableGrid({ floorPlan, openChecks, user }: TableGridProp
                 tableId: selectedTable.id,
                 server: user,
                 guests: parseInt(guestCount, 10),
+                shiftId,
             })
         });
         if (!res.ok) {

@@ -2,15 +2,18 @@
 'use client';
 import { useState, useEffect } from 'react';
 import DashboardHeader from '@/components/dashboard-header';
-import { type FloorPlan, type ServiceCheck } from '@/lib/data';
+import { type FloorPlan, type ServiceCheck, type Shift } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import TableGrid from '@/components/waiter/TableGrid';
+
+const WAITER_REGISTER_ID = 'waiter_1'; // Waiters might share a virtual register
 
 export default function WaiterDashboardPage() {
   const { toast } = useToast();
   const [floorPlan, setFloorPlan] = useState<FloorPlan | null>(null);
   const [openChecks, setOpenChecks] = useState<ServiceCheck[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [openShift, setOpenShift] = useState<Shift | null>(null);
 
   const [user, setUser] = useState<{ uid: string, name: string, role: string } | null>(null);
   
@@ -25,15 +28,23 @@ export default function WaiterDashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [floorRes, checksRes] = await Promise.all([
+        const [floorRes, checksRes, shiftRes] = await Promise.all([
           fetch('/api/floor'),
           fetch('/api/service/open'),
+          fetch(`/api/register/open-shift?registerId=${WAITER_REGISTER_ID}`)
         ]);
         if (!floorRes.ok || !checksRes.ok) throw new Error('Failed to fetch floor data');
         const floorData = await floorRes.json();
         const checksData = await checksRes.json();
         setFloorPlan(floorData);
         setOpenChecks(checksData);
+
+        if(shiftRes.ok) {
+          setOpenShift(await shiftRes.json());
+        } else {
+          setOpenShift(null);
+        }
+
       } catch (e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
       } finally {
@@ -53,13 +64,13 @@ export default function WaiterDashboardPage() {
 
   return (
     <div className="flex h-screen w-full flex-col bg-[--bg]">
-      <DashboardHeader title="Waiter Station" userName={user.name} userRole={user.role} />
+      <DashboardHeader title="Waiter Station" userName={user.name} userRole={user.role} shiftStatus={openShift}/>
       <main className="flex-1 flex flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Floor Plan</h2>
           <p className="text-[--text-dim]">Select a table to view details or create a new order.</p>
         </div>
-        <TableGrid floorPlan={floorPlan} openChecks={openChecks} user={user} />
+        <TableGrid floorPlan={floorPlan} openChecks={openChecks} user={user} shiftId={openShift?.id} />
       </main>
     </div>
   );
