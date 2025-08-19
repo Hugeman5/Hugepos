@@ -1,5 +1,6 @@
 
 
+
 import { 
     type Cart, 
     type CartLine, 
@@ -56,8 +57,8 @@ export async function computeLine(
     }
 
     const unitPriceWithMods = product.priceCents + modsTotalDelta;
-
     const rate = taxCatalog.getRateForCategory(product.taxCode, settings);
+    
     const totals = taxHelper.lineTotals({
       unitPrice: unitPriceWithMods / 100, // tax helper expects dollars/rands
       qty: line.qty,
@@ -72,9 +73,9 @@ export async function computeLine(
         mods: resolvedMods, // The fully resolved modifiers
         productName: product.name,
         modsSummary,
-        subtotal: totals.net,
-        tax: totals.tax,
-        total: totals.gross,
+        subtotal: totals.net * 100,
+        tax: totals.tax * 100,
+        total: totals.gross * 100,
     }
 }
 
@@ -87,6 +88,7 @@ export async function computeOrder(
     let subtotal = 0;
     let tax = 0;
     let total = 0;
+    let discount = 0;
     
     const computedLines = await Promise.all(cart.lines.map(async (line) => {
         const product = menu.items.find(p => p.id === line.productId);
@@ -101,5 +103,5 @@ export async function computeOrder(
         return computed;
     }));
 
-    return { subtotal, tax, total, lines: computedLines };
+    return { subtotal, tax, total, discount, lines: computedLines };
 }

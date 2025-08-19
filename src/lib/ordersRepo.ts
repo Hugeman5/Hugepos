@@ -8,6 +8,7 @@ import * as stationsRepo from './stationsRepo';
 import * as kdsRepo from './kdsRepo';
 import * as inventoryRepo from './inventoryRepo';
 import * as recipesRepo from './recipesRepo';
+import { type computeLine } from './orders/computeLine';
 
 const dataDir = path.join(process.cwd(), 'data');
 const ordersPath = path.join(dataDir, 'orders.json');
@@ -62,6 +63,7 @@ export async function nextOrderNumber(): Promise<number> {
 
 export async function createDraft(user: { uid: string, name: string }, cart: Cart, shiftId?: string): Promise<Order> {
   const menu = await menuRepo.getMenu();
+  const { computeOrder: computeOrderPricing } = await import('./pricing');
 
   // Validate modifiers before creating the order
   for (const line of cart.lines) {
@@ -79,13 +81,11 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
       }
   }
 
-  const totals = await pricing.computeOrder(cart, menu);
+  const { lines: pricedLines, ...totals } = await computeOrderPricing(cart, menu);
 
-  const orderLines = await Promise.all(cart.lines.map(async (line) => {
+  const orderLines = await Promise.all(pricedLines.map(async (line) => {
     const product = menu.items.find(i => i.id === line.productId);
     if (!product) throw new Error(`Invalid product ID in cart: ${line.productId}`);
-    
-    const computedLine = await pricing.computeLine(line, product, menu);
     
     const stationId = await stationsRepo.resolveStationForProduct(product.id, product.catId);
 
@@ -96,8 +96,8 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
       name: product.name,
       qty: line.qty,
       unitPrice: product.priceCents,
-      mods: computedLine.mods,
-      lineTotal: computedLine.total,
+      mods: line.mods,
+      lineTotal: line.total,
       prep: {
           stationId: stationId,
           status: 'queued'
@@ -200,6 +200,7 @@ export async function recalculateTotals(orderId: string): Promise<Order> {
     if (!order) throw new Error("Order not found");
 
     const menu = await menuRepo.getMenu();
+    const { computeOrder: computeOrderPricing } = await import('./pricing');
     // Map order lines to cart lines for pricing engine
     const cart: Cart = {
         lines: order.lines.map(l => ({
@@ -219,7 +220,7 @@ export async function recalculateTotals(orderId: string): Promise<Order> {
         }))
     };
 
-    const newTotals = await pricing.computeOrder(cart, menu);
+    const { lines: _, ...newTotals } = await computeOrderPricing(cart, menu);
     order.totals = {
       subtotal: newTotals.subtotal,
       tax: newTotals.tax,

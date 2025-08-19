@@ -32,19 +32,46 @@ export default function TableOrderPage() {
   const [isSplitView, setIsSplitView] = useState(false);
   const { toast } = useToast();
   
-  const user = { uid: 'jwaiter', name: 'Jane Waiter' }; // Mock user
+  const [user, setUser] = useState<{ uid: string, name: string, role: string } | null>(null);
+  
+  useEffect(() => {
+    // On mount, get user from session storage
+    const storedSession = sessionStorage.getItem('mockUser');
+    if (storedSession) {
+        setUser(JSON.parse(storedSession));
+    }
+  }, []);
+
 
   const fetchCheckAndOrder = useCallback(async () => {
     if (!tableId) return;
     setIsLoading(true);
     try {
       const res = await fetch(`/api/service/check/by-table/${tableId}`);
-      if (!res.ok) {
-        if (res.status === 404) {
-          toast({ variant: 'destructive', title: 'Error', description: 'This table has no open check. Redirecting...' });
-          router.push('/waiter');
-          return;
+      if (res.status === 404) {
+        // No check exists, let's create one.
+        if (user) {
+            const floorRes = await fetch('/api/floor');
+            const floorData: FloorPlan = await floorRes.json();
+            const table = floorData.tables.find(t => t.id === tableId);
+            if (table) {
+                const createRes = await fetch('/api/service/open', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tableId: table.id, server: user, guests: 1 })
+                });
+                if (!createRes.ok) throw new Error('Failed to create new check');
+                const newCheck = await createRes.json();
+                setCheck(newCheck);
+                
+                const orderRes = await fetch(`/api/orders/${newCheck.orderId}`);
+                if (!orderRes.ok) throw new Error('Failed to fetch newly created order');
+                setOrder(await orderRes.json());
+            }
         }
+        return;
+      }
+      if (!res.ok) {
         throw new Error('Failed to fetch check details');
       }
       const checkData = await res.json();
@@ -52,16 +79,24 @@ export default function TableOrderPage() {
 
       // Fetch the associated order
       const orderRes = await fetch(`/api/orders/${checkData.orderId}`);
-      if (!orderRes.ok) throw new Error('Failed to fetch order details');
-      const orderData = await orderRes.json();
-      setOrder(orderData);
+      if (!orderRes.ok) { // An open check might not have an order yet if it was just opened
+          const newOrder = await fetch(`/api/orders`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ user, items: [], shiftId: checkData.shiftId }),
+          }).then(r => r.json());
+          setOrder(newOrder);
+      } else {
+        setOrder(await orderRes.json());
+      }
+
 
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     } finally {
       setIsLoading(false);
     }
-  }, [tableId, toast, router]);
+  }, [tableId, toast, router, user]);
 
   useEffect(() => {
     async function fetchInitialData() {
@@ -83,8 +118,14 @@ export default function TableOrderPage() {
       }
     }
     fetchInitialData();
-    fetchCheckAndOrder();
-  }, [fetchCheckAndOrder, toast]);
+  }, [toast]);
+  
+  useEffect(() => {
+    if (user) {
+      fetchCheckAndOrder();
+    }
+  }, [user, fetchCheckAndOrder]);
+
 
   // Keyboard listener for quantity
   useEffect(() => {
@@ -111,17 +152,20 @@ export default function TableOrderPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId: order.id,
-          productId: product.id,
+          itemId: product.id,
           qty: qtyBuffer,
-          mods: mods
+          choices: mods.reduce((acc, mod) => {
+              acc[mod.setId] = mod.optionIds.map(optId => ({ id: optId }));
+              return acc;
+          }, {} as Record<string, {id:string}[]>)
         }),
       });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || 'Failed to add item to order.');
+        throw new Error(errorData.error || 'Failed to add item to order.');
       }
-      const updatedOrder = await res.json();
-      setOrder(updatedOrder);
+      const result = await res.json();
+      setOrder(result.order);
     } catch(e) {
       toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     }
@@ -132,7 +176,7 @@ export default function TableOrderPage() {
     setOrder(updatedOrder);
   };
   
-  if (isLoading || !menuData || !check || !order || !settings) {
+  if (isLoading || !menuData || !check || !order || !settings || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         Loading Table {tableId} Order...
