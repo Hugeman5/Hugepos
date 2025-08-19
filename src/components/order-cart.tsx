@@ -202,11 +202,11 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
         ) : (
           <div className="space-y-4">
             {(order.lines || []).map((line) => (
-              <div key={line.id} className="flex items-start gap-4">
+              <div key={line.lineId} className="flex items-start gap-4">
                 <div className="flex-1">
                   <p className="font-medium">{line.qty}x {line.name}</p>
                    {line.mods && line.mods.length > 0 && <p className="text-sm text-muted-foreground">{line.mods.map(m => m.optionName).join(', ')}</p>}
-                   {line.lineTotal != null && <p className="text-sm font-semibold">{money(line.lineTotal)}</p>}
+                   {line.lineIncVat != null && <p className="text-sm font-semibold">{money(line.lineIncVat)}</p>}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -242,7 +242,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
             <div className="w-full space-y-2 text-sm">
                 <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>{money(order.totals?.subtotal)}</span>
+                    <span>{money(order.totals?.exVat)}</span>
                 </div>
                  <div className="flex justify-between">
                     <span>Tax</span>
@@ -250,7 +250,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
                 </div>
                 <div className="w-full flex justify-between text-lg font-semibold pt-2 border-t">
                     <span>Total</span>
-                    <span>{money(order.totals?.total)}</span>
+                    <span>{money(order.totals?.incVat)}</span>
                 </div>
             </div>
         )}
