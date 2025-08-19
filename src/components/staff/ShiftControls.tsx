@@ -20,7 +20,8 @@ export default function ShiftControls() {
     // On component mount, get user from session storage
     const storedSession = sessionStorage.getItem('mockUser');
     if (storedSession) {
-        setSession(JSON.parse(storedSession));
+        const parsed = JSON.parse(storedSession);
+        setSession(parsed);
     }
   }, []);
 

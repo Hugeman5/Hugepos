@@ -1,18 +1,17 @@
 
-// src/lib/orders/computeLine.ts
 import { round2 } from "@/lib/money";
 
 export type ModifierChoice = { id: string; qty?: number };
 export type MenuItem = {
-  id: string; name: string; priceCents: number; taxCode?: string; modifierSetIds?: string[];
+  id: string; name: string; price: number; taxCode?: string; modifierSetIds?: string[];
 };
-export type ModifierSet = { id: string; name: string; options: { id: string; name: string; priceDeltaCents: number }[] };
+export type ModifierSet = { id: string; name: string; options: { id: string; name: string; priceDelta: number }[] };
 export type TaxCode = { code: string; rate: number };
 
 export type MenuShape = {
   items: MenuItem[];
-  modifierSets?: Record<string, ModifierSet>;
-  taxCodes?: Record<string, TaxCode>;
+  modifierSets?: Record<string, ModifierSet> | ModifierSet[];
+  taxCodes?: Record<string, TaxCode> | TaxCode[];
   currency?: string;
   defaultTaxRate?: number; // fall back to 0.15 if missing
 };
@@ -29,16 +28,17 @@ export function computeLine({ menu, itemId, qty, choices }: ComputeInput) {
 
   const item = menu.items.find(i => i.id === itemId);
   if (!item) throw new Error("Item not found");
+  
+  const modSets = Array.isArray(menu.modifierSets) ? Object.fromEntries(menu.modifierSets.map(m=>[m.id,m])) : (menu.modifierSets ?? {});
+  const taxCodes = Array.isArray(menu.taxCodes) ? Object.fromEntries(menu.taxCodes.map(t=>[t.code, t])) : (menu.taxCodes ?? {});
 
-  const modSets = menu.modifierSets ?? {};
-  const taxCodes = menu.taxCodes ?? {};
   const taxRate =
     (item.taxCode && taxCodes[item.taxCode]?.rate) ??
     menu.defaultTaxRate ??
     0.15;
 
-  // base price in cents
-  let unitExVatCents = item.priceCents || 0;
+  // base price
+  let unitExVat = Number(item.price || 0);
 
   // apply modifiers (priceDelta adds to ex-VAT)
   if (item.modifierSetIds?.length && choices) {
@@ -50,12 +50,12 @@ export function computeLine({ menu, itemId, qty, choices }: ComputeInput) {
         const ch = set.options.find(c => c.id === pick.id);
         if (!ch) continue;
         const q = Number(pick.qty ?? 1);
-        unitExVatCents += Number(ch.priceDeltaCents ?? 0) * q;
+        unitExVat += Number(ch.priceDelta ?? 0) * q;
       }
     }
   }
 
-  const unitExVat = round2(unitExVatCents / 100);
+  unitExVat = round2(unitExVat);
   const lineExVat = round2(unitExVat * qty);
   const tax = round2(lineExVat * taxRate);
   const lineIncVat = round2(lineExVat + tax);
