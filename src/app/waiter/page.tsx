@@ -12,7 +12,15 @@ export default function WaiterDashboardPage() {
   const [openChecks, setOpenChecks] = useState<ServiceCheck[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const user = { uid: 'jwaiter', name: 'Jane Waiter', role: 'Waiter' };
+  const [user, setUser] = useState<{ uid: string, name: string, role: string } | null>(null);
+  
+  useEffect(() => {
+    // On mount, get user from session storage
+    const storedSession = sessionStorage.getItem('mockUser');
+    if (storedSession) {
+        setUser(JSON.parse(storedSession));
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,7 +43,7 @@ export default function WaiterDashboardPage() {
     fetchData();
   }, [toast]);
   
-  if (isLoading || !floorPlan) {
+  if (isLoading || !floorPlan || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         Loading Waiter Station...

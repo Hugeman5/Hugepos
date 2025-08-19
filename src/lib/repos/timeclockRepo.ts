@@ -1,5 +1,4 @@
 
-
 import { promises as fs } from "fs";
 import path from "path";
 import { getAllUsers } from "@/lib/usersRepo";
@@ -28,7 +27,7 @@ const TZ = "Africa/Johannesburg";
 async function read(): Promise<TimeclockFile> {
   try {
     const raw = await fs.readFile(FILE, "utf8");
-    return JSON.parse(raw);
+    return JSON.parse(raw || '{"punches":[]}');
   } catch {
     const defaultData = { punches: [], settings: { timezone: TZ, roundingMinutes: 1 } };
     await write(defaultData);
@@ -73,30 +72,6 @@ export async function listPunches(opts?: { userId?:string; from?:string; to?:str
   return rows;
 }
 
-function pairShifts(punches: Punch[]): { start: Punch, end: Punch | null }[] {
-    const pairs: { start: Punch, end: Punch | null }[] = [];
-    let openPunch: Punch | null = null;
-
-    for (const punch of punches) {
-        if (punch.type === 'in' || punch.type === 'breakEnd') {
-            if (openPunch) {
-                // Found a new 'in' without a previous 'out', so the previous one is orphaned.
-                pairs.push({ start: openPunch, end: null });
-            }
-            openPunch = punch;
-        } else if ((punch.type === 'out' || punch.type === 'breakStart') && openPunch) {
-            pairs.push({ start: openPunch, end: punch });
-            openPunch = null;
-        }
-    }
-    // If the loop finishes and there's still an open punch, add it as an open shift.
-    if (openPunch) {
-        pairs.push({ start: openPunch, end: null });
-    }
-    return pairs;
-}
-
-
 export async function activeNow() {
     const oneDayAgo = new Date(Date.now() - 24 * 3600e3).toISOString();
     const recentPunches = await listPunches({ from: oneDayAgo });
@@ -126,66 +101,167 @@ export async function activeNow() {
 
 
 export async function earningsForRange(opts: { from: string, to: string, userId?: string }) {
-    const punches = await listPunches(opts);
-    const users = await getAllUsers();
-    const usersMap = new Map(users.map(u => [u.id, u]));
+    const allUsers = await getAllUsers();
+    const usersMap = new Map(allUsers.map(u => [u.id, u]));
+
+    const allUserPunches = await listPunches({ userId: opts.userId });
     
     const byUser: Record<string, { totalMs: number, earningsZar: number }> = {};
-    
     const punchesByUser: Record<string, Punch[]> = {};
-    for (const punch of punches) {
+    
+    for (const punch of allUserPunches) {
         if (!punchesByUser[punch.userId]) punchesByUser[punch.userId] = [];
         punchesByUser[punch.userId].push(punch);
     }
-    
-    const now = new Date(opts.to); // Use end of range as "now"
 
-    for (const userId of Object.keys(usersMap)) {
-        if (opts.userId && userId !== opts.userId) continue;
+    const fromTime = new Date(opts.from).getTime();
+    const toTime = new Date(opts.to).getTime();
 
-        const userPunches = punchesByUser[userId] || [];
+    for (const userId of Object.keys(punchesByUser)) {
+        if (!usersMap.has(userId)) continue;
+
+        const userPunches = punchesByUser[userId];
         const user = usersMap.get(userId);
         const hourlyRate = user?.hourlyRate ?? 0;
-
-        if (!byUser[userId]) {
-            byUser[userId] = { totalMs: 0, earningsZar: 0 };
-        }
         
-        // Find the last punch before the 'from' date to establish initial state
-        const allUserPunches = await listPunches({ userId });
-        const lastPunchBeforeRange = allUserPunches.filter(p => p.ts < opts.from).pop();
+        if (!byUser[userId]) byUser[userId] = { totalMs: 0, earningsZar: 0 };
+        
+        let sessionStart: number | null = null;
+        
+        // Find initial state before the 'from' date
+        const punchesBefore = allUserPunches.filter(p => p.userId === userId && new Date(p.ts).getTime() < fromTime);
+        const lastPunchBefore = punchesBefore.pop();
 
-        let openPunch: Punch | null = null;
-        if(lastPunchBeforeRange && (lastPunchBeforeRange.type === 'in' || lastPunchBeforeRange.type === 'breakEnd')) {
-            openPunch = lastPunchBeforeRange;
+        if (lastPunchBefore) {
+            if (lastPunchBefore.type === 'in' || lastPunchBefore.type === 'breakEnd') {
+                sessionStart = fromTime; // Start counting from the beginning of the range
+            }
         }
-
 
         for (const punch of userPunches) {
-             if (punch.type === 'in' || punch.type === 'breakEnd') {
-                if (openPunch) { // Clocked in twice, ignore previous
-                    console.warn(`Consecutive clock-in for ${userId} at ${punch.ts}`);
-                }
-                openPunch = punch;
-            } else if ((punch.type === 'out' || punch.type === 'breakStart') && openPunch) {
-                const startTime = new Date(openPunch.ts);
-                const endTime = new Date(punch.ts);
-                const ms = endTime.getTime() - startTime.getTime();
-                byUser[userId].totalMs += Math.max(0, ms);
-                openPunch = null;
+            const punchTime = new Date(punch.ts).getTime();
+
+            if (punchTime < fromTime || punchTime > toTime) continue;
+            
+            if (punch.type === 'in' || punch.type === 'breakEnd') {
+                if (sessionStart) console.warn(`Consecutive clock-in/break-end for ${userId}`);
+                sessionStart = punchTime;
+            } else if ((punch.type === 'out' || punch.type === 'breakStart') && sessionStart) {
+                byUser[userId].totalMs += (punchTime - sessionStart);
+                sessionStart = null;
             }
         }
         
-        // If still clocked in at the end of the range, calculate duration up to 'to' date
-        if (openPunch) {
-            const startTime = new Date(openPunch.ts);
-            const endTime = now;
-            const ms = endTime.getTime() - startTime.getTime();
-            byUser[userId].totalMs += Math.max(0, ms);
+        if (sessionStart) { // Still clocked in at end of range
+            byUser[userId].totalMs += (toTime - sessionStart);
         }
 
         byUser[userId].earningsZar = (byUser[userId].totalMs / 3600000) * hourlyRate;
     }
+    
     return byUser;
 }
 
+export async function statusFor(userId: string) {
+  const punches = await listPunches({ userId });
+  const lastPunch = punches[punches.length - 1];
+  if (!lastPunch) return { state: "off" as const };
+  if (lastPunch.type === "out") return { state: "off" as const };
+  if (lastPunch.type === "breakStart") return { state: "break" as const };
+  return { state: "on" as const };
+}
+
+export async function clockIn(userId: string, ts = Date.now()) {
+  const status = await statusFor(userId);
+  if (status.state !== 'off') return; // Idempotent
+  await addPunch({ userId, type: 'in', ts: new Date(ts).toISOString() });
+}
+
+export async function breakStart(userId: string, ts = Date.now()) {
+  const status = await statusFor(userId);
+  if (status.state !== 'on') return; // Can only start break if 'on'
+  await addPunch({ userId, type: 'breakStart', ts: new Date(ts).toISOString() });
+}
+
+export async function breakEnd(userId: string, ts = Date.now()) {
+  const status = await statusFor(userId);
+  if (status.state !== 'break') return; // Can only end a break if 'on break'
+  await addPunch({ userId, type: 'breakEnd', ts: new Date(ts).toISOString() });
+}
+
+export async function clockOut(userId: string, ts = Date.now()) {
+  const status = await statusFor(userId);
+  if (status.state === 'off') return; // Idempotent
+  await addPunch({ userId, type: 'out', ts: new Date(ts).toISOString() });
+}
+
+
+export async function summary(fromISO?: string, toISO?: string) {
+  const from = fromISO ? new Date(fromISO) : undefined;
+  const to   = toISO   ? new Date(toISO)   : undefined;
+
+  const allShifts = await listPunches({ from: from?.toISOString(), to: to?.toISOString() });
+  const users = await getAllUsers(); // { id, hourlyRate?, name? }
+  const usersMap = new Map(users.map(u => [u.id, u]));
+
+  const punchesByUser: Record<string, Punch[]> = {};
+    for (const punch of allShifts) {
+        if (!punchesByUser[punch.userId]) punchesByUser[punch.userId] = [];
+        punchesByUser[punch.userId].push(punch);
+    }
+  
+  const byUser = new Map<string, { minutes: number; shifts: number; hourlyRate: number; name: string }>();
+
+  for (const userId in punchesByUser) {
+    const userPunches = punchesByUser[userId];
+    const user = usersMap.get(userId);
+    const rate = Number(user?.hourlyRate ?? 0);
+    const name = String(user?.name ?? userId);
+
+    let totalMs = 0;
+    let shiftCount = 0;
+    let sessionStart: number | null = null;
+    let breakStart: number | null = null;
+
+    for (const p of userPunches) {
+        const ts = new Date(p.ts).getTime();
+        
+        if (p.type === 'in') {
+            if (sessionStart) console.warn(`Found clock-in for ${userId} while already clocked in.`);
+            sessionStart = ts;
+            shiftCount++;
+        } else if (p.type === 'breakStart') {
+            if (sessionStart) {
+                totalMs += (ts - sessionStart);
+            }
+            sessionStart = null; // Pause work timer
+            breakStart = ts;
+        } else if (p.type === 'breakEnd') {
+            breakStart = null;
+            sessionStart = ts; // Resume work timer
+        } else if (p.type === 'out') {
+            if (sessionStart) {
+                 totalMs += (ts - sessionStart);
+            }
+            sessionStart = null;
+            breakStart = null;
+        }
+    }
+    
+    const acc = byUser.get(userId) ?? { minutes: 0, shifts: 0, hourlyRate: rate, name };
+    acc.minutes += Math.round(totalMs / 60000);
+    acc.shifts = shiftCount;
+    acc.hourlyRate = rate;
+    acc.name = name;
+    byUser.set(userId, acc);
+  }
+
+  // shape: array so it’s easy to render
+  const rows = [...byUser.entries()].map(([userId, v]) => {
+    const hours = v.minutes / 60;
+    const wage  = hours * v.hourlyRate;
+    return { userId, name: v.name, shifts: v.shifts, minutes: v.minutes, hours: Number(hours.toFixed(2)), hourlyRate: v.hourlyRate, wage: Number(wage.toFixed(2)) };
+  });
+
+  return { rows };
+}

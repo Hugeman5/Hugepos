@@ -11,19 +11,31 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
 import { type Settings } from '@/lib/settingsRepo';
+import { getSession } from '@/lib/session'; // Client-side session retrieval is different
+import ShiftControls from '@/components/staff/ShiftControls';
+
 
 export default function CashierDashboardPage() {
   const [menuData, setMenuData] = useState<Menu | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [qtyBuffer, setQtyBuffer] = useState<number>(1);
-  const [user, setUser] = useState({ uid: 'jcashier', name: 'John Cashier' });
-  const [shiftStatus, setShiftStatus] = useState<any>(null);
+  const [user, setUser] = useState<{ uid: string, name: string, role: string } | null>(null);
+  const [openShift, setOpenShift] = useState<Shift | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const { toast } = useToast();
   const scanBuffer = useRef('');
   const scanTimeout = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    // On mount, get user from session storage
+    const storedSession = sessionStorage.getItem('mockUser');
+    if (storedSession) {
+        setUser(JSON.parse(storedSession));
+    }
+  }, []);
 
-  const createNewOrder = async () => {
+  const createNewOrder = useCallback(async () => {
+    if (!user) return;
      try {
        const res = await fetch('/api/orders', {
          method: 'POST',
@@ -36,7 +48,7 @@ export default function CashierDashboardPage() {
      } catch(e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
      }
-  }
+  }, [user, toast]);
 
   useEffect(() => {
     async function fetchInitialData() {
@@ -50,7 +62,7 @@ export default function CashierDashboardPage() {
         if (!menuRes.ok) throw new Error('Failed to fetch menu');
         setMenuData(await menuRes.json());
         
-        if (shiftRes.ok) setShiftStatus(await shiftRes.json());
+        if (shiftRes.ok) setOpenShift(await shiftRes.json());
 
         if (!settingsRes.ok) throw new Error('Failed to fetch settings');
         setSettings(await settingsRes.json());
@@ -62,13 +74,18 @@ export default function CashierDashboardPage() {
     }
     
     fetchInitialData();
-    createNewOrder();
   }, [toast]);
+  
+  useEffect(() => {
+    if (user && !order) {
+        createNewOrder();
+    }
+  }, [user, order, createNewOrder]);
 
   const handleBarcodeScan = useCallback(async (barcode: string) => {
+    if (!menuData?.items) return;
     try {
-        const allProducts = menuData?.items || [];
-        const product = allProducts.find(p => p.sku === barcode);
+        const product = menuData.items.find(p => p.sku === barcode);
 
         if (product) {
             handleAddToCart(product, []);
@@ -83,6 +100,8 @@ export default function CashierDashboardPage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).tagName === 'INPUT') return;
+      
       if (e.key === 'Enter') {
           if (scanBuffer.current.length > 3) {
               handleBarcodeScan(scanBuffer.current);
@@ -146,7 +165,7 @@ export default function CashierDashboardPage() {
     setOrder(updatedOrder);
   }
 
-  if (!menuData || !order || !settings) {
+  if (!menuData || !order || !settings || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         Loading POS...
@@ -159,8 +178,8 @@ export default function CashierDashboardPage() {
       <DashboardHeader
         title="Cashier POS"
         userName={user.name}
-        userRole="Cashier"
-        shiftStatus={shiftStatus}
+        userRole={user.role}
+        shiftStatus={openShift}
       />
       <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 lg:gap-8 lg:p-6 overflow-hidden">
         <div className="md:col-span-2 h-full flex flex-col min-h-0">
@@ -177,6 +196,8 @@ export default function CashierDashboardPage() {
             onOrderUpdate={handleOrderUpdate}
             user={user}
             settings={settings}
+            openShift={openShift}
+            onNewOrder={createNewOrder}
           />
         </div>
       </main>

@@ -9,7 +9,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 
 const navItems = [
   { href: '/admin', label: 'Overview', icon: Home },
-  { href: '/admin/reports', label: 'Sales Reports', icon: BarChart3 },
 ];
 
 const catalogItems = [
@@ -52,7 +51,7 @@ const settingsItems = [
 
 const reportsItems = [
     { href: '/admin/reports', label: 'Sales', icon: BarChart3 },
-    { href: '/admin/reports/timeclock', label: 'Time & Attendance', icon: Clock },
+    { href: '/admin/reports/time', label: 'Time & Wages', icon: Clock },
 ];
 
 const NavLink = ({ href, label, icon: Icon }: { href: string; label: string; icon: React.ElementType }) => {

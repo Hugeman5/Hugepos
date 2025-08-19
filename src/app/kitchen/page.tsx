@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/badge';
 import { Clock, CheckCircle2, Zap, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ShiftControls from '@/components/staff/ShiftControls';
+import { getSession } from '@/lib/session';
 
 const timeSince = (date: Date) => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -33,8 +35,9 @@ export default function KdsPage() {
   const [showRecent, setShowRecent] = useState(false);
   const { toast } = useToast();
   
-  // Use a state for time to force re-renders
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  const user = { uid: 'chef', name: 'Chef Mike', role: 'Kitchen' }; // Mock user
 
   const fetchData = useCallback(async () => {
     try {
@@ -113,7 +116,7 @@ export default function KdsPage() {
 
   return (
     <div className="flex h-screen w-full flex-col bg-brand-bg">
-       <DashboardHeader title="Kitchen Display System" userName="KDS User" userRole="Kitchen" />
+       <DashboardHeader title="Kitchen Display System" userName={user.name} userRole={user.role} />
        <div className="p-4 border-b border-brand-line">
            <Button onClick={() => setShowRecent(s => !s)}>
                {showRecent ? "Show Active Tickets" : "Show Recent / Undo"}

@@ -1,4 +1,3 @@
-
 [
   {
     "id": "eugene",
@@ -27,7 +26,7 @@
     "active": true,
     "exposeOnPinLogin": true,
     "pin": "5678",
-    "hourlyRate": 42
+    "hourlyRate": 45
   },
   {
     "id": "chef",

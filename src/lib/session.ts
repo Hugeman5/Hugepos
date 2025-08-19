@@ -1,3 +1,4 @@
+
 import { headers } from "next/headers";
 import { type User } from "./data";
 
@@ -6,7 +7,7 @@ import { type User } from "./data";
  * In a real app, this would verify a JWT or session cookie.
  * @returns The user session object, or null if not found.
  */
-export function getSession(): Omit<User, 'pin' | 'pinHash'> | null {
+export function getSession(): (Omit<User, 'pin'> & { uid: string }) | null {
     const headersList = headers();
     const sessionHeader = headersList.get('X-User-Session');
 
@@ -19,6 +20,7 @@ export function getSession(): Omit<User, 'pin' | 'pinHash'> | null {
         if (typeof user === 'object' && user !== null && 'uid' in user && 'name' in user && 'role' in user) {
             return {
                 id: user.uid,
+                uid: user.uid, // Add uid for compatibility with new code
                 name: user.name,
                 role: user.role,
                 active: true, // Assuming active if in session

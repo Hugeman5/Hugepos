@@ -43,7 +43,7 @@ export async function GET() {
         return sum + (user?.hourlyRate ?? 0);
     }, 0);
 
-    const accruedSoFar = usersSummary.reduce((sum, u) => sum + u.earningsZar, 0);
+    const accruedSoFar = Object.values(todayEarnings).reduce((sum, u) => sum + u.earningsZar, 0);
 
     return NextResponse.json({
         from,
