@@ -70,12 +70,23 @@
         "tax": 0.13,
         "lineIncVat": 0.98,
         "currency": "ZAR"
+      },
+      {
+        "itemId": "it_1755399215677_smuuz",
+        "name": "Full Breakfast",
+        "qty": 1,
+        "unitExVat": 15,
+        "lineExVat": 15,
+        "taxRate": 0.15,
+        "tax": 2.25,
+        "lineIncVat": 17.25,
+        "currency": "ZAR"
       }
     ],
     "totals": {
-      "exVat": 0.85,
-      "tax": 0.13,
-      "incVat": 0.98,
+      "exVat": 15.85,
+      "tax": 2.38,
+      "incVat": 18.23,
       "currency": "ZAR"
     },
     "service": {
@@ -83,7 +94,7 @@
       "tableId": "T1",
       "checkId": "chk_1755435079364"
     },
-    "updatedAt": 1755612294624
+    "updatedAt": 1755612520918
   },
   {
     "id": "ord_1755417942612",

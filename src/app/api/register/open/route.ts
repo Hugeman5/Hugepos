@@ -1,4 +1,5 @@
 
+
 import { NextResponse } from 'next/server';
 import * as shiftsRepo from '@/lib/shiftsRepo';
 import { z } from 'zod';
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
 
     const { registerId, floatAmount, user } = validation.data;
     
-    const existingShift = await shiftsRepo.getOpenShift();
+    const existingShift = await shiftsRepo.getOpenShiftForRegister(registerId);
     if (existingShift) {
         return NextResponse.json({ message: `Shift ${existingShift.id} is already open on register ${existingShift.registerId}.`}, { status: 409 });
     }

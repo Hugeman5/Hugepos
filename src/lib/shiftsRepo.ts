@@ -51,10 +51,16 @@ export async function getShift(id: string): Promise<Shift | null> {
     return shifts.find(s => s.id === id) || null;
 }
 
+export async function getOpenShiftForRegister(registerId: string): Promise<Shift | null> {
+    const shifts = await getAllShifts();
+    return shifts.find(s => s.status === 'open' && s.registerId === registerId) || null;
+}
+
 export async function getOpenShift(): Promise<Shift | null> {
     const shifts = await getAllShifts();
     return shifts.find(s => s.status === 'open') || null;
 }
+
 
 export async function saveShift(shiftToSave: Shift): Promise<Shift> {
     const shifts = await getAllShifts();
@@ -69,9 +75,9 @@ export async function saveShift(shiftToSave: Shift): Promise<Shift> {
 }
 
 export async function openShift(registerId: string, floatAmount: number, user: {id: string, name: string}): Promise<Shift> {
-    const openShift = await getOpenShift();
-    if (openShift) {
-        throw new Error(`A shift is already open on register ${openShift.registerId}.`);
+    const openShiftOnThisRegister = await getOpenShiftForRegister(registerId);
+    if (openShiftOnThisRegister) {
+        throw new Error(`A shift is already open on register ${registerId}.`);
     }
     
     const newShift: Shift = {

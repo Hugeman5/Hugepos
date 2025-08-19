@@ -2,5 +2,9 @@
   {
     "id": "checkout_counter",
     "name": "Checkout Counter"
+  },
+  {
+    "id": "waiter_1",
+    "name": "Waiter 1"
   }
 ]
