@@ -216,9 +216,11 @@ export type RoutingRules = {
 };
 
 export type KdsTicketLine = {
+  lineId: string;
   name: string;
   qty: number;
   mods?: string;
+  state: "queued"|"preparing"|"ready"|"bumped";
 };
 
 export type KdsTicket = {

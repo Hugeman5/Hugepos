@@ -5,6 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function newId(prefix="obj_") { return prefix + Math.random().toString(36).slice(2,10); }
+
 // A simple time-ago function
 export const timeSince = (date: string | Date) => {
     const a = new Date(date);

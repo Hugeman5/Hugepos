@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -9,6 +10,7 @@ import OrderCart from '@/components/order-cart';
 import {
   type ServiceCheck,
   type Order,
+  type FloorPlan,
 } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
 import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
@@ -16,6 +18,7 @@ import { SplitView } from '@/components/waiter/SplitView';
 import { Button } from '@/components/ui/Button';
 import { GitCommitHorizontal } from 'lucide-react';
 import { type Settings } from '@/lib/settingsRepo';
+import { newId } from '@/lib/utils';
 
 
 export default function TableOrderPage() {
@@ -44,31 +47,24 @@ export default function TableOrderPage() {
 
 
   const fetchCheckAndOrder = useCallback(async () => {
-    if (!tableId) return;
+    if (!tableId || !user) return;
     setIsLoading(true);
     try {
       const res = await fetch(`/api/service/check/by-table/${tableId}`);
       if (res.status === 404) {
         // No check exists, let's create one.
-        if (user) {
-            const floorRes = await fetch('/api/floor');
-            const floorData: FloorPlan = await floorRes.json();
-            const table = floorData.tables.find(t => t.id === tableId);
-            if (table) {
-                const createRes = await fetch('/api/service/open', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tableId: table.id, server: user, guests: 1 })
-                });
-                if (!createRes.ok) throw new Error('Failed to create new check');
-                const newCheck = await createRes.json();
-                setCheck(newCheck);
-                
-                const orderRes = await fetch(`/api/orders/${newCheck.orderId}`);
-                if (!orderRes.ok) throw new Error('Failed to fetch newly created order');
-                setOrder(await orderRes.json());
-            }
-        }
+        const createRes = await fetch('/api/service/open', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tableId: tableId, server: user, guests: 1 })
+        });
+        if (!createRes.ok) throw new Error('Failed to create new check');
+        const newCheck = await createRes.json();
+        setCheck(newCheck);
+        
+        const orderRes = await fetch(`/api/orders/${newCheck.orderId}`);
+        if (!orderRes.ok) throw new Error('Failed to fetch newly created order');
+        setOrder(await orderRes.json());
         return;
       }
       if (!res.ok) {
@@ -96,7 +92,7 @@ export default function TableOrderPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tableId, toast, router, user]);
+  }, [tableId, toast, user]);
 
   useEffect(() => {
     async function fetchInitialData() {
@@ -152,6 +148,7 @@ export default function TableOrderPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId: order.id,
+          lineId: newId('line_'), // Generate a unique ID on the client
           itemId: product.id,
           qty: qtyBuffer,
           choices: mods.reduce((acc, mod) => {
@@ -222,3 +219,4 @@ export default function TableOrderPage() {
     </div>
   );
 }
+

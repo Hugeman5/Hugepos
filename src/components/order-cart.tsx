@@ -29,21 +29,37 @@ type OrderCartProps = {
     onOrderUpdate: (order: Order) => void;
     user: { uid: string, name: string };
     settings: Settings;
-    openShift: Shift | null;
-    onNewOrder: () => void;
     onSplitClick?: () => void;
 };
 
-export default function OrderCart({ order, check, onOrderUpdate, user, settings, openShift, onNewOrder, onSplitClick }: OrderCartProps) {
+export default function OrderCart({ order, check, onOrderUpdate, user, settings, onSplitClick }: OrderCartProps) {
   const [isPaying, setIsPaying] = useState(false);
   const [paymentType, setPaymentType] = useState<'card' | 'cash'>('card');
   const [tenderedAmount, setTenderedAmount] = useState('');
   const [last4, setLast4] = useState('');
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+  const [openShift, setOpenShift] = useState<Shift | null>(null);
   const [isPostPayment, setIsPostPayment] = useState(false);
   
   const { toast } = useToast();
   
+  useEffect(() => {
+    async function getInitialData() {
+        try {
+            const shiftRes = await fetch('/api/register/open-shift');
+            if (shiftRes.ok) {
+                const data = await shiftRes.json();
+                setOpenShift(data);
+            } else {
+                setOpenShift(null);
+            }
+        } catch(e) {
+            setOpenShift(null);
+        }
+    }
+    getInitialData();
+  }, []);
+
   const money = (value: number) => {
     if (!settings) return `...`;
     return formatMoney(value, { currency: settings.currency, locale: settings.locale });
@@ -55,8 +71,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
     if (!line) return;
 
     const newQty = line.qty + delta;
-    if (newQty < 0) return; // Prevent negative quantity
-
+    
     try {
         const res = await fetch('/api/orders/line', {
             method: 'PATCH',
@@ -64,8 +79,8 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
             body: JSON.stringify({ orderId: order.id, lineId, qty: newQty })
         });
         if (!res.ok) throw new Error('Failed to update quantity');
-        const updatedOrder = await res.json();
-        onOrderUpdate(updatedOrder.order);
+        const updatedData = await res.json();
+        onOrderUpdate(updatedData.order);
     } catch(e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     }
@@ -75,6 +90,36 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
      await handleUpdateQuantity(lineId, -Infinity);
   }
   
+  const resetCart = async () => {
+    try {
+        if (check) { // We are in a table service context
+            // Closing a check automatically creates a new order if the table is re-opened.
+            await fetch('/api/service/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ checkId: check.id }),
+            });
+            toast({title: "Table Closed", description: `Table ${check.tableId} is now available.`});
+            window.location.href = '/waiter'; // Redirect to floor plan
+        } else { // We are in a cashier context
+            const res = await fetch('/api/orders', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ user, items: [] }),
+           });
+           if (!res.ok) throw new Error('Failed to create a new order.');
+           const newOrder = await res.json();
+           onOrderUpdate(newOrder);
+        }
+       setCreatedOrder(null);
+       setTenderedAmount('');
+       setLast4('');
+       setIsPostPayment(false);
+    } catch(e) {
+        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
+    }
+  };
+
   const handlePay = async () => {
     if (!order.totals || !openShift) return;
     setIsPaying(true);
@@ -166,7 +211,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
             <Button variant="secondary"><Mail className="mr-2"/> Email Receipt</Button>
             <Button variant="secondary"><FileDown className="mr-2"/> Download PDF</Button>
           </div>
-          <Button onClick={onNewOrder} className="w-full">New Order</Button>
+          <Button onClick={resetCart} className="w-full">New Order</Button>
       </div>
   );
 
@@ -192,7 +237,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
                 <div className="flex-1">
                   <p className="font-medium">{line.qty}x {line.name}</p>
                    {line.mods && line.mods.length > 0 && <p className="text-sm text-muted-foreground">{line.mods.map(m => m.optionName).join(', ')}</p>}
-                   {line.lineTotal != null && <p className="text-sm font-semibold">{money(line.lineTotal)}</p>}
+                   {line.lineIncVat != null && <p className="text-sm font-semibold">{money(line.lineIncVat)}</p>}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -274,7 +319,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
                                 <TabsContent value="cash" className="mt-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="tendered">Amount Tendered</Label>
-                                        <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={order.totals?.total?.toFixed(2) ?? '0.00'} />
+                                        <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={order.totals?.total.toFixed(2) ?? '0.00'} />
                                     </div>
                                     {parseFloat(tenderedAmount) >= (order.totals?.total || 0) && (
                                         <div className="text-lg font-semibold mt-4">

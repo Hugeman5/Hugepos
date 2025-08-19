@@ -12,7 +12,7 @@ function newId(prefix="l_") { return prefix + Math.random().toString(36).slice(2
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { orderId, tableId, itemId, qty = 1, choices = {} } = body || {};
+    const { orderId, tableId, itemId, qty = 1, choices = {}, lineId } = body || {};
 
     if (!itemId) {
       return NextResponse.json({ error: "itemId required" }, { status: 400 });
@@ -23,8 +23,8 @@ export async function POST(req: Request) {
 
     const line = {
         ...computed,
-        id: newId('cart_'),
-        lineId: newId('line_'),
+        id: lineId || newId('cart_'),
+        lineId: lineId || newId('line_'),
         choices,
         station: "kitchen",
         state: "queued" as const,
@@ -40,3 +40,4 @@ export async function POST(req: Request) {
     );
   }
 }
+
