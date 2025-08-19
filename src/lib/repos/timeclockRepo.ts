@@ -2,7 +2,6 @@
 
 import { promises as fs } from "fs";
 import path from "path";
-import { zonedTimeToUtc, utcToZonedTime } from "date-fns-tz";
 import { getAllUsers } from "@/lib/usersRepo";
 
 export type PunchType = "in" | "out" | "breakStart" | "breakEnd";
@@ -79,13 +78,13 @@ function pairShifts(punches: Punch[]): { start: Punch, end: Punch | null }[] {
     let openPunch: Punch | null = null;
 
     for (const punch of punches) {
-        if (punch.type === 'in') {
+        if (punch.type === 'in' || punch.type === 'breakEnd') {
             if (openPunch) {
                 // Found a new 'in' without a previous 'out', so the previous one is orphaned.
                 pairs.push({ start: openPunch, end: null });
             }
             openPunch = punch;
-        } else if (punch.type === 'out' && openPunch) {
+        } else if ((punch.type === 'out' || punch.type === 'breakStart') && openPunch) {
             pairs.push({ start: openPunch, end: punch });
             openPunch = null;
         }
@@ -99,7 +98,6 @@ function pairShifts(punches: Punch[]): { start: Punch, end: Punch | null }[] {
 
 
 export async function activeNow() {
-    const users = await getAllUsers();
     const oneDayAgo = new Date(Date.now() - 24 * 3600e3).toISOString();
     const recentPunches = await listPunches({ from: oneDayAgo });
 
@@ -133,27 +131,59 @@ export async function earningsForRange(opts: { from: string, to: string, userId?
     const usersMap = new Map(users.map(u => [u.id, u]));
     
     const byUser: Record<string, { totalMs: number, earningsZar: number }> = {};
-    const punchesByUser: Record<string, Punch[]> = {};
     
+    const punchesByUser: Record<string, Punch[]> = {};
     for (const punch of punches) {
         if (!punchesByUser[punch.userId]) punchesByUser[punch.userId] = [];
         punchesByUser[punch.userId].push(punch);
     }
     
-    const now = new Date();
+    const now = new Date(opts.to); // Use end of range as "now"
 
-    for (const userId in punchesByUser) {
-        const userPunches = punchesByUser[userId];
-        const shifts = pairShifts(userPunches);
-        byUser[userId] = { totalMs: 0, earningsZar: 0 };
+    for (const userId of Object.keys(usersMap)) {
+        if (opts.userId && userId !== opts.userId) continue;
+
+        const userPunches = punchesByUser[userId] || [];
         const user = usersMap.get(userId);
         const hourlyRate = user?.hourlyRate ?? 0;
 
-        for (const shift of shifts) {
-            const endTime = shift.end ? new Date(shift.end.ts) : now;
-            const ms = endTime.getTime() - new Date(shift.start.ts).getTime();
+        if (!byUser[userId]) {
+            byUser[userId] = { totalMs: 0, earningsZar: 0 };
+        }
+        
+        // Find the last punch before the 'from' date to establish initial state
+        const allUserPunches = await listPunches({ userId });
+        const lastPunchBeforeRange = allUserPunches.filter(p => p.ts < opts.from).pop();
+
+        let openPunch: Punch | null = null;
+        if(lastPunchBeforeRange && (lastPunchBeforeRange.type === 'in' || lastPunchBeforeRange.type === 'breakEnd')) {
+            openPunch = lastPunchBeforeRange;
+        }
+
+
+        for (const punch of userPunches) {
+             if (punch.type === 'in' || punch.type === 'breakEnd') {
+                if (openPunch) { // Clocked in twice, ignore previous
+                    console.warn(`Consecutive clock-in for ${userId} at ${punch.ts}`);
+                }
+                openPunch = punch;
+            } else if ((punch.type === 'out' || punch.type === 'breakStart') && openPunch) {
+                const startTime = new Date(openPunch.ts);
+                const endTime = new Date(punch.ts);
+                const ms = endTime.getTime() - startTime.getTime();
+                byUser[userId].totalMs += Math.max(0, ms);
+                openPunch = null;
+            }
+        }
+        
+        // If still clocked in at the end of the range, calculate duration up to 'to' date
+        if (openPunch) {
+            const startTime = new Date(openPunch.ts);
+            const endTime = now;
+            const ms = endTime.getTime() - startTime.getTime();
             byUser[userId].totalMs += Math.max(0, ms);
         }
+
         byUser[userId].earningsZar = (byUser[userId].totalMs / 3600000) * hourlyRate;
     }
     return byUser;

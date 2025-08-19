@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useEffect, useMemo, useState } from "react";
@@ -81,8 +82,9 @@ export default function UserEditPage({
       toast({ variant: "destructive", title: "Invalid rate", description: "Enter a non-negative number." });
       return;
     }
+    const url = `/api/admin/users/${encodeURIComponent(user.id)}`;
     try {
-      const res = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}/hourly-rate`, {
+      const res = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hourlyRate: n }),
@@ -90,7 +92,7 @@ export default function UserEditPage({
       if (!res.ok) throw new Error(`Save failed (${res.status})`);
       toast({ title: "Saved", description: `Hourly rate updated to ${formatMoney(n, { currency: "ZAR" })} / h` });
       // Refresh local copy
-      setUser({ ...user, hourlyRate: n });
+      setUser({ ...user, hourlyRate: n }); // ZAR/h
     } catch (e: any) {
       toast({ variant: "destructive", title: "Save error", description: e?.message || String(e) });
     }
