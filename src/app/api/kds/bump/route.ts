@@ -1,42 +1,23 @@
 
-import { NextResponse } from 'next/server';
-import { readAll, writeAll } from '@/lib/orders/orderRepo';
-import { z } from 'zod';
+import { NextResponse } from "next/server";
+import { readAll, writeAll } from "@/lib/orders/orderRepo";
 
 export const dynamic = "force-dynamic";
 
-const schema = z.object({
-  orderId: z.string(),
-  lineId: z.string(),
-});
-
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const validation = schema.safeParse(body);
-    if (!validation.success) {
-      return NextResponse.json({ error: validation.error.errors }, { status: 400 });
-    }
-    
-    const { orderId, lineId } = validation.data;
-    const orders = await readAll();
-    const order = orders.find(o => o.id === orderId);
-
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    const line = order.lines.find(l => l.id === lineId);
-    if (!line) {
-        return NextResponse.json({ error: "Line not found" }, { status: 404 });
-    }
-
-    line.state = "bumped";
-    await writeAll(orders);
-
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    console.error("[kds/bump] error:", e);
-    return NextResponse.json({ error: "Failed to bump line item" }, { status: 500 });
+    const { orderId, lineId } = await req.json();
+    const all = await readAll();
+    const o = all.find(x => x.id === orderId);
+    if (!o) return NextResponse.json({ error:"Order not found" }, { status: 404 });
+    const l = o.lines.find(x => x.id === lineId);
+    if (!l) return NextResponse.json({ error:"Line not found" }, { status: 404 });
+    l.state = "bumped";
+    o.updatedAt = Date.now();
+    await writeAll(all);
+    return NextResponse.json({ ok:true });
+  } catch (e:any) {
+    console.error("[kds/bump]", e);
+    return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 });
   }
 }

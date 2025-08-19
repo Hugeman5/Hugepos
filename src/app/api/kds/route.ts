@@ -1,47 +1,29 @@
 
-import { NextResponse, type NextRequest } from 'next/server';
-import { readAll } from '@/lib/orders/orderRepo';
+import { NextResponse } from "next/server";
+import { readAll } from "@/lib/orders/orderRepo";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
+export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const stationId = searchParams.get('station') || 'kitchen';
-
-    const allOrders = await readAll();
-    
-    const sentOrders = allOrders.filter(o => o.status === 'sent');
-    
-    const tickets = sentOrders
-        .map(o => {
-            const linesForStation = o.lines
-                .filter(l => l.station === stationId && l.state !== 'bumped')
-                .map(l => ({
-                    lineId: l.id,
-                    name: l.name,
-                    qty: l.qty,
-                    state: l.state
-                }));
-
-            if (linesForStation.length === 0) {
-                return null;
-            }
-
-            return {
-                orderId: o.id,
-                ticketNo: o.ticketNo,
-                tableId: o.tableId,
-                createdAt: o.createdAt,
-                lines: linesForStation
-            };
-        })
-        .filter(Boolean); // remove nulls
-
+    const url = new URL(req.url);
+    const station = url.searchParams.get("station") || "kitchen";
+    const orders = await readAll();
+    const tickets = orders
+      .filter(o => o.status === "sent")
+      .map(o => ({
+        orderId: o.id,
+        ticketNo: o.ticketNo,
+        tableId: o.tableId,
+        createdAt: o.createdAt,
+        lines: o.lines
+          .filter(l => (l.station || "kitchen") === station && l.state !== "bumped")
+          .map(l => ({ lineId: l.id, name: l.name, qty: l.qty, state: l.state }))
+      }))
+      .filter(t => t.lines.length > 0);
     return NextResponse.json({ tickets });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API KDS] Error fetching tickets:`, error);
-    return NextResponse.json({ message: 'Failed to fetch KDS tickets', error: errorMessage }, { status: 500 });
+  } catch (e:any) {
+    console.error("[kds]", e);
+    return NextResponse.json({ error: e?.message || "Failed" }, { status: 500 });
   }
 }
