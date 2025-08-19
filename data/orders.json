@@ -59,18 +59,31 @@
       "name": "Jane Waiter"
     },
     "status": "DRAFT",
-    "lines": [],
+    "lines": [
+      {
+        "itemId": "it_1755610642453_mlyna",
+        "name": "Breakfast Roll",
+        "qty": 1,
+        "unitExVat": 0.85,
+        "lineExVat": 0.85,
+        "taxRate": 0.15,
+        "tax": 0.13,
+        "lineIncVat": 0.98,
+        "currency": "ZAR"
+      }
+    ],
     "totals": {
-      "subtotal": 0,
-      "tax": 0,
-      "total": 0,
-      "lines": []
+      "exVat": 0.85,
+      "tax": 0.13,
+      "incVat": 0.98,
+      "currency": "ZAR"
     },
     "service": {
       "type": "dine_in",
       "tableId": "T1",
       "checkId": "chk_1755435079364"
-    }
+    },
+    "updatedAt": 1755612294624
   },
   {
     "id": "ord_1755417942612",

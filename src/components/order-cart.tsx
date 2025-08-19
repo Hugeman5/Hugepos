@@ -28,37 +28,21 @@ type OrderCartProps = {
     onOrderUpdate: (order: Order) => void;
     user: { uid: string, name: string };
     settings: Settings;
+    openShift: Shift | null;
+    onNewOrder: () => void;
     onSplitClick?: () => void;
 };
 
-export default function OrderCart({ order, check, onOrderUpdate, user, settings, onSplitClick }: OrderCartProps) {
+export default function OrderCart({ order, check, onOrderUpdate, user, settings, openShift, onNewOrder, onSplitClick }: OrderCartProps) {
   const [isPaying, setIsPaying] = useState(false);
   const [paymentType, setPaymentType] = useState<'card' | 'cash'>('card');
   const [tenderedAmount, setTenderedAmount] = useState('');
   const [last4, setLast4] = useState('');
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
-  const [openShift, setOpenShift] = useState<Shift | null>(null);
   const [isPostPayment, setIsPostPayment] = useState(false);
   
   const { toast } = useToast();
   
-  useEffect(() => {
-    async function getOpenShift() {
-        try {
-            const shiftRes = await fetch('/api/register/open-shift');
-            if (shiftRes.ok) {
-                setOpenShift(await shiftRes.json());
-            } else {
-                setOpenShift(null);
-            }
-        } catch(e) {
-            console.error("Could not fetch open shift", e);
-            setOpenShift(null);
-        }
-    }
-    getOpenShift();
-  }, []);
-
   const money = (value: number) => {
     if (!settings) return `...`;
     return formatMoney(value, { currency: settings.currency, locale: settings.locale });
@@ -104,25 +88,6 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
     }
   }
   
-  const resetCart = async () => {
-    try {
-       const res = await fetch('/api/orders', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ user, items: [] }),
-       });
-       if (!res.ok) throw new Error('Failed to create a new order.');
-       const newOrder = await res.json();
-       onOrderUpdate(newOrder);
-       setCreatedOrder(null);
-       setTenderedAmount('');
-       setLast4('');
-       setIsPostPayment(false);
-    } catch(e) {
-        toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
-    }
-  };
-
   const handlePay = async () => {
     if (!order.totals || !openShift) return;
     setIsPaying(true);
@@ -215,7 +180,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
             <Button variant="secondary"><Mail className="mr-2"/> Email Receipt</Button>
             <Button variant="secondary"><FileDown className="mr-2"/> Download PDF</Button>
           </div>
-          <Button onClick={resetCart} className="w-full">New Order</Button>
+          <Button onClick={onNewOrder} className="w-full">New Order</Button>
       </div>
   );
 
@@ -323,7 +288,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
                                 <TabsContent value="cash" className="mt-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="tendered">Amount Tendered</Label>
-                                        <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={order.totals?.total.toFixed(2) ?? '0.00'} />
+                                        <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={(order.totals?.total ?? 0).toFixed(2)} />
                                     </div>
                                     {parseFloat(tenderedAmount) >= (order.totals?.total || 0) && (
                                         <div className="text-lg font-semibold mt-4">
