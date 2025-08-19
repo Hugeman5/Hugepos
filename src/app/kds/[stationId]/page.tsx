@@ -67,7 +67,7 @@ export default function KdsStationPage() {
   const fetchTickets = useCallback(async () => {
     if (!stationId) return;
     try {
-      const res = await fetch(`/api/kds/tickets?station=${stationId}`);
+      const res = await fetch(`/api/kds?station=${stationId}`);
       if (!res.ok) throw new Error('Failed to fetch tickets');
       const data: KdsTicket[] = await res.json();
 

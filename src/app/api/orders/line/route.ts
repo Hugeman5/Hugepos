@@ -33,9 +33,9 @@ export async function PATCH(req: Request) {
         if (qty !== undefined) {
             line.qty = qty;
         }
-
-        await ordersRepo.recalculateTotals(order.id);
-        const updatedOrder = await ordersRepo.getOrder(orderId);
+        
+        // Recalculate totals and save the updated order
+        const updatedOrder = await ordersRepo.recalculateTotals(order.id);
         
         return NextResponse.json(updatedOrder);
 
@@ -67,8 +67,7 @@ export async function DELETE(req: Request) {
 
         order.lines = order.lines.filter(l => l.lineId !== lineId);
         
-        await ordersRepo.recalculateTotals(order.id);
-        const updatedOrder = await ordersRepo.getOrder(orderId);
+        const updatedOrder = await ordersRepo.recalculateTotals(order.id);
 
         return NextResponse.json(updatedOrder);
 
