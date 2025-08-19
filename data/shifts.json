@@ -1,5 +1,18 @@
 [
   {
+    "id": "shift_2",
+    "registerId": "waiter_1",
+    "userIdOpen": "jcashier",
+    "userNameOpen": "John Cashier",
+    "tsOpen": "2025-08-19T14:20:13.718Z",
+    "floatAmount": 500,
+    "status": "open",
+    "cashPayments": 0,
+    "cardPayments": 0,
+    "giftCardPayments": 0,
+    "cashExpected": 500
+  },
+  {
     "id": "shift_1",
     "registerId": "checkout_counter",
     "userIdOpen": "jcashier",

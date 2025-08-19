@@ -1,5 +1,22 @@
 [
   {
+    "id": "ord_1755613245150",
+    "number": 1012,
+    "ts": "2025-08-19T14:20:45.199Z",
+    "user": {
+      "uid": "jwaiter",
+      "name": "Jane Waiter"
+    },
+    "status": "DRAFT",
+    "lines": [],
+    "totals": {
+      "subtotal": 0,
+      "tax": 0,
+      "total": 0,
+      "discount": 0
+    }
+  },
+  {
     "id": "ord_1755596320337",
     "number": 1011,
     "ts": "2025-08-19T09:38:40.374Z",
