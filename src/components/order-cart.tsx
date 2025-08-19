@@ -67,7 +67,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
         });
         if (!res.ok) throw new Error('Failed to update quantity');
         const updatedOrder = await res.json();
-        onOrderUpdate(updatedOrder);
+        onOrderUpdate(updatedOrder.order);
     } catch(e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     }
@@ -76,13 +76,13 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
   const handleRemoveLine = async (lineId: string) => {
     try {
         const res = await fetch('/api/orders/line', {
-            method: 'DELETE',
+            method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId: order.id, lineId })
+            body: JSON.stringify({ orderId: order.id, lineId: lineId, qty: 0 })
         });
         if (!res.ok) throw new Error('Failed to remove line');
         const updatedOrder = await res.json();
-        onOrderUpdate(updatedOrder);
+        onOrderUpdate(updatedOrder.order);
     } catch(e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     }
@@ -132,18 +132,17 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
 
   const handleSendToKitchen = async () => {
     try {
-      await fetch('/api/orders/send', {
+      const res = await fetch('/api/orders/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId: order.id }),
       });
+      if (!res.ok) throw new Error('Failed to send order.');
+      const result = await res.json();
       toast({ title: 'Order Sent', description: 'New items sent to the kitchen.' });
-      // Re-fetch order to get updated line statuses
-      const orderRes = await fetch(`/api/orders/${order.id}`);
-      const updatedOrder = await orderRes.json();
-      onOrderUpdate(updatedOrder);
+      onOrderUpdate(result.order);
     } catch(e) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not send order to kitchen.' });
+      toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     }
   }
   
@@ -202,7 +201,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
         ) : (
           <div className="space-y-4">
             {(order.lines || []).map((line) => (
-              <div key={line.lineId} className="flex items-start gap-4">
+              <div key={line.lineId || line.id} className="flex items-start gap-4">
                 <div className="flex-1">
                   <p className="font-medium">{line.qty}x {line.name}</p>
                    {line.mods && line.mods.length > 0 && <p className="text-sm text-muted-foreground">{line.mods.map(m => m.optionName).join(', ')}</p>}
@@ -288,7 +287,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
                                 <TabsContent value="cash" className="mt-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="tendered">Amount Tendered</Label>
-                                        <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={(order.totals?.total ?? 0).toFixed(2)} />
+                                        <Input id="tendered" type="number" value={tenderedAmount} onChange={(e) => setTenderedAmount(e.target.value)} placeholder={order.totals?.total?.toFixed(2) ?? '0.00'} />
                                     </div>
                                     {parseFloat(tenderedAmount) >= (order.totals?.total || 0) && (
                                         <div className="text-lg font-semibold mt-4">
@@ -302,7 +301,7 @@ export default function OrderCart({ order, check, onOrderUpdate, user, settings,
                                     <Button variant="ghost">Cancel</Button>
                                 </DialogClose>
                                 <Button onClick={handlePay} disabled={!isPaymentValid() || isPaying}>
-                                    {isPaying ? 'Processing...' : `Confirm & Pay ${money(order.totals?.total)}`}
+                                    {isPaying ? 'Processing...' : `Confirm & Pay ${money(order.totals?.total ?? 0)}`}
                                 </Button>
                             </DialogFooter>
                             </>
