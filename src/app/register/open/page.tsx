@@ -39,6 +39,10 @@ export default function OpenRegisterPage() {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to open a shift.' });
+        return;
+    }
     if (!selectedRegister || !floatAmount) {
         toast({ variant: 'destructive', title: 'Error', description: 'Please select a register and enter a float amount.' });
         return;
@@ -50,7 +54,8 @@ export default function OpenRegisterPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 registerId: selectedRegister,
-                floatAmount: parseFloat(floatAmount)
+                floatAmount: parseFloat(floatAmount),
+                user: { id: user.uid, name: user.name }
             })
         });
         const data = await res.json();
