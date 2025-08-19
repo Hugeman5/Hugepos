@@ -2,17 +2,29 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { getSession } from "@/lib/session";
 
 type State = "off" | "on" | "break";
+type UserSession = {
+    uid: string;
+    name: string;
+    role: string;
+};
 
 export default function ShiftControls() {
-  const sess = getSession();
-  const userId = sess?.id;
-
+  const [session, setSession] = useState<UserSession | null>(null);
   const [state, setState] = useState<State>("off");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  
+  useEffect(() => {
+    // On component mount, get user from session storage
+    const storedSession = sessionStorage.getItem('mockUser');
+    if (storedSession) {
+        setSession(JSON.parse(storedSession));
+    }
+  }, []);
+
+  const userId = session?.uid;
 
   const refresh = useCallback(async () => {
     if (!userId) return;
@@ -27,11 +39,13 @@ export default function ShiftControls() {
     }
   }, [userId]);
 
-  useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => {
-    const t = setInterval(refresh, 10000);
-    return () => clearInterval(t);
-  }, [refresh]);
+  useEffect(() => { 
+    if (userId) {
+        refresh(); 
+        const t = setInterval(refresh, 10000);
+        return () => clearInterval(t);
+    }
+  }, [userId, refresh]);
 
   async function call(url: string) {
     if (!userId) return;
