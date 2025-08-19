@@ -22,7 +22,8 @@ export default function ShiftWidget({ compact=false }: { compact?: boolean }) {
     // Restore session
     const storedSession = sessionStorage.getItem('mockUser');
     if (storedSession) {
-        setSession(JSON.parse(storedSession));
+        const parsedSession = JSON.parse(storedSession);
+        setSession(parsedSession);
     }
     
     // Pull last 1 day punches for status
@@ -44,10 +45,14 @@ export default function ShiftWidget({ compact=false }: { compact?: boolean }) {
 
   async function punch(type:"in"|"out") {
     setBusy(true);
+    const sessionHeader = sessionStorage.getItem('mockUser') || '';
     try {
       const res = await fetch("/api/timeclock/punch", {
         method:"POST",
-        headers:{ "Content-Type":"application/json" },
+        headers:{ 
+            "Content-Type":"application/json",
+            "X-User-Session": sessionHeader
+        },
         body: JSON.stringify({ type })
       });
       if (res.ok) {

@@ -7,17 +7,21 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const userId = url.searchParams.get("user") || undefined;
+  const userIdParam = url.searchParams.get("user") || undefined;
   const from = url.searchParams.get("from") || undefined;
   const to = url.searchParams.get("to") || undefined;
 
   const s = getSession();
-  if (!s) return NextResponse.json({ error:"Unauthorized" }, { status:401 });
+  
+  // Public endpoint for own punches, admin can view others
+  const userId = s?.role === 'admin' ? userIdParam : s?.id;
 
-  // Non-admin can only view their own punches
-  const isAdmin = s.role === "admin";
-  const safeUser = isAdmin ? userId : s.uid;
+  if (!userId) {
+      // If no session and no user param for admin, we can't do anything.
+      // Or if it's not an admin and there's no session.
+      return NextResponse.json([]);
+  }
 
-  const rows = await listPunches({ userId: safeUser, from, to });
+  const rows = await listPunches({ userId, from, to });
   return NextResponse.json(rows);
 }

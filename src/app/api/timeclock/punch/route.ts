@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   if (!["in","out","breakStart","breakEnd"].includes(type))
     return NextResponse.json({ error:"Invalid type" }, { status:400 });
   const { id, ts } = await addPunch({
-    userId: s.uid,
+    userId: s.id,
     type: type as any,
     station: body.station,
     note: body.note
