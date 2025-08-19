@@ -7,6 +7,7 @@ import OrderCart from '@/components/order-cart';
 import {
   type Order,
   type Shift,
+  type User,
 } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
@@ -21,7 +22,7 @@ export default function CashierDashboardPage() {
   const [menuData, setMenuData] = useState<Menu | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [qtyBuffer, setQtyBuffer] = useState<number>(1);
-  const [user, setUser] = useState<{ uid: string, name: string, role: string, activeRegisterId?: string } | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [openShift, setOpenShift] = useState<Shift | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const { toast } = useToast();
@@ -30,10 +31,9 @@ export default function CashierDashboardPage() {
   
   useEffect(() => {
     // On mount, get user from session storage
-    const storedSession = sessionStorage.getItem('mockUser');
+    const storedSession = getSession();
     if (storedSession) {
-        const parsedUser = JSON.parse(storedSession);
-        setUser({...parsedUser, activeRegisterId: CASHIER_REGISTER_ID});
+        setUser({...storedSession, activeRegisterId: CASHIER_REGISTER_ID});
     }
   }, []);
 
@@ -67,7 +67,8 @@ export default function CashierDashboardPage() {
         
         if (shiftRes.ok) {
             const data = await shiftRes.json();
-            setOpenShift(data.current);
+            if (data.isOpen) setOpenShift(data.current);
+            else setOpenShift(null);
         }
         else setOpenShift(null);
 
@@ -201,6 +202,7 @@ export default function CashierDashboardPage() {
             onOrderUpdate={onOrderUpdate}
             user={user}
             settings={settings}
+            openShift={openShift}
             onNewOrder={createNewOrder}
           />
         </div>

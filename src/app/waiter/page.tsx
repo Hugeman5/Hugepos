@@ -2,9 +2,10 @@
 'use client';
 import { useState, useEffect } from 'react';
 import DashboardHeader from '@/components/dashboard-header';
-import { type FloorPlan, type ServiceCheck, type Shift } from '@/lib/data';
+import { type FloorPlan, type ServiceCheck, type Shift, type User } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import TableGrid from '@/components/waiter/TableGrid';
+import { getSession } from '@/lib/session';
 
 const WAITER_REGISTER_ID = 'waiter_1'; // Waiters might share a virtual register
 
@@ -15,13 +16,13 @@ export default function WaiterDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [openShift, setOpenShift] = useState<Shift | null>(null);
 
-  const [user, setUser] = useState<{ uid: string, name: string, role: string } | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   
   useEffect(() => {
     // On mount, get user from session storage
-    const storedSession = sessionStorage.getItem('mockUser');
+    const storedSession = getSession();
     if (storedSession) {
-        setUser(JSON.parse(storedSession));
+        setUser({...storedSession, activeRegisterId: WAITER_REGISTER_ID});
     }
   }, []);
 
@@ -31,7 +32,7 @@ export default function WaiterDashboardPage() {
         const [floorRes, checksRes, shiftRes] = await Promise.all([
           fetch('/api/floor'),
           fetch('/api/service/open'),
-          fetch(`/api/register/open-shift?registerId=${WAITER_REGISTER_ID}`)
+          fetch(`/api/register/status?registerId=${WAITER_REGISTER_ID}`)
         ]);
         if (!floorRes.ok || !checksRes.ok) throw new Error('Failed to fetch floor data');
         const floorData = await floorRes.json();
@@ -40,7 +41,9 @@ export default function WaiterDashboardPage() {
         setOpenChecks(checksData);
 
         if(shiftRes.ok) {
-          setOpenShift(await shiftRes.json());
+            const shiftData = await shiftRes.json();
+            if (shiftData.isOpen) setOpenShift(shiftData.current);
+            else setOpenShift(null);
         } else {
           setOpenShift(null);
         }
@@ -64,7 +67,7 @@ export default function WaiterDashboardPage() {
 
   return (
     <div className="flex h-screen w-full flex-col bg-[--bg]">
-      <DashboardHeader title="Waiter Station" userName={user.name} userRole={user.role} shiftStatus={openShift}/>
+      <DashboardHeader title="Waiter Station" user={user} shiftStatus={openShift}/>
       <main className="flex-1 flex flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Floor Plan</h2>

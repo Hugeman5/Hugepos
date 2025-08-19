@@ -1,5 +1,4 @@
 
-
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { LogOut, Link2 } from 'lucide-react';
@@ -12,15 +11,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Avatar from '@/components/ui/Avatar';
 import ShiftControls from './staff/ShiftControls';
-import { type User } from '@/lib/data';
+import { type User, type Shift } from '@/lib/data';
 
 
 type DashboardHeaderProps = {
   title: string;
   user: User;
+  shiftStatus?: Shift | null;
 };
 
-export default function DashboardHeader({ title, user }: DashboardHeaderProps) {
+export default function DashboardHeader({ title, user, shiftStatus }: DashboardHeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
       <h1 className="flex-1 text-xl font-semibold font-headline">{title}</h1>
