@@ -1,0 +1,57 @@
+
+[
+  {
+    "id": "asset_inv_food",
+    "code": "1400",
+    "name": "Inventory - Food",
+    "type": "asset"
+  },
+  {
+    "id": "asset_inv_bev",
+    "code": "1410",
+    "name": "Inventory - Beverage",
+    "type": "asset"
+  },
+  {
+    "id": "asset_inv_nonfood",
+    "code": "1420",
+    "name": "Inventory - Non-food",
+    "type": "asset"
+  },
+  {
+    "id": "exp_cogs_food",
+    "code": "5000",
+    "name": "COGS - Food",
+    "type": "expense"
+  },
+  {
+    "id": "exp_cogs_bev",
+    "code": "5010",
+    "name": "COGS - Beverage",
+    "type": "expense"
+  },
+  {
+    "id": "exp_cogs_nonfood",
+    "code": "5020",
+    "name": "COGS - Non-food",
+    "type": "expense"
+  },
+  {
+    "id": "liab_vat",
+    "code": "2200",
+    "name": "VAT Payable",
+    "type": "liability"
+  },
+  {
+    "id": "rev_sales_food",
+    "code": "4000",
+    "name": "Sales - Food",
+    "type": "revenue"
+  },
+  {
+    "id": "rev_sales_bev",
+    "code": "4010",
+    "name": "Sales - Beverage",
+    "type": "revenue"
+  }
+]

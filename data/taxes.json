@@ -1,18 +1,9 @@
 
 [
   {
-    "id": "standard",
-    "name": "Standard Rate",
-    "rate": 0.15
-  },
-  {
-    "id": "zero",
-    "name": "Zero-Rated",
-    "rate": 0
-  },
-  {
-    "id": "exempt",
-    "name": "Exempt",
-    "rate": 0
+    "id": "za_vat_15",
+    "name": "South Africa VAT 15%",
+    "rate": 0.15,
+    "country": "ZA"
   }
 ]
