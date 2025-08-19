@@ -1,4 +1,5 @@
 
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { LogOut, Link2 } from 'lucide-react';
@@ -11,46 +12,33 @@ import {
 } from '@/components/ui/dropdown-menu';
 import Avatar from '@/components/ui/Avatar';
 import ShiftControls from './staff/ShiftControls';
+import { type User } from '@/lib/data';
 
 
 type DashboardHeaderProps = {
   title: string;
-  userName: string;
-  userRole: string;
-  shiftStatus?: { registerName: string, shiftId: string } | null;
+  user: User;
 };
 
-export default function DashboardHeader({ title, userName, userRole, shiftStatus }: DashboardHeaderProps) {
+export default function DashboardHeader({ title, user }: DashboardHeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
       <h1 className="flex-1 text-xl font-semibold font-headline">{title}</h1>
       <div className="flex items-center gap-4">
-        {shiftStatus && (
-            <div className="text-sm text-right">
-                <p className="font-semibold">{shiftStatus.registerName}</p>
-                <p className="text-xs text-muted-foreground">Shift: {shiftStatus.shiftId}</p>
-            </div>
-        )}
-         {userRole !== 'Admin' && <ShiftControls />}
+        {user.role !== 'admin' && <ShiftControls registerId={user.activeRegisterId} />}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" className="relative h-10 w-10 rounded-full !p-0">
-               <Avatar name={userName} src={`https://avatar.vercel.sh/${userName.replace(/\s/g, '')}.png`} size={40} />
+               <Avatar name={user.name} src={(user as any).imageUrl} size={40} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem className="flex flex-col items-start !pointer-events-none p-2">
-                <p className="font-medium">{userName}</p>
-                <p className="text-xs text-muted-foreground">{userRole}</p>
+                <p className="font-medium">{user.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/register/close">
-                <Link2 className="mr-2 h-4 w-4" />
-                <span>Register Actions</span>
-              </Link>
-            </DropdownMenuItem>
-             <DropdownMenuItem asChild>
               <Link href="/admin">
                 <Link2 className="mr-2 h-4 w-4" />
                 <span>Admin Dashboard</span>
@@ -60,7 +48,7 @@ export default function DashboardHeader({ title, userName, userRole, shiftStatus
             <DropdownMenuItem asChild>
               <Link href="/">
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Logout</span>
+                <span>Switch User / Logout</span>
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
 import { type Settings } from '@/lib/settingsRepo';
 import ShiftControls from '@/components/staff/ShiftControls';
+import { getSession } from '@/lib/session';
 
 // A constant for the cashier register ID. In a real app, this might be dynamic.
 const CASHIER_REGISTER_ID = 'checkout_counter';
@@ -20,7 +21,7 @@ export default function CashierDashboardPage() {
   const [menuData, setMenuData] = useState<Menu | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [qtyBuffer, setQtyBuffer] = useState<number>(1);
-  const [user, setUser] = useState<{ uid: string, name: string, role: string } | null>(null);
+  const [user, setUser] = useState<{ uid: string, name: string, role: string, activeRegisterId?: string } | null>(null);
   const [openShift, setOpenShift] = useState<Shift | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const { toast } = useToast();
@@ -31,7 +32,8 @@ export default function CashierDashboardPage() {
     // On mount, get user from session storage
     const storedSession = sessionStorage.getItem('mockUser');
     if (storedSession) {
-        setUser(JSON.parse(storedSession));
+        const parsedUser = JSON.parse(storedSession);
+        setUser({...parsedUser, activeRegisterId: CASHIER_REGISTER_ID});
     }
   }, []);
 
@@ -56,14 +58,17 @@ export default function CashierDashboardPage() {
       try {
         const [menuRes, shiftRes, settingsRes] = await Promise.all([
             fetch('/api/admin/menu'),
-            fetch(`/api/register/open-shift?registerId=${CASHIER_REGISTER_ID}`),
+            fetch(`/api/register/status?registerId=${CASHIER_REGISTER_ID}`),
             fetch('/api/settings'),
         ]);
 
         if (!menuRes.ok) throw new Error('Failed to fetch menu');
         setMenuData(await menuRes.json());
         
-        if (shiftRes.ok) setOpenShift(await shiftRes.json());
+        if (shiftRes.ok) {
+            const data = await shiftRes.json();
+            setOpenShift(data.current);
+        }
         else setOpenShift(null);
 
         if (!settingsRes.ok) throw new Error('Failed to fetch settings');
@@ -90,7 +95,7 @@ export default function CashierDashboardPage() {
         const product = menuData.items.find(p => p.sku === barcode);
 
         if (product) {
-            handleAddToCart(product, []);
+            await handleAddToCart(product, []);
             toast({ title: 'Item Added', description: `Scanned: ${product.name}` });
         } else {
             toast({ variant: 'destructive', title: 'Not Found', description: `No product found for barcode: ${barcode}` });
@@ -163,7 +168,7 @@ export default function CashierDashboardPage() {
     setQtyBuffer(1);
   };
   
-  const handleOrderUpdate = (updatedOrder: Order) => {
+  const onOrderUpdate = (updatedOrder: Order) => {
     setOrder(updatedOrder);
   }
 
@@ -179,9 +184,7 @@ export default function CashierDashboardPage() {
     <div className="flex h-screen w-full flex-col bg-muted/40">
       <DashboardHeader
         title="Cashier POS"
-        userName={user.name}
-        userRole={user.role}
-        shiftStatus={openShift}
+        user={user}
       />
       <main className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 lg:gap-8 lg:p-6 overflow-hidden">
         <div className="md:col-span-2 h-full flex flex-col min-h-0">
@@ -195,10 +198,9 @@ export default function CashierDashboardPage() {
         <div className="md:col-span-1 h-full flex flex-col min-h-0">
           <OrderCart
             order={order}
-            onOrderUpdate={handleOrderUpdate}
+            onOrderUpdate={onOrderUpdate}
             user={user}
             settings={settings}
-            openShift={openShift}
             onNewOrder={createNewOrder}
           />
         </div>

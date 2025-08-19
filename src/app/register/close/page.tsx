@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { type Shift } from '@/lib/data';
 import { formatMoney } from '@/lib/money';
 import { type Settings } from '@/lib/settingsRepo';
-
+import { getSession } from '@/lib/session';
 
 export default function CloseRegisterPage() {
   const router = useRouter();
@@ -24,19 +24,20 @@ export default function CloseRegisterPage() {
   const [isClosing, setIsClosing] = useState(false);
   const [settings, setSettings] = useState<Settings | null>(null);
   
-  const user = { id: 'jcashier', name: 'John Cashier' };
+  const user = getSession();
 
   useEffect(() => {
     async function getOpenShift() {
+      if (!user) return;
       try {
         const [shiftRes, settingsRes] = await Promise.all([
-            fetch('/api/register/open-shift'),
+            fetch(`/api/register/status?registerId=${user.activeRegisterId}`),
             fetch('/api/settings'),
         ]);
         
         if (shiftRes.ok) {
           const data = await shiftRes.json();
-          setShift(data);
+          setShift(data.current);
         } else {
           setShift(null);
         }
@@ -51,7 +52,7 @@ export default function CloseRegisterPage() {
       }
     }
     getOpenShift();
-  }, [toast]);
+  }, [toast, user]);
   
   const money = (value: number) => {
     if (!settings) return `...`;
@@ -70,15 +71,14 @@ export default function CloseRegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cashActual: parseFloat(actualCash),
-          user,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.message || 'Failed to close shift.');
       }
-      toast({ title: 'Shift Closed', description: `Shift ${data.shiftId} has been closed. Report generated.` });
-      router.push(`/admin/reports/register/${data.shiftId}`);
+      toast({ title: 'Shift Closed', description: `Shift ${data.shift.id} has been closed. Report generated.` });
+      router.push(`/admin/reports/register/${data.reportId}`);
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
     } finally {

@@ -1,4 +1,5 @@
 
+
 import { NextResponse } from 'next/server';
 import * as shiftsRepo from '@/lib/shiftsRepo';
 import * as registersRepo from '@/lib/registersRepo';
@@ -10,17 +11,12 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const registerId = searchParams.get('registerId');
 
-    let openShift: shiftsRepo.Shift | null;
-
-    if (registerId) {
-        openShift = await shiftsRepo.getOpenShiftForRegister(registerId);
-    } else {
-        // Fallback for components that don't specify a register (like general header)
-        // This might need refinement based on business logic, but for now, returns any open shift.
-        const shifts = await shiftsRepo.getAllShifts();
-        openShift = shifts.find(s => s.status === 'open') || null;
+    if (!registerId) {
+        return NextResponse.json({ message: "registerId query parameter is required" }, { status: 400 });
     }
 
+    const openShift = await shiftsRepo.getOpenShiftForRegister(registerId);
+    
     if (!openShift) {
       return NextResponse.json(null, { status: 404 });
     }

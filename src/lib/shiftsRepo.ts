@@ -91,14 +91,11 @@ export async function openShift(registerId: string, floatAmount: number, user: {
     return saveShift(newShift);
 }
 
-export async function closeShift(shiftId: string, cashActual: number, user: {id: string, name: string}): Promise<Shift> {
+export async function closeShift(shiftId: string, cashActual: number, user: {id: string, name: string}, notes?: string): Promise<Shift> {
     const shift = await getShift(shiftId);
     if (!shift) throw new Error("Shift not found");
     if (shift.status === 'closed') throw new Error("Shift is already closed");
 
-    // This logic is now handled in the report repo to avoid circular dependencies
-    // and to centralize the calculation logic at the point of report generation.
-    
     shift.status = 'closed';
     shift.tsClose = new Date().toISOString();
     shift.userIdClose = user.id;
@@ -106,4 +103,37 @@ export async function closeShift(shiftId: string, cashActual: number, user: {id:
     shift.cashActual = cashActual;
     
     return saveShift(shift);
+}
+
+export async function addCashMove(move: Omit<cashRepo.CashMovement, "id" | "ts">) {
+  const shift = await getShift(move.shiftId);
+  if (!shift || shift.status !== 'open') throw new Error("Shift not open");
+
+  await cashRepo.addMovement(move);
+
+  if (move.type === 'payin') {
+    shift.cashExpected = (shift.cashExpected || 0) + move.amount;
+  } else if (move.type === 'payout') {
+    shift.cashExpected = (shift.cashExpected || 0) - move.amount;
+  }
+  return await saveShift(shift);
+}
+
+export async function recordPayment(shiftId: string, kind: 'cash' | 'card' | 'gift_card' | 'other', amount: number, orderId: string) {
+  const shift = await getShift(shiftId);
+  if (!shift || shift.status !== 'open') {
+    console.warn(`Attempted to record payment on closed or non-existent shift ${shiftId}`);
+    return;
+  }
+  
+  if (kind === 'cash') {
+    shift.cashPayments = (shift.cashPayments || 0) + amount;
+    shift.cashExpected = (shift.cashExpected || 0) + amount;
+  } else if (kind === 'card') {
+    shift.cardPayments = (shift.cardPayments || 0) + amount;
+  } else if (kind === 'gift_card') {
+    shift.giftCardPayments = (shift.giftCardPayments || 0) + amount;
+  }
+
+  await saveShift(shift);
 }

@@ -1,83 +1,80 @@
 
-"use client";
-import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/Button";
+'use client';
+import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/Button';
+import { type Shift } from '@/lib/data';
+import { useRouter } from 'next/navigation';
+import { getSession } from '@/lib/session';
+import { formatMoney } from '@/lib/money';
 
-type State = "off" | "on" | "break";
-type UserSession = {
-    uid: string;
-    name: string;
-    role: string;
+type ShiftStatus = {
+  isOpen: boolean;
+  current: Shift | null;
 };
 
-export default function ShiftControls() {
-  const [session, setSession] = useState<UserSession | null>(null);
-  const [state, setState] = useState<State>("off");
+export default function ShiftControls({ registerId }: { registerId?: string }) {
+  const [status, setStatus] = useState<ShiftStatus>({ isOpen: false, current: null });
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  
+  const router = useRouter();
+
+  const refreshStatus = useCallback(async () => {
+    if (!registerId) return;
+    try {
+      const res = await fetch(`/api/register/status?registerId=${registerId}`);
+      if (res.ok) {
+        setStatus(await res.json());
+      } else {
+        setStatus({ isOpen: false, current: null });
+      }
+    } catch (e) {
+      console.error('Failed to fetch shift status', e);
+      setStatus({ isOpen: false, current: null });
+    }
+  }, [registerId]);
+
   useEffect(() => {
-    // On component mount, get user from session storage
-    const storedSession = sessionStorage.getItem('mockUser');
-    if (storedSession) {
-        const parsed = JSON.parse(storedSession);
-        setSession(parsed);
-    }
-  }, []);
+    refreshStatus();
+    const interval = setInterval(refreshStatus, 15000);
+    return () => clearInterval(interval);
+  }, [refreshStatus]);
+  
+  const user = getSession();
 
-  const userId = session?.uid;
-
-  const refresh = useCallback(async () => {
-    if (!userId) return;
-    try {
-      const r = await fetch(`/api/shifts/active?userId=${encodeURIComponent(userId)}`, { cache: "no-store" });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d?.error || "Failed to fetch");
-      setState(d?.state ?? "off");
-      setErr("");
-    } catch (e:any) {
-      setErr(e?.message || "Status error");
+  const handleOpenRegister = () => {
+    if (!registerId) return;
+    const float = prompt("Enter opening float amount:", "500.00");
+    if (float !== null) {
+        setBusy(true);
+        fetch('/api/register/open', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ registerId, floatAmount: parseFloat(float), user }),
+        }).then(res => {
+            if (!res.ok) throw new Error("Failed to open register");
+            return res.json();
+        }).then(() => refreshStatus()).finally(() => setBusy(false));
     }
-  }, [userId]);
-
-  useEffect(() => { 
-    if (userId) {
-        refresh(); 
-        const t = setInterval(refresh, 10000);
-        return () => clearInterval(t);
-    }
-  }, [userId, refresh]);
-
-  async function call(url: string) {
-    if (!userId) return;
-    setBusy(true);
-    try {
-      const r = await fetch(url, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ userId }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d?.error || "Action failed");
-      await refresh();
-    } catch (e:any) {
-      setErr(e?.message || "Action error");
-    } finally {
-      setBusy(false);
-    }
+  }
+  
+  const handleCloseRegister = () => {
+    router.push('/register/close');
   }
 
   return (
     <div className="flex items-center gap-2">
-      {state === "off" && (
-        <Button disabled={busy || !userId} onClick={() => call("/api/shifts/clock-in")}>Clock In</Button>
-      )}
-      {state === "on" && (
+      {status.isOpen ? (
         <>
-          <Button variant="secondary" disabled={busy} onClick={() => call("/api/shifts/break-start")}>Start Break</Button>
-          <Button variant="destructive" disabled={busy} onClick={() => call("/api/shifts/clock-out")}>Clock Out</Button>
+            <div className="text-sm text-right">
+                <p className="font-semibold">{status.current?.registerName || registerId}</p>
+                <p className="text-xs text-muted-foreground">Float: {formatMoney(status.current?.floatAmount || 0)}</p>
+            </div>
+            <Button onClick={handleCloseRegister} variant="destructive" size="sm" disabled={busy}>Close Register</Button>
         </>
+      ) : (
+        <Button onClick={handleOpenRegister} size="sm" disabled={busy || !registerId}>
+            Open Register
+        </Button>
       )}
-      {state === "break" && (
-        <Button disabled={busy} onClick={() => call("/api/shifts/break-end")}>End Break</Button>
-      )}
-      {err && <span className="text-xs text-red-500 ml-2">{err}</span>}
     </div>
   );
 }

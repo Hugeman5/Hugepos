@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { type Register } from '@/lib/data';
 import { DoorOpen } from 'lucide-react';
+import { getSession } from '@/lib/session';
 
 export default function OpenRegisterPage() {
   const router = useRouter();
@@ -20,7 +21,7 @@ export default function OpenRegisterPage() {
   const [floatAmount, setFloatAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const user = { id: 'jcashier', name: 'John Cashier' };
+  const user = getSession();
 
   useEffect(() => {
     async function fetchRegisters() {
@@ -49,8 +50,7 @@ export default function OpenRegisterPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 registerId: selectedRegister,
-                floatAmount: parseFloat(floatAmount),
-                user
+                floatAmount: parseFloat(floatAmount)
             })
         });
         const data = await res.json();
@@ -58,7 +58,15 @@ export default function OpenRegisterPage() {
             throw new Error(data.message || 'Failed to open shift.');
         }
         toast({ title: 'Shift Opened', description: `Shift ${data.shift.id} opened on register ${selectedRegister}.` });
-        router.push('/cashier');
+        
+        // After opening, route to the appropriate dashboard
+        const role = user?.role || 'cashier';
+        if (role === 'waiter') {
+            router.push('/waiter');
+        } else {
+            router.push('/cashier');
+        }
+        
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
     } finally {
@@ -97,7 +105,7 @@ export default function OpenRegisterPage() {
                   name="float"
                   type="number"
                   step="0.01"
-                  placeholder="e.g., 150.00"
+                  placeholder="e.g., 500.00"
                   value={floatAmount}
                   onChange={(e) => setFloatAmount(e.target.value)}
                   required

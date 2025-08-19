@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import DashboardHeader from '@/components/dashboard-header';
-import { type KdsTicket, type Station } from '@/lib/data';
+import { type KdsTicket, type Station, type Order, type User } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/Button';
@@ -13,37 +13,40 @@ import { cn } from '@/lib/utils';
 import ShiftControls from '@/components/staff/ShiftControls';
 import { getSession } from '@/lib/session';
 
-const timeSince = (date: Date) => {
-    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+const timeSince = (date: string) => {
+    const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
-const getTicketAgeColor = (date: Date) => {
-    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+const getTicketAgeColor = (date: string) => {
+    const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
     if (seconds > 600) return 'bg-destructive text-destructive-foreground'; // > 10 mins
     if (seconds > 300) return 'bg-yellow-500/80 text-black'; // > 5 mins
     return 'bg-primary/20 text-primary-foreground';
 }
 
-
 export default function KdsPage() {
   const [stations, setStations] = useState<Station[]>([]);
-  const [tickets, setTickets] = useState<KdsTicket[]>([]);
+  const [tickets, setTickets] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showRecent, setShowRecent] = useState(false);
   const { toast } = useToast();
+  const [user, setUser] = useState<User | null>(null);
   
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const user = { uid: 'chef', name: 'Chef Mike', role: 'Kitchen' }; // Mock user
+  useEffect(() => {
+    const u = getSession();
+    setUser(u);
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
       const [stationsRes, ticketsRes] = await Promise.all([
         fetch('/api/admin/stations'),
-        fetch(`/api/kds?status=${showRecent ? 'done' : 'active'}`),
+        fetch(`/api/kds`),
       ]);
       if (!stationsRes.ok) throw new Error('Failed to load stations');
       if (!ticketsRes.ok) throw new Error('Failed to load KDS tickets');
@@ -52,13 +55,13 @@ export default function KdsPage() {
       const ticketsData = await ticketsRes.json();
 
       setStations(stationsData);
-      setTickets(ticketsData);
+      setTickets(ticketsData.tickets);
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     } finally {
       setIsLoading(false);
     }
-  }, [toast, showRecent]);
+  }, [toast]);
 
   useEffect(() => {
     fetchData();
@@ -71,7 +74,7 @@ export default function KdsPage() {
     };
   }, [fetchData]);
 
-  const handleApiAction = async (endpoint: string, ticketId: string, body: object, successMsg: string) => {
+  const handleApiAction = async (endpoint: string, ticketId: string, lineId: string, body: object, successMsg: string) => {
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -89,24 +92,28 @@ export default function KdsPage() {
     }
   };
 
-  const bumpTicket = (ticketId: string) => handleApiAction('/api/kds/bump', ticketId, { ticketId }, `Ticket ${ticketId.slice(-4)} bumped.`);
-  const undoTicket = (ticketId: string) => handleApiAction('/api/kds/undo', ticketId, { ticketId }, `Ticket ${ticketId.slice(-4)} restored.`);
-  const toggleExpedite = (ticket: KdsTicket) => handleApiAction('/api/kds/expedite', ticket.id, { ticketId: ticket.id, expedite: !ticket.expedite }, `Ticket ${ticket.id.slice(-4)} expedited status changed.`);
+  const bumpTicket = (ticketId: string, lineId: string) => handleApiAction('/api/kds/bump', ticketId, lineId, { orderId: ticketId, lineId }, `Item bumped.`);
 
   const ticketsByStation = useMemo(() => {
-      const grouped: Record<string, KdsTicket[]> = {};
+      const grouped: Record<string, Order[]> = {};
       for(const station of stations) {
           grouped[station.id] = [];
       }
       for(const ticket of tickets) {
-          if (grouped[ticket.station]) {
-              grouped[ticket.station].push(ticket);
+        for (const line of ticket.lines) {
+          if (line.station) {
+            if (!grouped[line.station]) grouped[line.station] = [];
+            
+            // Add ticket only once per station
+            if (!grouped[line.station].find(t => t.id === ticket.id)) {
+                grouped[line.station].push(ticket);
+            }
           }
+        }
       }
-      // Sort tickets within each station: expedite first, then oldest
+      // Sort tickets within each station: oldest first
       for (const stationId in grouped) {
           grouped[stationId].sort((a,b) => {
-              if (a.expedite !== b.expedite) return a.expedite ? -1 : 1;
               return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
           });
       }
@@ -114,14 +121,12 @@ export default function KdsPage() {
   }, [tickets, stations]);
 
 
+  if (!user) return <div>Loading...</div>;
+
   return (
     <div className="flex h-screen w-full flex-col bg-brand-bg">
-       <DashboardHeader title="Kitchen Display System" userName={user.name} userRole={user.role} />
-       <div className="p-4 border-b border-brand-line">
-           <Button onClick={() => setShowRecent(s => !s)}>
-               {showRecent ? "Show Active Tickets" : "Show Recent / Undo"}
-            </Button>
-       </div>
+       <DashboardHeader title="Kitchen Display System" user={user} />
+       
       <main className="flex-1 flex overflow-x-auto">
         <div className="flex h-full min-w-full">
         {isLoading ? (
@@ -135,47 +140,28 @@ export default function KdsPage() {
                 </div>
                 <div className="p-2 flex-1 overflow-y-auto bg-brand-bg space-y-3">
                     {(ticketsByStation[station.id] || []).map(ticket => (
-                        <Card key={ticket.id} className={cn('flex flex-col', ticket.expedite && 'border-destructive ring-2 ring-destructive')}>
+                        <Card key={ticket.id} className={cn('flex flex-col')}>
                              <div className="p-3">
                                 <div className="flex justify-between items-center">
-                                    <span className='text-lg font-bold'>{ticket.table}</span>
-                                     <Badge className={cn('font-mono', getTicketAgeColor(new Date(ticket.createdAt)))}>
+                                    <span className='text-lg font-bold'>Order #{ticket.ticketNo}</span>
+                                     <Badge className={cn('font-mono', getTicketAgeColor(new Date(ticket.createdAt).toISOString()))}>
                                         <Clock className="h-3 w-3 mr-1" />
-                                        {timeSince(new Date(ticket.createdAt))}
+                                        {timeSince(new Date(ticket.createdAt).toISOString())}
                                      </Badge>
                                 </div>
                              </div>
                              <div className="flex-1 px-3 pb-3 space-y-2">
-                                {ticket.lines.map((line, idx) => (
-                                    <div key={idx} className="p-2 rounded-lg bg-brand-muted/50">
+                                {ticket.lines.filter(l => l.station === station.id && l.state !== 'bumped').map((line, idx) => (
+                                    <div key={idx} className="p-2 rounded-lg bg-brand-muted/50 cursor-pointer" onClick={() => bumpTicket(ticket.id, line.id)}>
                                         <p className="font-semibold">{line.qty}x {line.name}</p>
-                                        {line.mods && (
-                                            <p className="text-xs text-brand-mute pl-2">{line.mods}</p>
-                                        )}
                                     </div>
                                 ))}
-                             </div>
-                             <div className="mt-auto p-2 grid grid-cols-2 gap-2">
-                                {showRecent ? (
-                                    <Button variant="secondary" onClick={() => undoTicket(ticket.id)} className="col-span-2">
-                                        <RotateCcw className="mr-2 h-4 w-4" /> Undo Bump
-                                    </Button>
-                                ) : (
-                                    <>
-                                        <Button variant="secondary" onClick={() => toggleExpedite(ticket)}>
-                                            <Zap className="mr-2 h-4 w-4" /> Expedite
-                                        </Button>
-                                        <Button onClick={() => bumpTicket(ticket.id)}>
-                                            <CheckCircle2 className="mr-2 h-4 w-4" /> Bump
-                                        </Button>
-                                    </>
-                                )}
                              </div>
                         </Card>
                     ))}
                     {(ticketsByStation[station.id] || []).length === 0 && (
                         <div className="h-full flex items-center justify-center text-brand-mute">
-                            <p>No {showRecent ? 'recent' : 'active'} tickets.</p>
+                            <p>No active tickets.</p>
                         </div>
                     )}
                 </div>

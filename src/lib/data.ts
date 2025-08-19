@@ -36,8 +36,8 @@ export type Tax = {
 };
 
 // --- ORDER ---
-export type OrderStatus = 'DRAFT' | 'PAID' | 'VOID' | 'PENDING' | 'COMPLETED';
-export type PrepStatus = 'queued' | 'in_progress' | 'done';
+export type OrderStatus = 'DRAFT' | 'PAID' | 'VOID' | 'PENDING' | 'COMPLETED' | "open" | "sent" | "closed";
+export type PrepStatus = 'queued' | 'in_progress' | 'done' | 'preparing' | 'ready' | 'bumped';
 
 export type OrderLineMod = {
   setId: string;
@@ -62,6 +62,15 @@ export type OrderLine = {
       stationId: string;
       status: PrepStatus;
   }
+  unitExVat: number;
+  lineExVat: number;
+  taxRate: number;
+  tax: number;
+  lineIncVat: number;
+  currency: string;
+  choices?: Record<string, { id: string; qty?: number }[]>;
+  station?: string;
+  state?: "queued"|"preparing"|"ready"|"bumped";
 };
 
 export type AppliedDiscount = {
@@ -76,7 +85,7 @@ export type Order = {
   id: string;
   number: number;
   ts: string;
-  user: { uid: string; name: string };
+  user: { uid: string; name: string, role?: string };
   status: OrderStatus;
   lines: OrderLine[];
   totals: OrderTotal;
@@ -89,6 +98,10 @@ export type Order = {
     checkId: string, 
     seatMap?: SeatLine[] 
   }
+  tableId?: string;
+  ticketNo?: number;
+  createdAt: number;
+  updatedAt: number;
 };
 
 // --- PAYMENT ---
@@ -101,7 +114,7 @@ export type Payment = {
   change?: number;
   last4?: string;
   ref?: string; // e.g. gift card code
-  user: { uid: string; name: string };
+  user: { uid: string; name: string, role?:string };
   amountRounded?: number;
   cashStep?: number;
 };
@@ -138,6 +151,9 @@ export type OrderTotal = {
     tax: number;
     total: number;
     discount?: number;
+    exVat?: number,
+    incVat?: number,
+    currency?: string
 }
 
 
@@ -247,6 +263,7 @@ export type ShiftStatus = 'open' | 'closed';
 export type Shift = {
   id: string; // e.g., shift_1
   registerId: string;
+  registerName?: string;
   userIdOpen: string;
   userNameOpen: string;
   tsOpen: string;
