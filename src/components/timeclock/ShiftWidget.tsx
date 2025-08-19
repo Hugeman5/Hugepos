@@ -1,14 +1,30 @@
+
 "use client";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/hooks/use-toast";
+import { formatMoney } from "@/lib/money";
+
+type UserSession = {
+    uid: string;
+    name: string;
+    role: string;
+    hourlyRate?: number;
+};
 
 export default function ShiftWidget({ compact=false }: { compact?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<"in"|"out"|"breakStart"|"breakEnd"|null>(null);
+  const [session, setSession] = useState<UserSession | null>(null);
   const { toast } = useToast();
 
-  async function refresh() {
+  const refresh = async () => {
+    // Restore session
+    const storedSession = sessionStorage.getItem('mockUser');
+    if (storedSession) {
+        setSession(JSON.parse(storedSession));
+    }
+    
     // Pull last 1 day punches for status
     const from = new Date(Date.now()-24*3600e3).toISOString();
     try {
@@ -20,8 +36,11 @@ export default function ShiftWidget({ compact=false }: { compact?: boolean }) {
     } catch (e) {
         // fail silently on refresh
     }
-  }
-  useEffect(()=>{ refresh(); },[]);
+  };
+
+  useEffect(()=>{ 
+    refresh(); 
+  },[]);
 
   async function punch(type:"in"|"out") {
     setBusy(true);
@@ -48,10 +67,13 @@ export default function ShiftWidget({ compact=false }: { compact?: boolean }) {
   const clockedIn = last === "in" || last === "breakEnd";
   const onBreak = last === "breakStart";
   
+  const rateText = session?.hourlyRate ? ` · ${formatMoney(session.hourlyRate)}/h` : '';
+
   return (
     <div className={compact ? "flex items-center gap-2" : "flex items-center gap-8"}>
       <div className="text-xs opacity-70">
-        Status: {clockedIn ? "Clocked in" : (onBreak ? "On Break" : "Clocked out")}
+        Status: {clockedIn ? `Clocked in` : (onBreak ? `On Break` : `Clocked out`)}
+        {rateText}
       </div>
       {!clockedIn && !onBreak ? (
         <Button size="sm" disabled={busy} onClick={()=>punch("in")}>Clock In</Button>

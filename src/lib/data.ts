@@ -9,6 +9,8 @@ export type User = {
   active: boolean;
   exposeOnPinLogin: boolean;
   outlets?: string[];
+  hourlyRate?: number;
+  overtimeRate?: number;
 };
 
 export type RolePermissionValue = boolean | string | number;

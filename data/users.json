@@ -1,3 +1,4 @@
+
 [
   {
     "id": "eugene",
@@ -7,7 +8,8 @@
     "exposeOnPinLogin": true,
     "pin": "5245",
     "email": "admin@hugepos.com",
-    "username": "admin"
+    "username": "admin",
+    "hourlyRate": 0
   },
   {
     "id": "jcashier",
@@ -15,7 +17,8 @@
     "role": "cashier",
     "active": true,
     "exposeOnPinLogin": true,
-    "pin": "1234"
+    "pin": "1234",
+    "hourlyRate": 45
   },
   {
     "id": "jwaiter",
@@ -23,7 +26,8 @@
     "role": "waiter",
     "active": true,
     "exposeOnPinLogin": true,
-    "pin": "5678"
+    "pin": "5678",
+    "hourlyRate": 42
   },
   {
     "id": "chef",
@@ -31,7 +35,8 @@
     "role": "kitchen",
     "active": true,
     "exposeOnPinLogin": true,
-    "pin": "9876"
+    "pin": "9876",
+    "hourlyRate": 65
   },
   {
     "id": "manager",
@@ -39,7 +44,8 @@
     "role": "manager",
     "active": true,
     "exposeOnPinLogin": true,
-    "pin": "1111"
+    "pin": "1111",
+    "hourlyRate": 75
   },
   {
     "id": "inactive",
@@ -47,7 +53,8 @@
     "role": "cashier",
     "pin": "0000",
     "active": false,
-    "exposeOnPinLogin": true
+    "exposeOnPinLogin": true,
+    "hourlyRate": 0
   },
   {
     "id": "admin@example.com",
@@ -55,6 +62,7 @@
     "role": "cashier",
     "active": true,
     "exposeOnPinLogin": true,
-    "pin": "5245"
+    "pin": "5245",
+    "hourlyRate": 0
   }
 ]

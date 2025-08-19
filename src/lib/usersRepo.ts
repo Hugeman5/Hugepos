@@ -1,5 +1,4 @@
 
-
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
@@ -7,6 +6,7 @@ import { type User } from "./data";
 
 export type RepoUser = User & {
   pinHash?: string;
+  hourlyRate?: number;
 }
 
 const USERS_PATH = path.join(process.cwd(), "data", "users.json");
@@ -18,7 +18,10 @@ async function ensureFile() {
 
 export async function getAllUsers(): Promise<RepoUser[]> {
   await ensureFile();
-  try { return JSON.parse(await fs.readFile(USERS_PATH, "utf8") || "[]"); }
+  try { 
+      const users: RepoUser[] = JSON.parse(await fs.readFile(USERS_PATH, "utf8") || "[]");
+      return users.map(u => ({ ...u, hourlyRate: u.hourlyRate ?? 0 }));
+  }
   catch { return []; }
 }
 
@@ -37,7 +40,7 @@ export async function upsertUser(userToUpsert: RepoUser): Promise<RepoUser> {
     const index = users.findIndex(u => u.id === userToUpsert.id);
 
     if (index > -1) {
-        users[index] = userToUpsert;
+        users[index] = { ...users[index], ...userToUpsert };
     } else {
         users.push(userToUpsert);
     }
@@ -83,5 +86,5 @@ export async function verifyUserByIdentifierAndPin(identifier: string, pin: stri
   if (!u) return null;
   const ok = (u.pin && u.pin === pin) || (u.pinHash && u.pinHash === sha256(pin));
   if (!ok) return null;
-  return { uid: u.id, name: u.name, role: u.role };
+  return { uid: u.id, name: u.name, role: u.role, hourlyRate: u.hourlyRate };
 }

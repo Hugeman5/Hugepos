@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { timeSince } from '@/lib/utils';
 import { type Settings } from '@/lib/settingsRepo';
 import { formatMoney } from '@/lib/money';
+import LiveWageWidget from '@/components/payroll/LiveWageWidget';
 
 
 export default function AdminHome(){
@@ -47,7 +48,8 @@ export default function AdminHome(){
 
   return (
       <AdminLayout title="Dashboard">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <LiveWageWidget />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mt-6">
           <KpiCard label="Sales Today" value={money(kpi.sales?.total)} hint={`Orders: ${kpi.sales?.orders ?? 0}`} tone="ok"/>
           <KpiCard label="Avg Ticket" value={money(kpi.sales?.avg)} />
           <KpiCard label="Open Kitchen Tickets" value={kpi.open?.count ?? 0} tone="info"/>
@@ -122,3 +124,4 @@ export default function AdminHome(){
       </AdminLayout>
   );
 }
+

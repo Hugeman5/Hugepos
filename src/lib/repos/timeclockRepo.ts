@@ -1,7 +1,9 @@
 
+
 import { promises as fs } from "fs";
 import path from "path";
-import { zonedTimeToUtc } from "date-fns-tz";
+import { zonedTimeToUtc, utcToZonedTime } from "date-fns-tz";
+import { getAllUsers } from "@/lib/usersRepo";
 
 export type PunchType = "in" | "out" | "breakStart" | "breakEnd";
 export type Punch = {
@@ -29,7 +31,9 @@ async function read(): Promise<TimeclockFile> {
     const raw = await fs.readFile(FILE, "utf8");
     return JSON.parse(raw);
   } catch {
-    return { punches: [], settings: { timezone: TZ, roundingMinutes: 1 } };
+    const defaultData = { punches: [], settings: { timezone: TZ, roundingMinutes: 1 } };
+    await write(defaultData);
+    return defaultData;
   }
 }
 async function write(data: TimeclockFile) {
@@ -41,7 +45,7 @@ const uuid = () => "tc_" + Math.random().toString(36).slice(2, 10);
 export async function addPunch(p: Omit<Punch,"id"|"ts"> & { ts?: string }) {
   const db = await read();
   const id = uuid();
-  const ts = p.ts ?? zonedTimeToUtc(new Date(), db.settings?.timezone || TZ).toISOString();
+  const ts = p.ts ?? new Date().toISOString();
   db.punches.push({ id, userId: p.userId, type: p.type, ts, station: p.station, note: p.note });
   await write(db);
   return { id, ts };
@@ -70,26 +74,88 @@ export async function listPunches(opts?: { userId?:string; from?:string; to?:str
   return rows;
 }
 
-/** Pair IN/OUT to compute durations (ignores breaks for v1 or subtracts them if pairs exist) */
-export async function summary(opts:{ userId?:string; from?:string; to?:string }) {
-  const rows = await listPunches(opts);
-  const byUser: Record<string, { totalMs:number; days: Record<string,number> }> = {};
-  const open: Record<string, Punch|null> = {};
+function pairShifts(punches: Punch[]): { start: Punch, end: Punch | null }[] {
+    const pairs: { start: Punch, end: Punch | null }[] = [];
+    let openPunch: Punch | null = null;
 
-  for (const p of rows) {
-    const key = p.userId;
-    byUser[key] ??= { totalMs:0, days:{} };
-    if (p.type === "in") {
-      open[key] = p;
-    } else if (p.type === "out" && open[key]) {
-      const ms = new Date(p.ts).getTime() - new Date(open[key]!.ts).getTime();
-      byUser[key].totalMs += Math.max(0, ms);
-      const day = new Date(open[key]!.ts).toISOString().slice(0,10);
-      byUser[key].days[day] = (byUser[key].days[day]||0) + Math.max(0, ms);
-      open[key] = null;
+    for (const punch of punches) {
+        if (punch.type === 'in') {
+            if (openPunch) {
+                // Found a new 'in' without a previous 'out', so the previous one is orphaned.
+                pairs.push({ start: openPunch, end: null });
+            }
+            openPunch = punch;
+        } else if (punch.type === 'out' && openPunch) {
+            pairs.push({ start: openPunch, end: punch });
+            openPunch = null;
+        }
     }
-    // (Optional) breakStart/breakEnd handling can be added later to subtract break time
-  }
-
-  return byUser;
+    // If the loop finishes and there's still an open punch, add it as an open shift.
+    if (openPunch) {
+        pairs.push({ start: openPunch, end: null });
+    }
+    return pairs;
 }
+
+
+export async function activeNow() {
+    const users = await getAllUsers();
+    const oneDayAgo = new Date(Date.now() - 24 * 3600e3).toISOString();
+    const recentPunches = await listPunches({ from: oneDayAgo });
+
+    const activeUsers: { userId: string, startedAt: string, elapsedMs: number }[] = [];
+    const punchesByUser: Record<string, Punch[]> = {};
+
+    for (const punch of recentPunches) {
+        if (!punchesByUser[punch.userId]) punchesByUser[punch.userId] = [];
+        punchesByUser[punch.userId].push(punch);
+    }
+    
+    for (const userId in punchesByUser) {
+        const userPunches = punchesByUser[userId];
+        const lastPunch = userPunches[userPunches.length - 1];
+        if (lastPunch && (lastPunch.type === 'in' || lastPunch.type === 'breakEnd')) {
+             activeUsers.push({
+                userId,
+                startedAt: lastPunch.ts,
+                elapsedMs: new Date().getTime() - new Date(lastPunch.ts).getTime()
+            });
+        }
+    }
+    
+    return activeUsers;
+}
+
+
+export async function earningsForRange(opts: { from: string, to: string, userId?: string }) {
+    const punches = await listPunches(opts);
+    const users = await getAllUsers();
+    const usersMap = new Map(users.map(u => [u.id, u]));
+    
+    const byUser: Record<string, { totalMs: number, earningsZar: number }> = {};
+    const punchesByUser: Record<string, Punch[]> = {};
+    
+    for (const punch of punches) {
+        if (!punchesByUser[punch.userId]) punchesByUser[punch.userId] = [];
+        punchesByUser[punch.userId].push(punch);
+    }
+    
+    const now = new Date();
+
+    for (const userId in punchesByUser) {
+        const userPunches = punchesByUser[userId];
+        const shifts = pairShifts(userPunches);
+        byUser[userId] = { totalMs: 0, earningsZar: 0 };
+        const user = usersMap.get(userId);
+        const hourlyRate = user?.hourlyRate ?? 0;
+
+        for (const shift of shifts) {
+            const endTime = shift.end ? new Date(shift.end.ts) : now;
+            const ms = endTime.getTime() - new Date(shift.start.ts).getTime();
+            byUser[userId].totalMs += Math.max(0, ms);
+        }
+        byUser[userId].earningsZar = (byUser[userId].totalMs / 3600000) * hourlyRate;
+    }
+    return byUser;
+}
+
