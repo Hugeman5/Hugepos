@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
@@ -16,12 +15,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { type Order, type Shift, type ServiceCheck, type OrderLine } from '@/lib/data';
+import { type Order, type Shift, type ServiceCheck } from '@/lib/data';
 import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CreditCard, Landmark, AlertCircle, FileDown, Mail, Printer, GitCommitHorizontal } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Link from 'next/link';
 import { formatMoney } from '@/lib/money';
 import { type Settings } from '@/lib/settingsRepo';
+
+type CartLine = {
+  id?: string;         // preferred
+  lineId?: string;     // legacy
+  name: string;
+  qty: number;
+  lineTotal?: number;
+  mods?: Array<{ id?: string; optionName?: string; name?: string }>;
+};
+
+type CartOrder = { id: string; lines: CartLine[] };
+
 
 type OrderCartProps = {
     order: Order;
@@ -49,43 +60,32 @@ export default function OrderCart({ order, onOrderUpdate, user, settings, openSh
     return formatMoney(value, { currency: settings.currency, locale: settings.locale });
   };
 
-
-  const handleUpdateQuantity = async (lineId: string, delta: number) => {
-    const line = order.lines.find(l => l.lineId === lineId);
-    if (!line) return;
-
-    const newQty = line.qty + delta;
-    
+  async function updateQty(orderId: string, lineId: string, qty: number) {
     try {
-        const res = await fetch('/api/orders/line', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId: order.id, lineId, qty: newQty })
+        const res = await fetch("/api/orders/line", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderId, lineId, qty })
         });
-        if (!res.ok) throw new Error('Failed to update quantity');
-        const updatedData = await res.json();
-        onOrderUpdate(updatedData.order);
+        if (!res.ok) throw new Error("Failed to update quantity");
+        const { order: updatedOrder } = await res.json();
+        onOrderUpdate(updatedOrder);
     } catch(e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     }
-  };
-  
-  const handleRemoveLine = async (lineId: string) => {
-     await handleUpdateQuantity(lineId, -Infinity);
   }
-  
+
   const resetCart = async () => {
     try {
         if (check) { // We are in a table service context
-            // Closing a check automatically creates a new order if the table is re-opened.
             await fetch('/api/service/close', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ checkId: check.id }),
             });
             toast({title: "Table Closed", description: `Table ${check.tableId} is now available.`});
-            window.location.href = '/waiter'; // Redirect to floor plan
-        } else { // We are in a cashier context
+            window.location.href = '/waiter';
+        } else {
             onNewOrder();
         }
        setCreatedOrder(null);
@@ -209,39 +209,48 @@ export default function OrderCart({ order, onOrderUpdate, user, settings, openSh
           <PostPaymentActions />
         ) : (
           <div className="space-y-4">
-            {(order.lines || []).map((line) => (
-              <div key={line.lineId} className="flex items-start gap-4">
-                <div className="flex-1">
-                  <p className="font-medium">{line.qty}x {line.name}</p>
-                   {line.mods && line.mods.length > 0 && <p className="text-sm text-muted-foreground">{line.mods.map(m => m.optionName).join(', ')}</p>}
-                   {line.lineIncVat != null && <p className="text-sm font-semibold">{money(line.lineIncVat)}</p>}
+            {(order.lines || []).map((line, idx) => {
+              const lineId = line.id ?? line.lineId ?? `tmp-${idx}`;
+
+              return (
+                <div key={lineId} className="flex items-start gap-4">
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      {line.qty}x {line.name}
+                    </p>
+
+                    {Array.isArray(line.mods) && line.mods.length > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        {line.mods.map((m: any, i: number) => (
+                          <span key={`${lineId}-mod-${m?.id ?? i}`}>
+                            {m?.optionName ?? m?.name ?? "mod"}
+                            {i < line.mods.length - 1 ? ", " : ""}
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => updateQty(order.id, lineId, Math.max(0, (line.qty ?? 0) - 1))}
+                    >
+                      <MinusCircle className="h-4 w-4" />
+                    </Button>
+                    <span className="w-6 text-center font-medium">{line.qty ?? 0}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => updateQty(order.id, lineId, (line.qty ?? 0) + 1)}
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleUpdateQuantity(line.lineId, -1)}
-                  >
-                    <MinusCircle className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleUpdateQuantity(line.lineId, 1)}
-                  >
-                    <PlusCircle className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="text-destructive"
-                    onClick={() => handleRemoveLine(line.lineId)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
