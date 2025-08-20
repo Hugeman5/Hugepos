@@ -1,7 +1,7 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { getAllUsers } from './usersRepo';
 
 const adminLoginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -14,6 +14,8 @@ export type AdminLoginState = {
     username?: string[];
   };
   message?: string | null;
+  success: boolean;
+  redirectUrl?: string;
 };
 
 export async function loginAdmin(
@@ -29,6 +31,7 @@ export async function loginAdmin(
 
   if (!validatedFields.success) {
     return {
+      success: false,
       errors: validatedFields.error.flatten().fieldErrors,
       message: 'Invalid credentials. Please check your input.',
     };
@@ -37,8 +40,8 @@ export async function loginAdmin(
   const { email, username } = validatedFields.data;
 
   // In a real app, this would query the DB. We use the local file.
-  const allUsers = (await import('@/lib/usersRepo')).getAllUsers();
-  const adminUser = (await allUsers).find(
+  const allUsers = await getAllUsers();
+  const adminUser = allUsers.find(
     (user) =>
       user.email === email &&
       user.username === username &&
@@ -46,13 +49,9 @@ export async function loginAdmin(
       user.active
   );
 
-
   if (!adminUser) {
-    return { message: 'Invalid credentials or user is inactive.' };
+    return { success: false, message: 'Invalid credentials or user is inactive.' };
   }
-
-  // In a real app, you would set a session cookie here.
-  // We are skipping this for local-only mock auth.
-
-  redirect('/admin');
+  
+  return { success: true, redirectUrl: '/admin' };
 }

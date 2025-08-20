@@ -1,9 +1,10 @@
 
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, LogIn } from 'lucide-react';
 import { loginAdmin, type AdminLoginState } from '@/lib/actions';
 import { Button } from '@/components/ui/Button';
@@ -22,8 +23,15 @@ function LoginButton() {
 }
 
 export default function AdminLoginPage() {
-  const initialState: AdminLoginState = { message: null, errors: {} };
+  const router = useRouter();
+  const initialState: AdminLoginState = { message: null, errors: {}, success: false };
   const [state, dispatch] = useActionState(loginAdmin, initialState);
+
+  useEffect(() => {
+    if (state.success && state.redirectUrl) {
+        router.push(state.redirectUrl);
+    }
+  }, [state, router]);
  
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-[--bg] text-[--text]">
