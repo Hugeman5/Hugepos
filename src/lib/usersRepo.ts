@@ -30,17 +30,17 @@ export async function getUserById(id: string): Promise<User | null> {
     return users.find(u => u.id === id) || null;
 }
 
-export async function upsertUser(userToUpsert: User): Promise<User> {
+export async function upsertUser(userToUpsert: Partial<User> & { id: string }): Promise<User> {
     const users = await getAllUsers();
     const index = users.findIndex(u => u.id === userToUpsert.id);
 
     if (index > -1) {
-        users[index] = { ...users[index], ...userToUpsert };
+        users[index] = { ...users[index], ...userToUpsert } as User;
     } else {
-        users.push(userToUpsert);
+        users.push(userToUpsert as User);
     }
     await saveAllUsers(users);
-    return userToUpsert;
+    return users.find(u => u.id === userToUpsert.id)!;
 }
 
 export async function deleteUser(id: string): Promise<{ success: boolean }> {
@@ -70,10 +70,10 @@ export async function resetPin(id: string, newPin: string): Promise<{ success: b
 }
 
 
-export type SafeUser = Pick<User, 'id' | 'name' | 'role' | 'active' | 'exposeOnPinLogin' | 'hourlyRate'> & { uid: string };
+export type SafeUser = Pick<User, 'id' | 'name' | 'role' | 'active' | 'exposeOnPinLogin' | 'hourlyRate'>;
 export function toSafe(u: User): SafeUser {
   const { id, name, role, active, exposeOnPinLogin, hourlyRate } = u;
-  return { id, uid: id, name, role, active, exposeOnPinLogin: !!exposeOnPinLogin, hourlyRate: hourlyRate ?? 0 };
+  return { id, name, role, active, exposeOnPinLogin: !!exposeOnPinLogin, hourlyRate: hourlyRate ?? 0 };
 }
 
 export async function listActiveForPinLogin(): Promise<SafeUser[]> {

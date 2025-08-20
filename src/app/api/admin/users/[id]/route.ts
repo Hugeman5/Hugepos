@@ -1,7 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { getAllUsers, saveAllUsers, getUserById, deleteUser } from '@/lib/usersRepo';
-import { z } from 'zod';
+import { getAllUsers, saveAllUsers, deleteUser } from '@/lib/usersRepo';
 
 export const dynamic = "force-dynamic";
 
@@ -28,12 +27,13 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // If hourlyRate is included here, also handle it
     const next = { ...users[i], ...patch };
-    if ("hourlyRate" in patch) {
+    
+    // Ensure numeric fields are correctly typed
+    if ("hourlyRate" in patch && typeof patch.hourlyRate !== 'number') {
       const rate = Number(patch.hourlyRate);
       if (!Number.isFinite(rate) || rate < 0) {
-        return NextResponse.json({ error: "hourlyRate must be >= 0" }, { status: 400 });
+        return NextResponse.json({ error: "hourlyRate must be a non-negative number" }, { status: 400 });
       }
       next.hourlyRate = rate;
     }
