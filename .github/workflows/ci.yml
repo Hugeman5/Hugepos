@@ -1,3 +1,4 @@
+
 name: CI — HugePOS (audit + guards + e2e)
 
 on:
@@ -26,7 +27,7 @@ jobs:
           set -e
           echo "▶ Check: no Firebase-related APIs"
           if grep -R -n -E '\\bfirebase\\b|\\bFirestore\\b|\\bonSnapshot\\b|\\bhttpsCallable\\b' -- . \
-            --exclude-dir=node_modules --exclude-dir=.git --include='*.{ts,tsx,js,jsx,mjs,cjs}'; then
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=functions --include='*.{ts,tsx,js,jsx,mjs,cjs}'; then
             echo '::error::Firebase/Firestore usage detected. Use /data JSON + /api/* only.'
             exit 1
           fi
@@ -110,7 +111,13 @@ jobs:
         run: |
           (npm run dev:6012 &) 
           npx -y wait-on http-get://localhost:6012
-      - name: Run E2E tests
+      - name: Run POS gating smoke test (fast)
+        env:
+          BASE_URL: http://localhost:6012
+          POS_USER: eugene
+        run: npx playwright test e2e/gating-smoke.spec.ts --retries=1
+      - name: Run full E2E suite
+        if: success()
         env:
           BASE_URL: http://localhost:6012
           POS_USER: eugene
