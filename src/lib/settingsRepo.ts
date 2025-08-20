@@ -43,17 +43,13 @@ const defaultSettings: Settings = {
   }
 };
 
-let cached: Settings | null = null;
-
 export async function getSettings(): Promise<Settings> {
-  if (cached) return cached;
   try {
     const raw = await fs.readFile(settingsPath, "utf8");
-    cached = JSON.parse(raw) as Settings;
+    return JSON.parse(raw) as Settings;
   } catch {
-    cached = defaultSettings;
+    return defaultSettings;
   }
-  return cached!;
 }
 
 export async function saveSettings(patch: Partial<Settings>): Promise<Settings> {
@@ -67,6 +63,5 @@ export async function saveSettings(patch: Partial<Settings>): Promise<Settings> 
   };
   await fs.mkdir(dataDir, { recursive: true });
   await fs.writeFile(settingsPath, JSON.stringify(newSettings, null, 2), 'utf-8');
-  cached = newSettings; // Update cache
   return newSettings;
 }
