@@ -1,8 +1,10 @@
 
+
 'use server';
 
 import path from "path";
 import { promises as fs } from "fs";
+import { nextSeq } from "./sequence";
 
 // --- TYPES ---
 export type CashMove = { 
@@ -16,8 +18,10 @@ export type CashMove = {
 
 export type RegisterShift = {
   id: string; 
+  registerId: string;
   openedAt: string; 
   openedBy: string;
+  openedByName: string;
   closedAt?: string; 
   closedBy?: string; 
   notes?: string;
@@ -42,7 +46,8 @@ async function readRegisterFile(): Promise<RegisterFile> {
     const content = await fs.readFile(FILE_PATH, 'utf8');
     return JSON.parse(content || JSON.stringify(defaultState));
   } catch {
-    await writeRegisterFile(defaultState);
+    await fs.mkdir(path.dirname(FILE_PATH), { recursive: true });
+    await fs.writeFile(FILE_PATH, JSON.stringify(defaultState, null, 2), 'utf8');
     return defaultState;
   }
 }
@@ -58,16 +63,18 @@ export async function getRegister(): Promise<RegisterFile> {
   return await readRegisterFile();
 }
 
-export async function openShift(userId: string, openingFloat: number): Promise<RegisterShift> {
+export async function openShift(registerId: string, openingFloat: number, userId: string, userName: string): Promise<RegisterShift> {
   const file = await readRegisterFile();
   if (file.current) {
-    throw new Error("A shift is already open.");
+    throw new Error(`A shift is already open on register ${file.current.registerId}.`);
   }
 
   const newShift: RegisterShift = {
-    id: `shift_${Date.now()}`,
+    id: `shift_${await nextSeq('shift')}`,
+    registerId,
     openedAt: new Date().toISOString(),
     openedBy: userId,
+    openedByName: userName,
     openingFloat,
     cashMovements: [],
     paymentSummary: { cash: 0, card: 0, eft: 0, other: 0 },
@@ -111,7 +118,7 @@ export async function addCashMove(move: Omit<CashMove, "id" | "ts">): Promise<Re
   return file.current;
 }
 
-export async function recordPayment(kind: "cash" | "card" | "eft" | "other", amount: number, orderId: string): Promise<void> {
+export async function recordPayment(kind: "cash" | "card" | "eft" | "other" | "gift_card", amount: number, orderId: string): Promise<void> {
   const file = await readRegisterFile();
   if (!file.current) {
     // No-op if no shift is open, as per instructions.
