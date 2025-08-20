@@ -12,7 +12,7 @@ const navItems = [
 ];
 
 const catalogItems = [
-    { href: '/admin/menu', label: 'Menu Items', icon: Package },
+    { href: '/admin/menu', label: 'Menu Builder', icon: Package },
     { href: '/admin/modifiers', label: 'Modifiers', icon: SwatchBook },
     { href: '/admin/promotions', label: 'Promotions', icon: TicketPercent },
 ];
@@ -98,7 +98,6 @@ export default function AdminSidebar() {
         <NavGroup title="Catalog" items={catalogItems} />
         <NavGroup title="Inventory" items={inventoryItems} />
         <NavGroup title="Purchasing" items={purchasingItems} />
-        <NavGroup title="Accounting" items={accountingItems} />
         <NavGroup title="Users" items={usersItems} />
         <NavGroup title="Operations" items={operationsItems} />
         <NavGroup title="Settings" items={settingsItems} />

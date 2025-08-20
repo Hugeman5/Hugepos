@@ -93,7 +93,7 @@ export default function NewPurchaseOrderPage() {
       if (!res.ok) throw new Error(await res.text());
       const po = await res.json();
       toast({ title: 'Success', description: `PO ${po.id} created.` });
-      router.push(`/admin/purchasing/`);
+      router.push(`/admin/purchasing`);
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     } finally {
