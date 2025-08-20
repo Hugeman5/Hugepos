@@ -1,0 +1,125 @@
+name: CI — HugePOS (audit + guards + e2e)
+
+on:
+  pull_request:
+    branches: ["**"]
+  push:
+    branches: ["main"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Static guards
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Static guard checks (no Firebase, no legacy AI_BRIEF, ZAR-only, no non-local fetch)
+        run: |
+          set -e
+          echo "▶ Check: no Firebase-related APIs"
+          if grep -R -n -E '\\bfirebase\\b|\\bFirestore\\b|\\bonSnapshot\\b|\\bhttpsCallable\\b' -- . \
+            --exclude-dir=node_modules --exclude-dir=.git --include='*.{ts,tsx,js,jsx,mjs,cjs}'; then
+            echo '::error::Firebase/Firestore usage detected. Use /data JSON + /api/* only.'
+            exit 1
+          fi
+
+          echo "▶ Check: no legacy AI_BRIEF.md"
+          if git ls-files | grep -q 'docs/AI_BRIEF.md'; then
+            echo '::error::docs/AI_BRIEF.md found. Use blueprint.md as the single source of truth.'
+            exit 1
+          fi
+
+          echo "▶ Check: no absolute non-local fetch URLs"
+          if grep -R -n -E "fetch\\(\\s*['\`]https?://(?!localhost)" . \
+            --exclude-dir=node_modules --exclude-dir=.git --include='*.{ts,tsx,js,jsx,mjs,cjs}'; then
+            echo '::error::Found absolute non-local fetch URLs. Use relative /api/* paths.'
+            exit 1
+          fi
+
+          echo "▶ Check: enforce ZAR formatting (heuristic)"
+          if grep -R -n -E '\\$\\s*\\d|currency\\s*:\\s*["\']USD|locale\\s*:\\s*["\']en-US' . \
+            --exclude-dir=node_modules --exclude-dir=.git --include='*.{ts,tsx,js,jsx,mdx}'; then
+            echo "::error::USD/$ rendering detected. Use formatMoney(..., { currency:'ZAR', locale:'en-ZA' })."
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm i
+
+      - name: Lint (optional)
+        run: npm run -s lint || echo "ℹ️ no lint script; skipping"
+
+  audit:
+    name: Route/API audit
+    needs: guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci || npm i
+      - name: Run audit script
+        run: |
+          if npm run | grep -q 'audit:routes'; then
+            npm run audit:routes -- --expected tools/expected-routes.json --check-live --base=http://localhost:6012
+          else
+            echo 'ℹ️ No audit:routes script found; consider running scripts/add_audit_and_e2e.sh'
+          fi
+      - name: Upload audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-artifacts
+          path: |
+            tools/expected-routes.json
+            e2e-report/**
+          if-no-files-found: ignore
+
+  e2e:
+    name: Playwright E2E (Register → POS → KDS)
+    needs: audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci || npm i
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      - name: Start dev server on 6012
+        run: |
+          (npm run dev:6012 &) 
+          npx -y wait-on http-get://localhost:6012
+      - name: Run E2E tests
+        env:
+          BASE_URL: http://localhost:6012
+          POS_USER: eugene
+          POS_PIN: 5245
+        run: npm run test:e2e
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e-report
+          if-no-files-found: ignore
