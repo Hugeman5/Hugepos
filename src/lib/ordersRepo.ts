@@ -1,4 +1,5 @@
 
+
 import { promises as fs } from 'fs';
 import path from 'path';
 import { type Order, type Cart, type User, type OrderLine, type CartLineMod, OrderTotal } from './data';
@@ -9,10 +10,11 @@ import * as kdsRepo from './kdsRepo';
 import * as inventoryRepo from './inventoryRepo';
 import * as recipesRepo from './recipesRepo';
 import { type computeLine } from './orders/computeLine';
+import { nextSeq } from './sequence';
+import * as shiftsRepo from './shiftsRepo';
 
 const dataDir = path.join(process.cwd(), 'data');
 const ordersPath = path.join(dataDir, 'orders.json');
-const sequencePath = path.join(dataDir, 'sequence.json');
 
 
 async function readJSONFile<T>(filePath: string, defaultValue: T): Promise<T> {
@@ -49,16 +51,7 @@ async function writeJSONFile<T>(filePath: string, data: T): Promise<void> {
 
 
 export async function nextOrderNumber(): Promise<number> {
-    try {
-        const seq = await readJSONFile(sequencePath, { order: 1001, shift: 1 });
-        const nextNum = seq.order;
-        await writeJSONFile(sequencePath, { ...seq, order: nextNum + 1 });
-        return nextNum;
-    } catch(e) {
-        console.error("Could not get next order number", e);
-        // Fallback to a random high number to avoid collisions
-        return Math.floor(Date.now() / 1000);
-    }
+    return nextSeq('order');
 }
 
 export async function createDraft(user: { uid: string, name: string }, cart: Cart, shiftId?: string): Promise<Order> {
@@ -90,14 +83,11 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
     const stationId = await stationsRepo.resolveStationForProduct(product.id, product.catId);
 
     return {
-      id: line.id,
+      ...line, // Spread the computed line details (name, totals, etc.)
+      id: line.id, // Keep the temporary client-side ID
       lineId: `line_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
       productId: product.id,
-      name: product.name,
-      qty: line.qty,
       unitPrice: product.priceCents,
-      mods: line.mods,
-      lineTotal: line.total,
       prep: {
           stationId: stationId,
           status: 'queued'
@@ -114,6 +104,8 @@ export async function createDraft(user: { uid: string, name: string }, cart: Car
     lines: orderLines,
     totals,
     shiftId: shiftId,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
   };
   
   await saveOrder(order);
@@ -143,56 +135,13 @@ export async function listRecent(limit = 50): Promise<Order[]> {
     const orders = await readJSONFile<Order[]>(ordersPath, []);
     // Ensure sorting by timestamp descending
     return orders
-        .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
+        .sort((a, b) => b.createdAt - a.createdAt)
         .slice(0, limit);
 }
 
 export async function listByShift(shiftId: string): Promise<Order[]> {
     const orders = await readJSONFile<Order[]>(ordersPath, []);
     return orders.filter(o => o.shiftId === shiftId && (o.status === 'PAID' || o.status === 'COMPLETED'));
-}
-
-
-export async function sendToKitchen(orderId: string): Promise<void> {
-    const order = await getOrder(orderId);
-    if (!order) {
-        throw new Error("Order not found");
-    }
-
-    const linesByStation: Record<string, OrderLine[]> = {};
-
-    for (const line of order.lines) {
-        // Only send lines that are still queued
-        if (line.prep.status === 'queued') {
-            const stationId = line.prep.stationId;
-            if (!linesByStation[stationId]) {
-                linesByStation[stationId] = [];
-            }
-            linesByStation[stationId].push(line);
-            line.prep.status = 'in_progress'; // Mark as sent
-        }
-    }
-
-    for (const stationId in linesByStation) {
-        const stationLines = linesByStation[stationId];
-        await kdsRepo.addTicket({
-            orderId: order.id,
-            table: order.service?.tableId || `Order #${order.number}`,
-            station: stationId,
-            lines: stationLines.map(l => ({
-                name: l.name,
-                qty: l.qty,
-                mods: l.mods.map(m => m.optionName).join(', '),
-            })),
-        });
-    }
-
-    const recipeSettings = await recipesRepo.getSettings();
-    if(recipeSettings.decrementOn === 'send'){
-      await inventoryRepo.applyUsageFromOrder(order);
-    }
-
-    await saveOrder(order);
 }
 
 export async function recalculateTotals(orderId: string): Promise<Order> {
@@ -205,10 +154,11 @@ export async function recalculateTotals(orderId: string): Promise<Order> {
     const cart: Cart = {
         lines: order.lines.map(l => ({
             id: l.id,
+            lineId: l.lineId,
             productId: l.productId,
             qty: l.qty,
             subtotal: 0, tax: 0, total: 0,
-            mods: l.mods.reduce((acc, mod) => {
+            mods: (l.mods || []).reduce((acc, mod) => {
                 let found = acc.find(m => m.setId === mod.setId);
                 if (!found) {
                     found = { setId: mod.setId, optionIds: [] };
@@ -222,20 +172,20 @@ export async function recalculateTotals(orderId: string): Promise<Order> {
 
     const { lines: _, ...newTotals } = await computeOrderPricing(cart, menu);
     order.totals = {
-      subtotal: newTotals.subtotal,
-      tax: newTotals.tax,
-      total: newTotals.total,
-      discount: newTotals.discount,
-    }
+      subtotal: newTotals.subtotal / 100,
+      tax: newTotals.tax / 100,
+      total: newTotals.total / 100,
+      discount: (newTotals.discount || 0) / 100,
+    };
     
     // Apply promotions
-    const { promotionsRepo } = await import('./promotionsRepo');
-    const promoResult = await promotionsRepo.evaluateOrder(order);
+    const { evaluateOrder } = await import('./promotionsRepo');
+    const promoResult = await evaluateOrder(order);
     
     order.discounts = promoResult.discounts;
     // Update totals with promotion discounts
-    order.totals.discount = (order.totals.discount || 0) + promoResult.totalDiscount;
-    order.totals.total = Math.max(0, order.totals.total - promoResult.totalDiscount);
+    order.totals.discount = (order.totals.discount || 0) + (promoResult.totalDiscount / 100);
+    order.totals.total = Math.max(0, order.totals.total - (promoResult.totalDiscount / 100));
 
 
     await saveOrder(order);
@@ -272,4 +222,30 @@ export async function createOrderFromLines(originalOrder: Order, lines: OrderLin
     };
     await saveOrder(newOrder, false); // Save without recalculating totals yet
     return recalculateTotals(newOrder.id);
+}
+
+export async function sendOrderToKitchen(orderId: string): Promise<Order> {
+    const order = await getOrder(orderId);
+    if (!order) {
+        throw new Error("Order not found");
+    }
+
+    order.status = 'PAID'; // Mark as sent to KDS
+    if (!order.ticketNo) {
+        order.ticketNo = await nextSeq('ticket');
+    }
+
+    for (const line of order.lines) {
+        if (line.prep.status === 'queued') {
+            line.prep.status = 'in_progress';
+        }
+    }
+
+    const recipeSettings = await recipesRepo.getSettings();
+    if(recipeSettings.decrementOn === 'send'){
+      await inventoryRepo.applyUsageFromOrder(order);
+    }
+
+    await saveOrder(order);
+    return order;
 }

@@ -1,4 +1,5 @@
 
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { LogOut, Link2 } from 'lucide-react';
@@ -17,25 +18,24 @@ import { type User, type Shift } from '@/lib/data';
 type DashboardHeaderProps = {
   title: string;
   user: User;
-  shiftStatus?: Shift | null;
 };
 
-export default function DashboardHeader({ title, user, shiftStatus }: DashboardHeaderProps) {
+export default function DashboardHeader({ title, user }: DashboardHeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
       <h1 className="flex-1 text-xl font-semibold font-headline">{title}</h1>
       <div className="flex items-center gap-4">
-        {user.role !== 'admin' && <ShiftControls registerId={user.activeRegisterId} />}
+        {user && user.role !== 'admin' && <ShiftControls registerId={user.activeRegisterId} />}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" className="relative h-10 w-10 rounded-full !p-0">
-               <Avatar name={user.name} src={(user as any).imageUrl} size={40} />
+               <Avatar name={user?.name ?? '?'} src={(user as any)?.imageUrl} size={40} />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem className="flex flex-col items-start !pointer-events-none p-2">
-                <p className="font-medium">{user.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                <p className="font-medium">{user?.name ?? '...'}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user?.role ?? '...'}</p>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

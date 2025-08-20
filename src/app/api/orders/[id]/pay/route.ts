@@ -14,7 +14,7 @@ import { cashRound } from '@/lib/money';
 export const dynamic = "force-dynamic";
 
 const paymentSchema = z.object({
-  type: z.enum(['cash', 'card', 'gift_card']),
+  type: z.enum(['cash', 'card', 'gift_card', 'other']),
   amount: z.number().positive(),
   tendered: z.number().optional(), // For cash
   last4: z.string().optional(), // For card
@@ -93,6 +93,15 @@ export async function POST(
       return NextResponse.json({ message: `Total payment amount ${totalPaid} is less than order total ${orderTotalDue}.` }, { status: 400 });
     }
 
+    if (!order.shiftId) {
+        const openShift = await shiftsRepo.getOpenShiftForRegister(user.activeRegisterId);
+        if (openShift) {
+            order.shiftId = openShift.id;
+        } else {
+             return NextResponse.json({ message: `No open shift to associate payment with.` }, { status: 400 });
+        }
+    }
+
     // --- Process payments ---
     for (const payment of payments) {
         let paymentAmount = payment.amount;
@@ -125,17 +134,12 @@ export async function POST(
             user,
             ...paymentRecord
         });
+        
+        // Correctly record payment in the shift
+        await shiftsRepo.recordPayment(order.shiftId, payment.type, payment.amount, order.id);
     }
 
     order.status = 'PAID';
-    if (!order.shiftId) {
-        const openShift = await shiftsRepo.getOpenShift();
-        if (openShift) {
-            order.shiftId = openShift.id;
-        } else {
-             return NextResponse.json({ message: `No open shift to associate payment with.` }, { status: 400 });
-        }
-    }
     
     // Accrue points after successful payment
     if (order.customer) {
@@ -152,21 +156,6 @@ export async function POST(
     }
     
     await ordersRepo.saveOrder(order);
-    
-    const shift = await shiftsRepo.getShift(order.shiftId);
-    if (shift) {
-        for (const payment of payments) {
-            if (payment.type === 'cash') {
-                shift.cashPayments = (shift.cashPayments || 0) + payment.amount;
-                shift.cashExpected = (shift.cashExpected || 0) + payment.amount;
-            } else if (payment.type === 'card') {
-                shift.cardPayments = (shift.cardPayments || 0) + payment.amount;
-            } else if (payment.type === 'gift_card') {
-                shift.giftCardPayments = (shift.giftCardPayments || 0) + payment.amount;
-            }
-        }
-        await shiftsRepo.saveShift(shift);
-    }
     
     const inventoryMovesCount = await inventoryRepo.applyUsageFromOrder(order);
 

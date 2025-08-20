@@ -1,4 +1,5 @@
 
+
 import { NextResponse } from 'next/server';
 import * as shiftsRepo from '@/lib/shiftsRepo';
 import { getSession } from '@/lib/session';
@@ -38,3 +39,4 @@ export async function GET(req: Request) {
     return NextResponse.json({ message: "Failed to get shift status", error: errorMessage }, { status: 500 });
   }
 }
+

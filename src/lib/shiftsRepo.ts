@@ -2,14 +2,13 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { type Shift, type User } from './data';
+import { type Shift, type User, type Payment, type CashMovement } from './data';
 import * as cashRepo from './cashRepo';
 import * as ordersRepo from './ordersRepo';
+import { nextSeq } from './sequence';
 
 const dataDir = path.join(process.cwd(), 'data');
 const shiftsPath = path.join(dataDir, 'shifts.json');
-const sequencePath = path.join(dataDir, 'sequence.json');
-
 
 async function readJSONFile<T>(filePath: string, defaultValue: T): Promise<T> {
   try {
@@ -31,15 +30,13 @@ async function writeJSONFile<T>(filePath: string, data: T): Promise<void> {
 }
 
 async function nextShiftId(): Promise<string> {
-    const seq = await readJSONFile(sequencePath, { order: 1001, shift: 1 });
-    const nextId = seq.shift;
-    await writeJSONFile(sequencePath, { ...seq, shift: nextId + 1 });
-    return `shift_${nextId}`;
+    return `shift_${await nextSeq('shift')}`;
 }
 
 
 export async function getAllShifts(): Promise<Shift[]> {
-    return readJSONFile<Shift[]>(shiftsPath, []);
+    const shifts = await readJSONFile<Shift[]>(shiftsPath, []);
+    return shifts.sort((a, b) => new Date(b.tsOpen).getTime() - new Date(a.tsOpen).getTime());
 }
 
 export async function saveAllShifts(shifts: Shift[]): Promise<void> {
@@ -71,7 +68,7 @@ export async function saveShift(shiftToSave: Shift): Promise<Shift> {
 export async function openShift(registerId: string, floatAmount: number, user: {id: string, name: string}): Promise<Shift> {
     const openShiftOnThisRegister = await getOpenShiftForRegister(registerId);
     if (openShiftOnThisRegister) {
-        throw new Error(`A shift is already open on register ${openShiftOnThisRegister.registerName || registerId}.`);
+        throw new Error(`A shift is already open on register ${openShiftOnThisRegister.registerId}.`);
     }
     
     const newShift: Shift = {
@@ -85,7 +82,8 @@ export async function openShift(registerId: string, floatAmount: number, user: {
         cashPayments: 0,
         cardPayments: 0,
         giftCardPayments: 0,
-        cashExpected: floatAmount
+        cashExpected: floatAmount,
+        cashMovements: []
     };
 
     return saveShift(newShift);
@@ -101,15 +99,26 @@ export async function closeShift(shiftId: string, cashActual: number, user: {id:
     shift.userIdClose = user.id;
     shift.userNameClose = user.name;
     shift.cashActual = cashActual;
+    shift.cashDifference = cashActual - (shift.cashExpected || 0);
+    shift.notes = notes;
     
     return saveShift(shift);
 }
 
-export async function addCashMove(move: Omit<cashRepo.CashMovement, "id" | "ts">) {
+export async function addCashMove(move: Omit<CashMovement, "id" | "ts">) {
   const shift = await getShift(move.shiftId);
   if (!shift || shift.status !== 'open') throw new Error("Shift not open");
+  
+  if (!shift.cashMovements) {
+      shift.cashMovements = [];
+  }
 
-  await cashRepo.addMovement(move);
+  const newMove: CashMovement = {
+      ...move,
+      id: `cash_${Date.now()}`,
+      ts: new Date().toISOString()
+  };
+  shift.cashMovements.push(newMove);
 
   if (move.type === 'payin') {
     shift.cashExpected = (shift.cashExpected || 0) + move.amount;
@@ -119,7 +128,7 @@ export async function addCashMove(move: Omit<cashRepo.CashMovement, "id" | "ts">
   return await saveShift(shift);
 }
 
-export async function recordPayment(shiftId: string, kind: 'cash' | 'card' | 'gift_card' | 'other', amount: number, orderId: string) {
+export async function recordPayment(shiftId: string, kind: Payment['type'], amount: number, orderId: string) {
   const shift = await getShift(shiftId);
   if (!shift || shift.status !== 'open') {
     console.warn(`Attempted to record payment on closed or non-existent shift ${shiftId}`);
