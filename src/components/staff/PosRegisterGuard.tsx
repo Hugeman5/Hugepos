@@ -15,21 +15,27 @@ export function PosRegisterGuard({ user, onOpened }: { user: User; onOpened?: ()
   const { toast } = useToast();
 
   const checkClockStatus = useCallback(async () => {
+    if (!user?.id) {
+        setLoading(false);
+        setClockedIn(false);
+        return;
+    }
     setLoading(true);
     getClockStatus(user.id)
       .then(s => setClockedIn(!!s.active))
       .catch(() => setClockedIn(false)) // network error → treat as not clocked-in
       .finally(() => setLoading(false));
-  }, [user.id]);
+  }, [user?.id]);
   
   useEffect(() => {
     checkClockStatus();
   }, [checkClockStatus]);
 
   async function clockInAndOpen() {
+    if (!user) { setErr('MISSING_USER'); return; }
     setBusy(true); setErr(null);
     try { 
-      await postClockIn({ userId: user.id, stationId: 'front', role: 'cashier', hourlyRate: user.hourlyRate }); 
+      await postClockIn({ userId: user.id, stationId: 'front', role: user.role, hourlyRate: user.hourlyRate }); 
       setClockedIn(true);
       toast({title: "Clocked In", description: "You are now on the clock."});
     } catch { 
@@ -38,7 +44,6 @@ export function PosRegisterGuard({ user, onOpened }: { user: User; onOpened?: ()
       return; 
     }
     
-    // Slight delay to allow UI to update if needed, then open register
     setTimeout(async () => {
         const res = await ensureRegisterOpen(user, user.activeRegisterId || 'checkout_counter', 500, 'POS quick open');
         setBusy(false);
@@ -52,6 +57,7 @@ export function PosRegisterGuard({ user, onOpened }: { user: User; onOpened?: ()
   }
 
   async function openOnly() {
+    if (!user) { setErr('MISSING_USER'); return; }
     setBusy(true); setErr(null);
     const res = await ensureRegisterOpen(user, user.activeRegisterId || 'checkout_counter', 500, 'POS quick open');
     setBusy(false);
@@ -66,7 +72,7 @@ export function PosRegisterGuard({ user, onOpened }: { user: User; onOpened?: ()
         <span>⚠️</span>
         <strong>No Open Register</strong>
       </div>
-      {!loading && !clockedIn && (
+       {!loading && !clockedIn && (
         <div className="bg-yellow-900/50 text-yellow-300 p-2 rounded-md mb-4 text-sm">
           Clocked out — tap <strong>Clock In & Open</strong> to continue.
         </div>

@@ -10,7 +10,7 @@ import { type User } from '@/lib/data';
 import Avatar from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/card';
 import Keypad from '@/components/ui/Keypad';
-import { setSessionUserId } from '@/lib/session';
+import { setSessionUser } from '@/lib/session';
 
 export default function StaffLoginPage() {
   const router = useRouter();
@@ -86,7 +86,7 @@ export default function StaffLoginPage() {
             throw new Error(data.error || 'Invalid credentials.');
         }
         
-        setSessionUserId(data.uid); // Set session user ID on successful login
+        setSessionUser({ id: data.uid, name: data.name, role: data.role, hourlyRate: data.hourlyRate });
         router.push(routeForRole(data.role));
 
     } catch (e) {

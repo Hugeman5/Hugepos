@@ -1,6 +1,9 @@
 
 import { type User } from "./data";
 
+export type SessionUser = Pick<User, 'id' | 'name' | 'role' | 'hourlyRate'>;
+const KEY = 'session.user';
+
 /**
  * Reads user session info from sessionStorage.
  * This is a client-side only function.
@@ -24,11 +27,11 @@ export function getSession(): (User & { uid: string, activeRegisterId?: string }
     return null;
 }
 
-export function setSessionUserId(id: string) {
-  if (typeof window !== 'undefined') {
-    try { 
-      // This is a simplified session, a real app would have more here
-      sessionStorage.setItem('mockUser', JSON.stringify({ uid: id })); 
-    } catch {}
-  }
+export function setSessionUser(u: SessionUser) {
+    if (typeof window !== 'undefined') {
+        try { 
+            const sessionData = { ...u, uid: u.id };
+            sessionStorage.setItem('mockUser', JSON.stringify(sessionData)); 
+        } catch {}
+    }
 }
