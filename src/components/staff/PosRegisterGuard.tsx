@@ -11,10 +11,15 @@ export function PosRegisterGuard({ user, onOpened }: { user: User; onOpened?: ()
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [clockedIn, setClockedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const checkClockStatus = useCallback(async () => {
-    getClockStatus(user.id).then(s => setClockedIn(!!s.active)).catch(() => setClockedIn(false));
+    setLoading(true);
+    getClockStatus(user.id)
+      .then(s => setClockedIn(!!s.active))
+      .catch(() => setClockedIn(false)) // network error → treat as not clocked-in
+      .finally(() => setLoading(false));
   }, [user.id]);
   
   useEffect(() => {
@@ -61,9 +66,9 @@ export function PosRegisterGuard({ user, onOpened }: { user: User; onOpened?: ()
         <span>⚠️</span>
         <strong>No Open Register</strong>
       </div>
-      {!clockedIn && (
+      {!loading && !clockedIn && (
         <div className="bg-yellow-900/50 text-yellow-300 p-2 rounded-md mb-4 text-sm">
-          You are clocked out. Clock in to open the register.
+          Clocked out — tap <strong>Clock In & Open</strong> to continue.
         </div>
       )}
       <p className="text-sm text-brand-mute mb-4">A register shift must be opened before processing sales.</p>

@@ -10,12 +10,7 @@ import { type User } from '@/lib/data';
 import Avatar from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/card';
 import Keypad from '@/components/ui/Keypad';
-
-const setSession = (user: { uid: string, name: string, role: string }) => {
-    if (typeof window !== 'undefined') {
-        sessionStorage.setItem('mockUser', JSON.stringify(user));
-    }
-};
+import { setSessionUserId } from '@/lib/session';
 
 export default function StaffLoginPage() {
   const router = useRouter();
@@ -91,7 +86,7 @@ export default function StaffLoginPage() {
             throw new Error(data.error || 'Invalid credentials.');
         }
         
-        setSession({ uid: data.uid, name: data.name, role: data.role });
+        setSessionUserId(data.uid); // Set session user ID on successful login
         router.push(routeForRole(data.role));
 
     } catch (e) {
@@ -126,6 +121,7 @@ export default function StaffLoginPage() {
               {users.map(user => (
                 <button 
                   key={user.id} 
+                  data-testid={`user-card-${user.id}`}
                   onClick={() => handleSelectUser(user)}
                   disabled={submitting}
                   className={`p-3 rounded-2xl border transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2

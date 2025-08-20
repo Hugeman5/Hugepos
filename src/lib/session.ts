@@ -23,3 +23,12 @@ export function getSession(): (User & { uid: string, activeRegisterId?: string }
     }
     return null;
 }
+
+export function setSessionUserId(id: string) {
+  if (typeof window !== 'undefined') {
+    try { 
+      // This is a simplified session, a real app would have more here
+      sessionStorage.setItem('mockUser', JSON.stringify({ uid: id })); 
+    } catch {}
+  }
+}
