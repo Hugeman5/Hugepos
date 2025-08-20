@@ -4,7 +4,7 @@ import { z } from 'zod';
 import * as ordersRepo from '@/lib/ordersRepo';
 import * as paymentsRepo from '@/lib/paymentsRepo';
 import * as inventoryRepo from '@/lib/inventoryRepo';
-import { recordPayment } from '@/lib/registerRepo'; // Use the new centralized repo
+import { recordPayment, getRegister } from '@/lib/registerRepo';
 import * as loyaltyRepo from '@/lib/loyaltyRepo';
 import * as customersRepo from '@/lib/customersRepo';
 import * as giftCardsRepo from '@/lib/giftCardsRepo';
@@ -36,6 +36,15 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const registerState = await getRegister();
+    if(registerState.state !== 'OPEN') {
+        return NextResponse.json({ message: 'Register is not open. Cannot process payments.'}, { status: 403 });
+    }
+    const currentShiftId = registerState.currentShift?.id;
+    if (!currentShiftId) {
+       return NextResponse.json({ message: 'No active shift found.'}, { status: 403 });
+    }
+
     const orderId = params.id;
     const body = await req.json();
     const validation = paySchema.safeParse(body);
@@ -68,7 +77,7 @@ export async function POST(
         const customer = await customersRepo.getCustomer(customerId);
         if (customer && customer.points && customer.points >= pointsToRedeem) {
             const redeemValue = pointsToRedeem / rules.redeem.pointsPerCurrency;
-            const maxDiscount = order.totals.subtotal * (rules.maxRedeemPct / 100);
+            const maxDiscount = (order.totals.subtotal || 0) * (rules.maxRedeemPct / 100);
             const appliedDiscount = Math.min(redeemValue, maxDiscount);
 
             if (appliedDiscount > 0) {
@@ -117,11 +126,18 @@ export async function POST(
             ...paymentRecord
         });
         
-        // **Critical Fix: Record the payment against the active shift**
-        await recordPayment(payment.type, payment.amount, order.id);
+        const methodMap: Record<string, 'CASH'|'CARD'|'OTHER'> = {
+            cash: 'CASH',
+            card: 'CARD',
+            eft: 'OTHER',
+            other: 'OTHER',
+            gift_card: 'OTHER',
+        };
+        await recordPayment(order.id, methodMap[payment.type], payment.amount);
     }
 
     order.status = 'PAID';
+    order.shiftId = currentShiftId;
     
     if (order.customer) {
         const rules = await loyaltyRepo.getRules();

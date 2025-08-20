@@ -1,4 +1,19 @@
 {
-  "current": null,
+  "current": {
+    "id": "shift_4",
+    "registerId": "waiter_1",
+    "openedAt": "2025-08-20T09:19:46.189Z",
+    "openedBy": "jwaiter",
+    "openedByName": "Jane Waiter",
+    "openingFloat": 500,
+    "cashMovements": [],
+    "paymentSummary": {
+      "cash": 0,
+      "card": 0,
+      "eft": 0,
+      "other": 0
+    },
+    "orderIds": []
+  },
   "history": []
 }

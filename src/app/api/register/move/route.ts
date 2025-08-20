@@ -1,14 +1,14 @@
-
 import { NextResponse } from 'next/server';
-import { addCashMove } from '@/lib/registerRepo';
+import { moveCash } from '@/lib/repos/registerRepo';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
 const schema = z.object({
-  type: z.enum(['in', 'out']),
+  type: z.enum(['IN', 'OUT']),
   amount: z.number().positive(),
   reason: z.string().min(1, 'A reason is required for cash movements.'),
+  by: z.string().min(1),
 });
 
 export async function POST(req: Request) {
@@ -16,13 +16,15 @@ export async function POST(req: Request) {
     const body = await req.json();
     const validation = schema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json({ error: "Invalid request body", details: validation.error.flatten().fieldErrors }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "BAD_REQUEST", details: validation.error.flatten().fieldErrors }, { status: 400 });
     }
-    const shift = await addCashMove(validation.data);
-    return NextResponse.json(shift);
+    const result = await moveCash(validation.data.by, validation.data.type, validation.data.amount, validation.data.reason);
+    if (!result.ok) {
+        return NextResponse.json(result, { status: result.status });
+    }
+    return NextResponse.json(result);
   } catch (e) {
     const error = e as Error;
-    const status = error.message.includes("No shift is open") ? 409 : 500;
-    return NextResponse.json({ error: error.message }, { status });
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }
