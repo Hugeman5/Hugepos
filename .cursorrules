@@ -1,0 +1,6 @@
+- Never add Firebase or remote services. Use /data/*.json + Node fs.
+- All money shows ZAR with “R ” and en-ZA formatting.
+- VAT defaults to 15%.
+- Do not change existing route paths; extend them if needed.
+- If you touch costing, use lib/uom.ts and lib/costing.ts.
+- If you add a page, protect it with existing session/role guards.
