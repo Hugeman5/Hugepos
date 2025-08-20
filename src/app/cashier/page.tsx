@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
 import { type Settings } from '@/lib/settingsRepo';
 import { getSession } from '@/lib/session';
+import { PosRegisterGuard } from '@/components/staff/PosRegisterGuard';
 
 // A constant for the cashier register ID. In a real app, this might be dynamic.
 const CASHIER_REGISTER_ID = 'checkout_counter';
@@ -52,8 +53,7 @@ export default function CashierDashboardPage() {
      }
   }, [user, toast, openShift]);
 
-  useEffect(() => {
-    async function fetchInitialData() {
+  const fetchInitialData = useCallback(async () => {
       try {
         const [menuRes, shiftRes, settingsRes] = await Promise.all([
             fetch('/api/admin/menu'),
@@ -78,10 +78,11 @@ export default function CashierDashboardPage() {
         console.error(e);
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
       }
-    }
+    }, [toast]);
     
+  useEffect(() => {
     fetchInitialData();
-  }, [toast]);
+  }, [fetchInitialData]);
   
   useEffect(() => {
     if (user && !order) {
@@ -172,10 +173,29 @@ export default function CashierDashboardPage() {
     setOrder(updatedOrder);
   }
 
-  if (!menuData || !order || !settings || !user) {
+  if (!menuData || !settings || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         Loading POS...
+      </div>
+    );
+  }
+  
+  if (!openShift) {
+    return (
+        <div className="flex h-screen w-full flex-col bg-muted/40">
+            <DashboardHeader title="Cashier POS" user={user} />
+            <div className="flex flex-1 items-center justify-center p-4">
+                <PosRegisterGuard user={user} onOpened={fetchInitialData} />
+            </div>
+        </div>
+    )
+  }
+
+  if (!order) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        Creating new order...
       </div>
     );
   }

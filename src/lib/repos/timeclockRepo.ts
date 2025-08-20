@@ -1,15 +1,19 @@
-// src/lib/repos/timeclock.ts
+
 import { readJson, writeJsonAtomic, nowIso } from './io';
+import { type User } from '../data';
+import { getAllUsers } from '../usersRepo';
+
+export interface ActiveShift {
+  shiftId: string;
+  clockInAt: string;
+  breaks: Array<{ start: string; end?: string | null }>;
+  stationId?: string;
+  role?: string;
+  hourlyRate?: number;
+}
 
 export interface TimeClockFile {
-  active: Record<string, {
-    shiftId: string;
-    clockInAt: string;
-    breaks: Array<{ start: string; end?: string | null }>;
-    stationId?: string;
-    role?: string;
-    hourlyRate?: number;
-  }>;
+  active: Record<string, ActiveShift>;
   history: Array<{
     userId: string;
     shiftId: string;
@@ -47,7 +51,6 @@ export async function clockOut(userId: string) {
   const act = file.active[userId];
   if (!act) return { ok: false as const, status: 409, error: 'NOT_CLOCKED_IN' };
   const outAt = nowIso();
-  // close any open break
   if (act.breaks.length && !act.breaks[act.breaks.length - 1].end) act.breaks[act.breaks.length - 1].end = outAt;
   const workedSeconds = secs(act.clockInAt, outAt);
   const breakSeconds = act.breaks.reduce((s, b) => s + (b.end ? secs(b.start, b.end) : 0), 0);
@@ -79,4 +82,39 @@ export async function breakEnd(userId: string) {
   last.end = nowIso();
   await writeJsonAtomic('timeclock.json', file);
   return { ok: true as const };
+}
+
+export async function listPunches(filters: {userId?: string; from?: string; to?: string}) {
+    const file = await readJson<TimeClockFile>('timeclock.json', DEFAULT_TC);
+    let all = file.history;
+    if(filters.userId) all = all.filter(p => p.userId === filters.userId);
+    if(filters.from) all = all.filter(p => p.clockInAt >= filters.from!);
+    if(filters.to) all = all.filter(p => p.clockInAt <= filters.to!);
+    return all;
+}
+
+export async function earningsForRange(filters: {userId?: string; from?: string; to?: string}) {
+    const punches = await listPunches(filters);
+    const users = await getAllUsers();
+    const userMap = new Map(users.map(u => [u.id, u]));
+
+    const report: Record<string, { totalMs: number; earningsZar: number }> = {};
+
+    for(const p of punches) {
+        if (!report[p.userId]) report[p.userId] = { totalMs: 0, earningsZar: 0 };
+        const rate = userMap.get(p.userId)?.hourlyRate || 0;
+        report[p.userId].totalMs += p.paidSeconds * 1000;
+        report[p.userId].earningsZar += p.laborCost;
+    }
+    return report;
+}
+
+export async function activeNow(): Promise<Array<{userId:string; startedAt:string; elapsedMs:number}>> {
+    const file = await readJson<TimeClockFile>('timeclock.json', DEFAULT_TC);
+    const now = Date.now();
+    return Object.entries(file.active).map(([userId, shift]) => ({
+        userId,
+        startedAt: shift.clockInAt,
+        elapsedMs: now - new Date(shift.clockInAt).getTime(),
+    }));
 }

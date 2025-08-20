@@ -1,16 +1,15 @@
+
 import { NextResponse } from 'next/server';
-import { openShift } from '@/lib/shiftsRepo';
+import { openRegister } from '@/lib/repos/registerRepo';
+import { getStatus as getTimeclockStatus } from '@/lib/repos/timeclockRepo';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
 const schema = z.object({
-  registerId: z.string().min(1, 'Register ID is required.'),
+  userId: z.string().min(1, 'User ID is required.'),
+  userName: z.string().min(1, 'User name is required.'),
   openingFloat: z.number().min(0, 'Float must be non-negative.'),
-  user: z.object({
-    id: z.string().min(1),
-    name: z.string().min(1),
-  }),
   notes: z.string().optional(),
 });
 
@@ -21,15 +20,23 @@ export async function POST(req: Request) {
     if (!validation.success) {
       return NextResponse.json({ ok: false, error: "BAD_REQUEST", details: validation.error.flatten().fieldErrors }, { status: 400 });
     }
-    const { registerId, openingFloat, user, notes } = validation.data;
-    const result = await openShift(registerId, openingFloat, user, notes);
-    
+    const { userId, userName, openingFloat, notes } = validation.data;
+
+    // Gate: User must be clocked in
+    try {
+      const tc = await getTimeclockStatus(userId);
+      if (!tc.active) return NextResponse.json({ ok: false, error: 'NOT_CLOCKED_IN' }, { status: 403 });
+    } catch {
+      return NextResponse.json({ ok: false, error: 'NOT_CLOCKED_IN' }, { status: 403 });
+    }
+
+    const result = await openRegister(userId, userName, openingFloat, notes);
+    if (!result.ok) {
+        return NextResponse.json(result, { status: result.status });
+    }
     return NextResponse.json(result);
   } catch (e) {
     const error = e as Error;
-     if (error.message.includes('already open')) {
-        return NextResponse.json({ ok: false, error: 'REGISTER_ALREADY_OPEN' }, { status: 409 });
-    }
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }

@@ -1,5 +1,7 @@
+
 // src/lib/repos/registerRepo.ts
 import { readJson, writeJsonAtomic, nowIso } from './io';
+import { nextSeq } from '../sequence';
 
 export type RegisterState = 'OPEN' | 'CLOSED';
 
@@ -13,6 +15,7 @@ export interface RegisterShift {
   id: string;
   openedAt: string;
   openedBy: string;
+  openedByName: string;
   openingFloat: number;
   movements: Array<{ id: string; type: 'IN'|'OUT'; amount: number; reason: string; at: string; by: string }>;
   payments: { cash: number; card: number; other: number };
@@ -32,15 +35,16 @@ export async function getRegister(): Promise<RegisterFile> {
   return readJson<RegisterFile>('register.json', DEFAULT_REGISTER);
 }
 
-export async function openRegister(userId: string, openingFloat: number, notes?: string) {
+export async function openRegister(userId: string, userName: string, openingFloat: number, notes?: string) {
   const file = await getRegister();
   if (file.state === 'OPEN' && file.currentShift) {
     return { ok: false as const, status: 409, error: 'REGISTER_ALREADY_OPEN', register: file };
   }
   const shift: RegisterShift = {
-    id: newId('rsh'),
+    id: `rsh_${await nextSeq('shift')}`,
     openedAt: nowIso(),
     openedBy: userId,
+    openedByName: userName,
     openingFloat,
     movements: [],
     payments: { cash: 0, card: 0, other: 0 },
@@ -70,7 +74,10 @@ export async function moveCash(userId: string, type: 'IN'|'OUT', amount: number,
 export async function recordPayment(orderId: string, method: 'CASH'|'CARD'|'OTHER', amount: number, paidAt?: string) {
   const file = await getRegister();
   if (file.state !== 'OPEN' || !file.currentShift) {
-    return { ok: false as const, status: 409, error: 'REGISTER_CLOSED' };
+    // This is a valid state if a transaction completes after a register is force-closed, for example.
+    // We should not throw an error, but simply not record the payment against the closed shift.
+    console.warn(`Payment for order ${orderId} received, but no register is open. Payment not logged against a shift.`);
+    return { ok: true as const, warning: 'NO_OPEN_SHIFT' };
   }
   file.currentShift.orders.push({ orderId, amount, method, paidAt: paidAt || nowIso() });
   file.currentShift.payments[method.toLowerCase() as 'cash'|'card'|'other'] += amount;

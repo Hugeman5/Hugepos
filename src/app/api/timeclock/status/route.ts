@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getStatus } from '@/lib/repos/timeclockRepo';
 
@@ -14,8 +15,8 @@ export async function GET(req: Request) {
     const status = await getStatus(userId);
     return NextResponse.json(status);
   } catch (e) {
-    // Should not be reached with the new repo logic, but as a safeguard:
-    console.error('[API /timeclock/status]', e);
+    // This catch block is a safeguard but should not be reached with the new repo logic.
+    console.error('[API /timeclock/status] Safeguard catch:', e);
     return NextResponse.json({ active: false, error: (e as Error).message }, { status: 500 });
   }
 }

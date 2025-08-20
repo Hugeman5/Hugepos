@@ -1,6 +1,5 @@
 
-import { promises as fs } from 'fs';
-import path from 'path';
+import { readJson, writeJsonAtomic } from './repos/io';
 
 export type Settings = {
   currency: string;
@@ -17,10 +16,8 @@ export type Settings = {
     cashRounding: boolean;
     cashStep: number;
   };
+  requireClockedInToTransact?: boolean;
 };
-
-const dataDir = path.join(process.cwd(), 'data');
-const settingsPath = path.join(dataDir, 'settings.json');
 
 const defaultSettings: Settings = {
   currency: "ZAR",
@@ -40,28 +37,22 @@ const defaultSettings: Settings = {
     displayDecimals: 2,
     cashRounding: false,
     cashStep: 0.10
-  }
+  },
+  requireClockedInToTransact: true,
 };
 
 export async function getSettings(): Promise<Settings> {
-  try {
-    const raw = await fs.readFile(settingsPath, "utf8");
-    return JSON.parse(raw) as Settings;
-  } catch {
-    return defaultSettings;
-  }
+  return await readJson<Settings>('settings.json', defaultSettings);
 }
 
 export async function saveSettings(patch: Partial<Settings>): Promise<Settings> {
   const currentSettings = await getSettings();
-  // Deep merge for nested objects like 'vat' and 'rounding'
   const newSettings = { 
       ...currentSettings, 
       ...patch,
       vat: { ...currentSettings.vat, ...patch.vat },
       rounding: { ...currentSettings.rounding, ...patch.rounding }
   };
-  await fs.mkdir(dataDir, { recursive: true });
-  await fs.writeFile(settingsPath, JSON.stringify(newSettings, null, 2), 'utf-8');
+  await writeJsonAtomic('settings.json', newSettings);
   return newSettings;
 }

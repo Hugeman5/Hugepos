@@ -12,13 +12,14 @@ import { useToast } from '@/hooks/use-toast';
 import { type Register } from '@/lib/data';
 import { DoorOpen } from 'lucide-react';
 import { getSession } from '@/lib/session';
+import { ensureRegisterOpen } from '@/hooks/useEnsureRegisterOpen';
 
 export default function OpenRegisterPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [registers, setRegisters] = useState<Register[]>([]);
   const [selectedRegister, setSelectedRegister] = useState('');
-  const [floatAmount, setFloatAmount] = useState('');
+  const [floatAmount, setFloatAmount] = useState('500');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const user = getSession();
@@ -30,6 +31,10 @@ export default function OpenRegisterPage() {
         if (!res.ok) throw new Error('Failed to load registers.');
         const data = await res.json();
         setRegisters(data);
+        // Default to first register if available
+        if (data.length > 0) {
+          setSelectedRegister(data[0].id);
+        }
       } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
       }
@@ -48,35 +53,19 @@ export default function OpenRegisterPage() {
         return;
     }
     setIsSubmitting(true);
-    try {
-        const res = await fetch('/api/register/open', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                registerId: selectedRegister,
-                floatAmount: parseFloat(floatAmount),
-                user: { id: user.uid, name: user.name }
-            })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-            throw new Error(data.message || 'Failed to open shift.');
-        }
-        toast({ title: 'Shift Opened', description: `Shift ${data.shift.id} opened on register ${selectedRegister}.` });
-        
-        // After opening, route to the appropriate dashboard
+    
+    const res = await ensureRegisterOpen(user, selectedRegister, parseFloat(floatAmount));
+    if (res.opened) {
+        toast({ title: 'Shift Opened', description: `Shift opened on register ${selectedRegister}.` });
         const role = user?.role || 'cashier';
-        if (role === 'waiter') {
-            router.push('/waiter');
-        } else {
-            router.push('/cashier');
-        }
-        
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
-    } finally {
-        setIsSubmitting(false);
+        router.push(role === 'waiter' ? '/waiter' : '/cashier');
+    } else if (res.alreadyOpen) {
+        toast({ variant: 'destructive', title: 'Already Open', description: 'A shift is already open on this register.' });
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: res.error });
     }
+    
+    setIsSubmitting(false);
   };
 
 
