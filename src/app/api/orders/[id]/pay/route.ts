@@ -4,8 +4,7 @@ import { z } from 'zod';
 import * as ordersRepo from '@/lib/ordersRepo';
 import * as paymentsRepo from '@/lib/paymentsRepo';
 import * as inventoryRepo from '@/lib/inventoryRepo';
-import * as shiftsRepo from '@/lib/shiftsRepo';
-import { recordPayment } from '@/lib/registerRepo';
+import { recordPayment } from '@/lib/registerRepo'; // Use the new centralized repo
 import * as loyaltyRepo from '@/lib/loyaltyRepo';
 import * as customersRepo from '@/lib/customersRepo';
 import * as giftCardsRepo from '@/lib/giftCardsRepo';
@@ -57,7 +56,6 @@ export async function POST(
 
     const { payments, user, customerId, pointsToRedeem } = validation.data;
     
-    // --- Loyalty & Customer Handling ---
     if (customerId) {
         const customer = await customersRepo.getCustomer(customerId);
         if (customer) {
@@ -86,7 +84,6 @@ export async function POST(
             }
         }
     }
-    // --- End Loyalty ---
 
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
     const orderTotalDue = order.totals.total || 0;
@@ -94,28 +91,21 @@ export async function POST(
       return NextResponse.json({ message: `Total payment amount ${totalPaid} is less than order total ${orderTotalDue}.` }, { status: 400 });
     }
 
-    // --- Process payments ---
     for (const payment of payments) {
         let paymentAmount = payment.amount;
         let paymentRecord: any = {};
 
         if (payment.type === 'gift_card') {
             if (!payment.ref) throw new Error("Gift card code (ref) is required for gift_card payment.");
-            await giftCardsRepo.redeem({
-                code: payment.ref,
-                amount: payment.amount,
-                orderId,
-                user
-            });
+            await giftCardsRepo.redeem({ code: payment.ref, amount: payment.amount, orderId, user });
         }
         
         if (payment.type === 'cash' && settings.rounding.cashRounding) {
             paymentRecord.amountRounded = cashRound(payment.amount, settings.rounding.cashStep);
             paymentRecord.cashStep = settings.rounding.cashStep;
-            paymentAmount = paymentRecord.amountRounded; // Use rounded amount for calculations
+            paymentAmount = paymentRecord.amountRounded;
         }
 
-        // Record payment in master payment log
         await paymentsRepo.appendPayment({
             orderId,
             type: payment.type,
@@ -127,13 +117,12 @@ export async function POST(
             ...paymentRecord
         });
         
-        // Record payment in the currently active shift
+        // **Critical Fix: Record the payment against the active shift**
         await recordPayment(payment.type, payment.amount, order.id);
     }
 
     order.status = 'PAID';
     
-    // Accrue points after successful payment
     if (order.customer) {
         const rules = await loyaltyRepo.getRules();
         const pointsEarned = Math.floor(order.totals.total * rules.earn.pointsPerCurrency);

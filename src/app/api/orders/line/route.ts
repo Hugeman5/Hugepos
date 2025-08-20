@@ -10,26 +10,19 @@ export async function PATCH(req: Request) {
   try {
     const { orderId, lineId, qty } = await req.json();
     if (!orderId || !lineId || typeof qty !== "number") {
-      return NextResponse.json({ error: "orderId, lineId, qty required" }, { status: 400 });
+      return NextResponse.json({ error: "orderId, lineId, and qty (number) are required" }, { status: 400 });
     }
 
     const menu = await getMenu();
-    const allOrders = await readAll();
-    const currentOrder = allOrders.find(o => o.id === orderId);
-    const oldLine = currentOrder?.lines.find(l => l.id === lineId);
-
-    if (!oldLine) {
-        throw new Error("Line or Order not found");
-    }
-    
-    const recompute = (old: typeof oldLine) => {
-        const fresh = computeLine({ menu, itemId: old.itemId, qty, choices: old.choices || {} });
-        return { ...old, ...fresh, qty };
-    }
     
     const order = await updateLineQty({
-      orderId, lineId, qty,
-      recompute
+      orderId, 
+      lineId, 
+      qty,
+      recompute: (old) => {
+        const fresh = computeLine({ menu, itemId: old.itemId, qty, choices: old.choices || {} });
+        return { ...old, ...fresh, qty };
+      }
     });
 
     return NextResponse.json({ ok: true, order });

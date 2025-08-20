@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const validation = schema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(validation.error.flatten().fieldErrors, { status: 400 });
+      return NextResponse.json({ error: "Invalid request body", details: validation.error.flatten().fieldErrors }, { status: 400 });
     }
     const shift = await closeShift(validation.data.userId, validation.data.notes);
     return NextResponse.json(shift);

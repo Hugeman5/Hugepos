@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 const schema = z.object({
   userId: z.string().min(1),
-  float: z.number().min(0),
+  floatAmount: z.number().min(0),
 });
 
 export async function POST(req: Request) {
@@ -15,9 +15,9 @@ export async function POST(req: Request) {
     const body = await req.json();
     const validation = schema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json(validation.error.flatten().fieldErrors, { status: 400 });
+      return NextResponse.json({ error: "Invalid request body", details: validation.error.flatten().fieldErrors }, { status: 400 });
     }
-    const shift = await openShift(validation.data.userId, validation.data.float);
+    const shift = await openShift(validation.data.userId, validation.data.floatAmount);
     return NextResponse.json(shift);
   } catch (e) {
     const error = e as Error;
