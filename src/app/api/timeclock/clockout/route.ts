@@ -1,26 +1,16 @@
+
 import { NextResponse } from 'next/server';
 import { clockOut } from '@/lib/repos/timeclockRepo';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
-const schema = z.object({
-  userId: z.string().min(1),
-});
-
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const validation = schema.safeParse(body);
-    if (!validation.success) {
-      return NextResponse.json({ ok: false, error: 'BAD_REQUEST' }, { status: 400 });
-    }
-    const result = await clockOut(validation.data.userId);
-    if (!result.ok) {
-        return NextResponse.json(result, { status: result.status });
-    }
-    return NextResponse.json(result);
-  } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
-  }
+  let body: any = {};
+  try { body = await req.json(); } catch { body = {}; }
+  const userId = String(body?.userId ?? body?.user ?? '').trim();
+  if (!userId) return NextResponse.json({ ok: false, error: 'MISSING_USER' }, { status: 400 });
+  const r = await clockOut(userId);
+  const status = (r as any).ok ? 200 : ((r as any).status ?? 409);
+  return NextResponse.json(r, { status });
 }

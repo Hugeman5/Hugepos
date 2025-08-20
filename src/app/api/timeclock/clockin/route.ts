@@ -1,31 +1,23 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clockIn } from '@/lib/repos/timeclockRepo';
-import { z } from 'zod';
-
-export const dynamic = 'force-dynamic';
 
 function coerceUserId(body: any): string {
-  const id = body?.userId ?? body?.user ?? body?.uid ?? body?.waiter ?? body?.jwaiter ?? body?.id;
+  const id = body?.userId ?? body?.user ?? body?.uid ?? body?.waiter ?? body?.jwaiter;
   return (id == null ? '' : String(id)).trim();
 }
-
-const schema = z.object({
-  stationId: z.string().optional(),
-  role: z.string().optional(),
-  hourlyRate: z.number().optional()
-});
 
 export async function POST(req: NextRequest) {
   let body: any = {};
   try { body = await req.json(); } catch { body = {}; }
-  
   const userId = coerceUserId(body);
   if (!userId) return NextResponse.json({ ok: false, error: 'MISSING_USER' }, { status: 400 });
 
-  const { stationId, role, hourlyRate } = schema.parse(body);
+  const stationId = typeof body?.stationId === 'string' ? body.stationId : undefined;
+  const role = typeof body?.role === 'string' ? body.role : undefined;
+  const rate = Number.isFinite(Number(body?.hourlyRate)) ? Number(body.hourlyRate) : 0;
 
-  const r = await clockIn(userId, stationId, role, hourlyRate);
-  if (!(r as any).ok) return NextResponse.json(r, { status: (r as any).status || 409 });
-  return NextResponse.json(r);
+  const r = await clockIn(userId, stationId, role, rate);
+  const status = (r as any).ok ? 200 : ((r as any).status ?? 409);
+  return NextResponse.json(r, { status });
 }
