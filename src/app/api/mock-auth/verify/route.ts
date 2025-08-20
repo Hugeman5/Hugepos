@@ -1,25 +1,11 @@
-import { NextResponse } from "next/server";
-import { verifyUserByIdentifierAndPin } from "@/lib/usersRepo";
-export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
-  try {
-    const body = await req.json().catch(() => ({}));
-    const identifier = String(body?.identifier ?? "").trim();
-    const pin = String(body?.pin ?? "");
-
-    if (!identifier || !/^\d{4}$/.test(pin)) {
-      return NextResponse.json({ error: "Identifier and 4-digit pin are required." }, { status: 400 });
-    }
-
-    const user = await verifyUserByIdentifierAndPin(identifier, pin);
-    if (!user) {
-       return NextResponse.json({ error: "Invalid PIN or user." }, { status: 401 });
-    }
-
-    return NextResponse.json(user, { status: 200 });
-  } catch (e) {
-    console.error("[mock-auth/verify] failed:", e);
-    return NextResponse.json({ error: "Verification failed due to a server error." }, { status: 500 });
-  }
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyPin } from '@/lib/usersRepo';
+export async function POST(req: NextRequest) {
+  let body: any = {}; try { body = await req.json(); } catch { body = {}; }
+  const id = String(body?.identifier ?? '').trim(); const pin = String(body?.pin ?? '').trim();
+  if (!id || !pin) return NextResponse.json({ ok: false, error: 'BAD_REQUEST' }, { status: 400 });
+  const user = await verifyPin(id, pin);
+  if (!user) return NextResponse.json({ ok: false, error: 'INVALID_CREDENTIALS' }, { status: 401 });
+  return NextResponse.json({ ok: true, user });
 }

@@ -1,41 +1,36 @@
 
-import { promises as fs } from "fs";
-import path from "path";
-import crypto from "crypto";
-import { type User } from "./data";
+import { readJson } from "./repos/io";
 
-export type RepoUser = User & {
+export type User = {
+  id: string;
+  name: string;
+  role: 'admin' | 'manager' | 'cashier' | 'waiter' | 'kitchen';
+  active: boolean;
+  exposeOnPinLogin?: boolean;
+  pin?: string;
   pinHash?: string;
+  email?: string;
+  username?: string;
   hourlyRate?: number;
+};
+
+const EMPTY: User[] = [];
+
+export async function getAllUsers(): Promise<User[]> {
+  const users = await readJson<User[]>('users.json', EMPTY);
+  return Array.isArray(users) ? users : EMPTY;
 }
 
-const USERS_PATH = path.join(process.cwd(), "data", "users.json");
-
-async function ensureFile() {
-  await fs.mkdir(path.dirname(USERS_PATH), { recursive: true });
-  try { await fs.access(USERS_PATH); } catch { await fs.writeFile(USERS_PATH, "[]", "utf8"); }
+export async function saveAllUsers(users: User[]) {
+  await writeJsonAtomic('users.json', users);
 }
 
-export async function getAllUsers(): Promise<RepoUser[]> {
-  await ensureFile();
-  try { 
-      const users: RepoUser[] = JSON.parse(await fs.readFile(USERS_PATH, "utf8") || "[]");
-      return users.map(u => ({ ...u, hourlyRate: u.hourlyRate ?? 0 }));
-  }
-  catch { return []; }
-}
-
-export async function saveAllUsers(users: RepoUser[]) {
-  await ensureFile();
-  await fs.writeFile(USERS_PATH, JSON.stringify(users, null, 2), "utf8");
-}
-
-export async function getUserById(id: string): Promise<RepoUser | null> {
+export async function getUserById(id: string): Promise<User | null> {
     const users = await getAllUsers();
     return users.find(u => u.id === id) || null;
 }
 
-export async function upsertUser(userToUpsert: RepoUser): Promise<RepoUser> {
+export async function upsertUser(userToUpsert: User): Promise<User> {
     const users = await getAllUsers();
     const index = users.findIndex(u => u.id === userToUpsert.id);
 
@@ -74,17 +69,44 @@ export async function resetPin(id: string, newPin: string): Promise<{ success: b
     return { success: true };
 }
 
-const sha256 = (s:string)=> crypto.createHash("sha256").update(s,"utf8").digest("hex");
 
-export async function verifyUserByIdentifierAndPin(identifier: string, pin: string) {
-  const idLower = identifier.trim().toLowerCase();
-  const users = await getAllUsers();
-  const u = users.find(x =>
-    (x.active !== false) &&
-    (String(x.id).toLowerCase() === idLower || String(x.name).trim().toLowerCase() === idLower)
+export type SafeUser = Pick<User, 'id' | 'name' | 'role' | 'active' | 'exposeOnPinLogin' | 'hourlyRate'>;
+export function toSafe(u: User): SafeUser {
+  const { id, name, role, active, exposeOnPinLogin, hourlyRate } = u;
+  return { id, name, role, active, exposeOnPinLogin: !!exposeOnPinLogin, hourlyRate: hourlyRate ?? 0 };
+}
+
+export async function listActiveForPinLogin(): Promise<SafeUser[]> {
+  const all = await getAllUsers();
+  return all.filter((u) => u.active && u.exposeOnPinLogin).map(toSafe);
+}
+
+function matchIdentifier(u: User, identifier: string): boolean {
+  const id = identifier.trim().toLowerCase();
+  return (
+    u.id.toLowerCase() === id ||
+    (u.email?.toLowerCase() === id) ||
+    (u.username?.toLowerCase() === id)
   );
-  if (!u) return null;
-  const ok = (u.pin && u.pin === pin) || (u.pinHash && u.pinHash === sha256(pin));
-  if (!ok) return null;
-  return { uid: u.id, name: u.name, role: u.role, hourlyRate: u.hourlyRate };
+}
+
+async function comparePin(u: User, pin: string): Promise<boolean> {
+  if (!pin) return false;
+  if (u.pinHash && u.pinHash.startsWith('$2')) {
+    try {
+      const bcrypt = await import('bcryptjs');
+      return await bcrypt.compare(pin, u.pinHash);
+    } catch {
+      // fall back to plain pin
+    }
+  }
+  return String(u.pin ?? '') === String(pin);
+}
+
+export async function verifyPin(identifier: string, pin: string): Promise<SafeUser | null> {
+  const users = await getAllUsers();
+  const u = users.find((user) => matchIdentifier(user, identifier));
+  if (!u || !u.active) return null;
+  const ok = await comparePin(u, pin);
+  return ok ? toSafe(u) : null;
 }
