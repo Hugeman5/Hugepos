@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listActiveForPinLogin } from '@/lib/repos/users';
+import { listActiveForPinLogin } from '@/lib/usersRepo';
 
 export const dynamic = 'force-dynamic';
 

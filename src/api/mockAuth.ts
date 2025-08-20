@@ -13,8 +13,8 @@ export function getCachedActiveUsers(): SafeUser[] | null {
 }
 
 export async function postVerify(identifier: string, pin: string) {
-    return await fetchJson("/api/mock-auth/verify", {
-        method: "POST",
+    return fetchJson('/api/mock-auth/verify', {
+        method: 'POST',
         body: JSON.stringify({ identifier, pin }),
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     });

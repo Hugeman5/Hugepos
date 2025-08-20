@@ -1,3 +1,4 @@
+'use server';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPin } from '@/lib/usersRepo';
@@ -6,8 +7,8 @@ export async function POST(req: NextRequest) {
   let body: any = {}; 
   try { 
     body = await req.json(); 
-  } catch (e) { 
-    return NextResponse.json({ ok: false, error: 'INVALID_JSON_BODY' }, { status: 400 });
+  } catch { 
+    body = {}; 
   }
 
   const id = String(body?.identifier ?? '').trim();

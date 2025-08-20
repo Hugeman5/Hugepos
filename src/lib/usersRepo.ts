@@ -1,5 +1,6 @@
 
-import { readJson, writeJsonAtomic } from "./repos/io";
+
+import { readJson } from "./repos/io";
 
 export type User = {
   id: string;
@@ -22,6 +23,7 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 export async function saveAllUsers(users: User[]) {
+  const { writeJsonAtomic } = await import('./repos/io');
   await writeJsonAtomic('users.json', users);
 }
 
