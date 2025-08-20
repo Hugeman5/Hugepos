@@ -3,48 +3,59 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
 import { routeForRole } from '@/lib/roles';
-import { type User } from '@/lib/data';
+import { getActiveUsers, getCachedActiveUsers, postVerify, SafeUser } from '@/api/mockAuth';
 
 import Avatar from '@/components/ui/Avatar';
 import { Card } from '@/components/ui/card';
 import Keypad from '@/components/ui/Keypad';
 import { setSessionUser } from '@/lib/session';
+import { Button } from '@/components/ui/Button';
 
 export default function StaffLoginPage() {
   const router = useRouter();
-  const { toast } = useToast();
-  const [users, setUsers] = useState<User[]>([]);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<SafeUser[] | null>(null);
+  const [selectedUser, setSelectedUser] = useState<SafeUser | null>(null);
   const [pin, setPin] = useState('');
+  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
 
   const didSubmitRef = useRef(false);
 
-  useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const res = await fetch('/api/mock-auth/active-users', { cache: 'no-store' });
-        if (!res.ok) throw new Error('Failed to fetch users');
-        const activeUsers: User[] = await res.json();
-        setUsers(activeUsers);
-      } catch (e) {
-        console.error("Could not load users for PIN login", e);
-        toast({ variant: 'destructive', title: 'Network Error', description: 'Could not load users.'})
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const list = await getActiveUsers();
+      setUsers(list);
+      if (!list || list.length === 0) {
+        setError('No active users found.');
       }
+    } catch (e: any) {
+      const cached = getCachedActiveUsers();
+      if (cached && cached.length > 0) {
+        setUsers(cached);
+        setError('Network failed. Using cached users.');
+      } else {
+        setError(e?.data?.error || e?.message || 'Failed to load users');
+      }
+    } finally {
       setLoading(false);
     }
-    fetchUsers();
-  }, [toast]);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
   
   const pressKey = (key: string) => {
     if (submitting) return;
     if (key === 'C') {
       setPin('');
-      setError(null);
+      setPinError(null);
       return;
     }
     if (key === '↵') {
@@ -56,41 +67,35 @@ export default function StaffLoginPage() {
     }
   };
 
-  const handleSelectUser = (user: User) => {
+  const handleSelectUser = (user: SafeUser) => {
     setSelectedUser(user);
     setPin('');
-    setError(null);
+    setPinError(null);
   }
 
   const handleSubmit = useCallback(async () => {
     if (!selectedUser || pin.length !== 4) {
-      if (!selectedUser) setError("Please select a user.");
-      else if (pin.length !== 4) setError("PIN must be 4 digits.");
+      if (!selectedUser) setPinError("Please select a user.");
+      else if (pin.length !== 4) setPinError("PIN must be 4 digits.");
       return;
     }
 
     setSubmitting(true);
     didSubmitRef.current = true;
-    setError(null);
+    setPinError(null);
 
     try {
-        const res = await fetch('/api/mock-auth/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ identifier: selectedUser.id, pin: pin })
-        });
+        const data = await postVerify(selectedUser.id, pin);
         
-        const data = await res.json();
-
-        if (!res.ok) {
+        if (data.ok && data.user) {
+          setSessionUser({ id: data.user.id, name: data.user.name, role: data.user.role, hourlyRate: data.user.hourlyRate });
+          router.push(routeForRole(data.user.role));
+        } else {
             throw new Error(data.error || 'Invalid credentials.');
         }
-        
-        setSessionUser({ id: data.uid, name: data.name, role: data.role, hourlyRate: data.hourlyRate });
-        router.push(routeForRole(data.role));
 
-    } catch (e) {
-        setError((e as Error).message);
+    } catch (e: any) {
+        setPinError(e.data?.error || e.message || 'Invalid credentials.');
     } finally {
         setSubmitting(false);
         setPin('');
@@ -105,6 +110,49 @@ export default function StaffLoginPage() {
   }, [pin, selectedUser, handleSubmit]);
 
 
+  const renderUserSelection = () => {
+    if (loading && !users) {
+      return <div className="text-sm text-[--text-dim]" data-testid="login-skeleton">Loading users…</div>;
+    }
+
+    if (error && (!users || users.length === 0)) {
+        return (
+            <div data-testid="login-error" className="text-center text-[--danger]">
+                <p>{error}</p>
+                <Button onClick={load} variant="outline" className="mt-4">Retry</Button>
+            </div>
+        );
+    }
+
+    if (!users || users.length === 0) {
+        return <div className="text-sm text-[--text-dim]">No users found.</div>
+    }
+
+    return (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {users.map(user => (
+            <button 
+                key={user.id} 
+                data-testid={`user-card-${user.id}`}
+                onClick={() => handleSelectUser(user)}
+                disabled={submitting}
+                className={`p-3 rounded-2xl border transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+                            ${selectedUser?.id === user.id ? 'border-[--accent] ring-2 ring-[--accent]' : 'border-[--line] hover:border-[--accent]'}`}
+            >
+                <div className="flex flex-col items-center gap-3">
+                <Avatar name={user.name} src={(user as any).imageUrl} size={84} />
+                <div className="text-center">
+                    <div className="font-semibold text-[--text]">{user.name}</div>
+                    <div className="text-xs text-[--text-dim] capitalize">{user.role}</div>
+                </div>
+                </div>
+            </button>
+            ))}
+        </div>
+    );
+  }
+
+
   return (
     <div className="min-h-screen bg-[--bg] text-[--text] px-6 py-8">
       <header className="max-w-6xl mx-auto flex items-center gap-3 mb-8">
@@ -113,31 +161,11 @@ export default function StaffLoginPage() {
 
       <main className="max-w-6xl mx-auto grid gap-8 md:grid-cols-2">
         <Card className="p-5">
-          <h2 className="text-lg font-semibold mb-4 text-[--text-dim]">Select User</h2>
-          {loading ? (
-            <div className="text-sm text-[--text-dim]">Loading users…</div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {users.map(user => (
-                <button 
-                  key={user.id} 
-                  data-testid={`user-card-${user.id}`}
-                  onClick={() => handleSelectUser(user)}
-                  disabled={submitting}
-                  className={`p-3 rounded-2xl border transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-                              ${selectedUser?.id === user.id ? 'border-[--accent] ring-2 ring-[--accent]' : 'border-[--line] hover:border-[--accent]'}`}
-                >
-                  <div className="flex flex-col items-center gap-3">
-                    <Avatar name={user.name} src={(user as any).imageUrl} size={84} />
-                    <div className="text-center">
-                      <div className="font-semibold text-[--text]">{user.name}</div>
-                      <div className="text-xs text-[--text-dim] capitalize">{user.role}</div>
-                    </div>
-                  </div>
-                </button>
-              ))}
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-[--text-dim]">Select User</h2>
+                {error && users && users.length > 0 && <div className="text-sm text-[--warning]">{error}</div>}
             </div>
-          )}
+            {renderUserSelection()}
         </Card>
         
         <Card className="p-5">
@@ -147,7 +175,7 @@ export default function StaffLoginPage() {
                     <div key={i} className={`h-4 w-4 rounded-full ${i < pin.length ? 'bg-[--accent]' : 'bg-[--muted]'}`} />
                 ))}
              </div>
-             {error && <p className="text-center text-[--danger] mb-4">{error}</p>}
+             {pinError && <p className="text-center text-[--danger] mb-4">{pinError}</p>}
              <Keypad onPress={pressKey} disabled={!selectedUser || submitting} />
         </Card>
       </main>

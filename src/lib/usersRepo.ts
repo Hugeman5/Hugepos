@@ -1,5 +1,5 @@
 
-import { readJson } from "./repos/io";
+import { readJson, writeJsonAtomic } from "./repos/io";
 
 export type User = {
   id: string;
@@ -70,10 +70,10 @@ export async function resetPin(id: string, newPin: string): Promise<{ success: b
 }
 
 
-export type SafeUser = Pick<User, 'id' | 'name' | 'role' | 'active' | 'exposeOnPinLogin' | 'hourlyRate'>;
+export type SafeUser = Pick<User, 'id' | 'name' | 'role' | 'active' | 'exposeOnPinLogin' | 'hourlyRate'> & { uid: string };
 export function toSafe(u: User): SafeUser {
   const { id, name, role, active, exposeOnPinLogin, hourlyRate } = u;
-  return { id, name, role, active, exposeOnPinLogin: !!exposeOnPinLogin, hourlyRate: hourlyRate ?? 0 };
+  return { id, uid: id, name, role, active, exposeOnPinLogin: !!exposeOnPinLogin, hourlyRate: hourlyRate ?? 0 };
 }
 
 export async function listActiveForPinLogin(): Promise<SafeUser[]> {
