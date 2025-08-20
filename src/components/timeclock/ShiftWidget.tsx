@@ -4,20 +4,14 @@ import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/money";
-import { getSession } from "@/lib/session";
+import { getSession, type SessionUser } from "@/lib/session";
+import { getClockStatus, postClockIn, postClockOut, postBreakStart, postBreakEnd } from '@/app/api/timeclock';
 import { type ActiveShift } from "@/lib/repos/timeclockRepo";
-
-type UserSession = {
-    uid: string;
-    name: string;
-    role: string;
-    hourlyRate?: number;
-};
 
 export default function ShiftWidget({ compact = false }: { compact?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<'in' | 'out' | 'break' | 'unknown'>('unknown');
-  const [session, setSession] = useState<UserSession | null>(null);
+  const [session, setSession] = useState<SessionUser | null>(null);
   const { toast } = useToast();
 
   const refresh = useCallback(async () => {
@@ -30,9 +24,7 @@ export default function ShiftWidget({ compact = false }: { compact?: boolean }) 
     setSession(user);
 
     try {
-        const r = await fetch(`/api/timeclock/status?userId=${user.uid}`, { cache: "no-store" });
-        if (!r.ok) { setStatus('unknown'); return; };
-        const data: { active: boolean, shift?: ActiveShift } = await r.json();
+        const data = await getClockStatus(user.id);
 
         if (!data.active) {
             setStatus('out');
@@ -50,22 +42,13 @@ export default function ShiftWidget({ compact = false }: { compact?: boolean }) 
     refresh(); 
   },[refresh]);
 
-  async function punch(endpoint: string, successMsg: string) {
+  async function punch(fn: (p: {userId: string}) => Promise<any>, successMsg: string) {
     if (!session) return;
     setBusy(true);
     try {
-      const res = await fetch(endpoint, {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ userId: session.uid })
-      });
-      if (res.ok) {
-        toast({ title: "Success", description: successMsg });
-        await refresh();
-      } else {
-        const err = await res.json();
-        throw new Error(err.error || "Action failed");
-      }
+      await fn({ userId: session.id });
+      toast({ title: "Success", description: successMsg });
+      await refresh();
     } catch(e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
     } finally { 
@@ -73,10 +56,10 @@ export default function ShiftWidget({ compact = false }: { compact?: boolean }) 
     }
   }
 
-  const clockIn = () => punch('/api/timeclock/clockin', 'You are now clocked in.');
-  const clockOut = () => punch('/api/timeclock/clockout', 'You have been clocked out.');
-  const startBreak = () => punch('/api/timeclock/break/start', 'You are now on break.');
-  const endBreak = () => punch('/api/timeclock/break/end', 'You are back from break.');
+  const clockIn = () => punch(postClockIn, 'You are now clocked in.');
+  const clockOut = () => punch(postClockOut, 'You have been clocked out.');
+  const startBreak = () => punch(postBreakStart, 'You are now on break.');
+  const endBreak = () => punch(postBreakEnd, 'You are back from break.');
 
   if (!session) return null;
 
@@ -84,7 +67,7 @@ export default function ShiftWidget({ compact = false }: { compact?: boolean }) 
 
   return (
     <div className={compact ? "flex items-center gap-2" : "flex items-center gap-4 text-sm"}>
-        <div className="flex flex-col">
+        <div className="flex flex-col text-right">
             <span className="font-semibold">{session.name}</span>
             <span className="text-xs text-muted-foreground">
                 {status === 'in' ? 'Clocked In' : (status === 'break' ? 'On Break' : 'Clocked Out')}
@@ -107,4 +90,3 @@ export default function ShiftWidget({ compact = false }: { compact?: boolean }) 
     </div>
   );
 }
-

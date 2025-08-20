@@ -28,7 +28,7 @@ export default function DashboardHeader({ title, user, shiftStatus }: DashboardH
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
       <h1 className="flex-1 text-xl font-semibold font-headline">{title}</h1>
       <div className="flex items-center gap-4">
-        {user.role !== 'admin' && <ShiftWidget />}
+        {user.role !== 'admin' && <ShiftWidget compact />}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" className="relative h-10 w-10 rounded-full !p-0">

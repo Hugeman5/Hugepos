@@ -9,14 +9,14 @@ const KEY = 'session.user';
  * This is a client-side only function.
  * @returns The user session object, or null if not found.
  */
-export function getSession(): (User & { uid: string, activeRegisterId?: string }) | null {
+export function getSession(): (SessionUser & { uid: string, activeRegisterId?: string }) | null {
     if (typeof window !== 'undefined') {
-        const storedSession = sessionStorage.getItem('mockUser');
+        const storedSession = sessionStorage.getItem(KEY);
         if (storedSession) {
             try {
                 const user = JSON.parse(storedSession);
-                 if (typeof user === 'object' && user !== null && 'uid' in user) {
-                    return { id: user.uid, ...user };
+                 if (typeof user === 'object' && user !== null && 'id' in user) {
+                    return { ...user, uid: user.id };
                  }
             } catch (error) {
                 console.error("Failed to parse user session from sessionStorage:", error);
@@ -30,8 +30,7 @@ export function getSession(): (User & { uid: string, activeRegisterId?: string }
 export function setSessionUser(u: SessionUser) {
     if (typeof window !== 'undefined') {
         try { 
-            const sessionData = { ...u, uid: u.id };
-            sessionStorage.setItem('mockUser', JSON.stringify(sessionData)); 
+            sessionStorage.setItem(KEY, JSON.stringify(u)); 
         } catch {}
     }
 }
