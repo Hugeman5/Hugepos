@@ -5,6 +5,7 @@ import * as ordersRepo from '@/lib/ordersRepo';
 import * as paymentsRepo from '@/lib/paymentsRepo';
 import * as inventoryRepo from '@/lib/inventoryRepo';
 import * as shiftsRepo from '@/lib/shiftsRepo';
+import { recordPayment } from '@/lib/registerRepo';
 import * as loyaltyRepo from '@/lib/loyaltyRepo';
 import * as customersRepo from '@/lib/customersRepo';
 import * as giftCardsRepo from '@/lib/giftCardsRepo';
@@ -14,7 +15,7 @@ import { cashRound } from '@/lib/money';
 export const dynamic = "force-dynamic";
 
 const paymentSchema = z.object({
-  type: z.enum(['cash', 'card', 'gift_card', 'other']),
+  type: z.enum(['cash', 'card', 'gift_card', 'eft', 'other']),
   amount: z.number().positive(),
   tendered: z.number().optional(), // For cash
   last4: z.string().optional(), // For card
@@ -93,15 +94,6 @@ export async function POST(
       return NextResponse.json({ message: `Total payment amount ${totalPaid} is less than order total ${orderTotalDue}.` }, { status: 400 });
     }
 
-    if (!order.shiftId) {
-        const openShift = await shiftsRepo.getOpenShiftForRegister(user.activeRegisterId);
-        if (openShift) {
-            order.shiftId = openShift.id;
-        } else {
-             return NextResponse.json({ message: `No open shift to associate payment with.` }, { status: 400 });
-        }
-    }
-
     // --- Process payments ---
     for (const payment of payments) {
         let paymentAmount = payment.amount;
@@ -123,7 +115,7 @@ export async function POST(
             paymentAmount = paymentRecord.amountRounded; // Use rounded amount for calculations
         }
 
-
+        // Record payment in master payment log
         await paymentsRepo.appendPayment({
             orderId,
             type: payment.type,
@@ -135,8 +127,8 @@ export async function POST(
             ...paymentRecord
         });
         
-        // Correctly record payment in the shift
-        await shiftsRepo.recordPayment(order.shiftId, payment.type, payment.amount, order.id);
+        // Record payment in the currently active shift
+        await recordPayment(payment.type, payment.amount, order.id);
     }
 
     order.status = 'PAID';

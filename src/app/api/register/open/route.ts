@@ -1,41 +1,27 @@
 
 import { NextResponse } from 'next/server';
-import * as shiftsRepo from '@/lib/shiftsRepo';
+import { openShift } from '@/lib/registerRepo';
 import { z } from 'zod';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-const openShiftSchema = z.object({
-  registerId: z.string().min(1, 'Register ID is required'),
-  floatAmount: z.number().min(0, 'Float amount cannot be negative'),
-  user: z.object({
-    id: z.string(),
-    name: z.string(),
-  })
+const schema = z.object({
+  userId: z.string().min(1),
+  float: z.number().min(0),
 });
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const validation = openShiftSchema.safeParse(body);
+    const validation = schema.safeParse(body);
     if (!validation.success) {
-      return NextResponse.json({ message: "Invalid data", errors: validation.error.errors }, { status: 400 });
+      return NextResponse.json(validation.error.flatten().fieldErrors, { status: 400 });
     }
-    
-    if (!validation.data.user) {
-        return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-    }
-
-    const { registerId, floatAmount, user } = validation.data;
-    const shift = await shiftsRepo.openShift(registerId, floatAmount, user);
-    
-    return NextResponse.json({ success: true, shift });
-
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    if (errorMessage.includes("already open")) {
-        return NextResponse.json({ message: errorMessage }, { status: 409 });
-    }
-    return NextResponse.json({ message: "Failed to open shift", error: errorMessage }, { status: 500 });
+    const shift = await openShift(validation.data.userId, validation.data.float);
+    return NextResponse.json(shift);
+  } catch (e) {
+    const error = e as Error;
+    const status = error.message.includes("already open") ? 409 : 500;
+    return NextResponse.json({ error: error.message }, { status });
   }
 }

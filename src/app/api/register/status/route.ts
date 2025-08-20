@@ -1,42 +1,17 @@
 
-
 import { NextResponse } from 'next/server';
-import * as shiftsRepo from '@/lib/shiftsRepo';
-import { getSession } from '@/lib/session';
-import { getRegister } from '@/lib/registersRepo';
+import { getRegister } from '@/lib/registerRepo';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url);
-    const registerId = searchParams.get('registerId');
-    
-    const user = getSession();
-    const targetRegisterId = registerId || user?.activeRegisterId;
-    
-    if (!targetRegisterId) {
-        return NextResponse.json({ isOpen: false, current: null });
-    }
-
-    const openShift = await shiftsRepo.getOpenShiftForRegister(targetRegisterId);
-    
-    if (openShift) {
-        const register = await getRegister(targetRegisterId);
-        return NextResponse.json({ 
-            isOpen: true, 
-            current: {
-                ...openShift,
-                registerName: register?.name || targetRegisterId
-            } 
-        });
-    }
-
-    return NextResponse.json({ isOpen: false, current: null });
-
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    return NextResponse.json({ message: "Failed to get shift status", error: errorMessage }, { status: 500 });
+    const registerState = await getRegister();
+    return NextResponse.json({
+      isOpen: !!registerState.current,
+      current: registerState.current,
+    });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
 }
-
