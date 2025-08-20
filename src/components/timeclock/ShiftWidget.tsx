@@ -1,9 +1,11 @@
 
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/money";
+import { getSession } from "@/lib/session";
+import { type ActiveShift } from "@/lib/repos/timeclockRepo";
 
 type UserSession = {
     uid: string;
@@ -12,55 +14,57 @@ type UserSession = {
     hourlyRate?: number;
 };
 
-export default function ShiftWidget({ compact=false }: { compact?: boolean }) {
+export default function ShiftWidget({ compact = false }: { compact?: boolean }) {
   const [busy, setBusy] = useState(false);
-  const [last, setLast] = useState<"in"|"out"|"breakStart"|"breakEnd"|null>(null);
+  const [status, setStatus] = useState<'in' | 'out' | 'break' | 'unknown'>('unknown');
   const [session, setSession] = useState<UserSession | null>(null);
   const { toast } = useToast();
 
-  const refresh = async () => {
-    // Restore session
-    const storedSession = sessionStorage.getItem('mockUser');
-    if (storedSession) {
-        const parsedSession = JSON.parse(storedSession);
-        setSession(parsedSession);
+  const refresh = useCallback(async () => {
+    const user = getSession();
+    if (!user) {
+        setSession(null);
+        setStatus('unknown');
+        return;
     }
-    
-    // Pull last 1 day punches for status
-    const from = new Date(Date.now()-24*3600e3).toISOString();
+    setSession(user);
+
     try {
-        const r = await fetch(`/api/timeclock/punches?from=${from}`, { cache:"no-store" });
-        if (!r.ok) return;
-        const rows: Array<{type:string; ts:string}> = await r.json();
-        const lastType = rows.length ? rows[rows.length-1].type as any : null;
-        setLast(lastType);
+        const r = await fetch(`/api/timeclock/status?userId=${user.uid}`, { cache: "no-store" });
+        if (!r.ok) { setStatus('unknown'); return; };
+        const data: { active: boolean, shift?: ActiveShift } = await r.json();
+
+        if (!data.active) {
+            setStatus('out');
+        } else if (data.shift?.breaks.some(b => !b.end)) {
+            setStatus('break');
+        } else {
+            setStatus('in');
+        }
     } catch (e) {
-        // fail silently on refresh
+        setStatus('unknown');
     }
-  };
+  }, []);
 
   useEffect(()=>{ 
     refresh(); 
-  },[]);
+  },[refresh]);
 
-  async function punch(type:"in"|"out") {
+  async function punch(endpoint: string, successMsg: string) {
+    if (!session) return;
     setBusy(true);
-    const sessionHeader = sessionStorage.getItem('mockUser') || '';
     try {
-      const res = await fetch("/api/timeclock/punch", {
+      const res = await fetch(endpoint, {
         method:"POST",
-        headers:{ 
-            "Content-Type":"application/json",
-            "X-User-Session": sessionHeader
-        },
-        body: JSON.stringify({ type })
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ userId: session.uid })
       });
       if (res.ok) {
-        toast({ title: "Success", description: `You have been clocked ${type}.` });
+        toast({ title: "Success", description: successMsg });
         await refresh();
       } else {
         const err = await res.json();
-        throw new Error(err.error || "Punch failed");
+        throw new Error(err.error || "Action failed");
       }
     } catch(e) {
         toast({ variant: 'destructive', title: 'Error', description: (e as Error).message });
@@ -69,22 +73,38 @@ export default function ShiftWidget({ compact=false }: { compact?: boolean }) {
     }
   }
 
-  const clockedIn = last === "in" || last === "breakEnd";
-  const onBreak = last === "breakStart";
-  
-  const rateText = session?.hourlyRate ? ` · ${formatMoney(session.hourlyRate)}/h` : '';
+  const clockIn = () => punch('/api/timeclock/clockin', 'You are now clocked in.');
+  const clockOut = () => punch('/api/timeclock/clockout', 'You have been clocked out.');
+  const startBreak = () => punch('/api/timeclock/break/start', 'You are now on break.');
+  const endBreak = () => punch('/api/timeclock/break/end', 'You are back from break.');
+
+  if (!session) return null;
+
+  const rateText = session.hourlyRate ? ` · ${formatMoney(session.hourlyRate)}/h` : '';
 
   return (
-    <div className={compact ? "flex items-center gap-2" : "flex items-center gap-8"}>
-      <div className="text-xs opacity-70">
-        Status: {clockedIn ? `Clocked in` : (onBreak ? `On Break` : `Clocked out`)}
-        {rateText}
-      </div>
-      {!clockedIn && !onBreak ? (
-        <Button size="sm" disabled={busy} onClick={()=>punch("in")}>Clock In</Button>
-      ) : (
-        <Button size="sm" variant="secondary" disabled={busy} onClick={()=>punch("out")}>Clock Out</Button>
-      )}
+    <div className={compact ? "flex items-center gap-2" : "flex items-center gap-4 text-sm"}>
+        <div className="flex flex-col">
+            <span className="font-semibold">{session.name}</span>
+            <span className="text-xs text-muted-foreground">
+                {status === 'in' ? 'Clocked In' : (status === 'break' ? 'On Break' : 'Clocked Out')}
+                {status === 'in' && rateText}
+            </span>
+        </div>
+        
+        {status === 'out' && <Button size="sm" disabled={busy} onClick={clockIn}>Clock In</Button>}
+
+        {status === 'in' && (
+            <>
+                <Button size="sm" variant="secondary" disabled={busy} onClick={startBreak}>Start Break</Button>
+                <Button size="sm" variant="destructive" disabled={busy} onClick={clockOut}>Clock Out</Button>
+            </>
+        )}
+
+        {status === 'break' && (
+             <Button size="sm" disabled={busy} onClick={endBreak}>End Break</Button>
+        )}
     </div>
   );
 }
+

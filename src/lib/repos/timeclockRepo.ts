@@ -13,12 +13,30 @@ export type Punch = {
   note?: string;
 };
 
+export type ActiveShift = {
+  shiftId: string;
+  clockInAt: string;
+  breaks: Array<{ start: string; end?: string }>;
+  stationId?: string;
+  role: string;
+  hourlyRate: number;
+}
+
+export type ShiftHistory = {
+  userId: string;
+  shiftId: string;
+  clockInAt: string;
+  clockOutAt: string;
+  breaks: Array<{ start: string; end: string }>;
+  workedSeconds: number;
+  breakSeconds: number;
+  paidSeconds: number;
+  laborCost: number;
+}
+
 export type TimeclockFile = {
-  punches: Punch[];
-  settings?: {
-    timezone?: string;          // default "Africa/Johannesburg"
-    roundingMinutes?: number;   // default 1 (no rounding). Could be 15 later
-  };
+  active: Record<string, ActiveShift>;
+  history: ShiftHistory[];
 };
 
 const FILE = path.join(process.cwd(), "data", "timeclock.json");
@@ -27,9 +45,9 @@ const TZ = "Africa/Johannesburg";
 async function read(): Promise<TimeclockFile> {
   try {
     const raw = await fs.readFile(FILE, "utf8");
-    return JSON.parse(raw || '{"punches":[]}');
+    return JSON.parse(raw || '{"active":{},"history":[]}');
   } catch {
-    const defaultData = { punches: [], settings: { timezone: TZ, roundingMinutes: 1 } };
+    const defaultData = { active: {}, history: [] };
     await write(defaultData);
     return defaultData;
   }
@@ -38,230 +56,109 @@ async function write(data: TimeclockFile) {
   await fs.mkdir(path.dirname(FILE), { recursive: true });
   await fs.writeFile(FILE, JSON.stringify(data, null, 2), "utf8");
 }
-const uuid = () => "tc_" + Math.random().toString(36).slice(2, 10);
+const uuid = (prefix = "tc_") => prefix + Math.random().toString(36).slice(2, 10);
 
-export async function addPunch(p: Omit<Punch,"id"|"ts"> & { ts?: string }) {
-  const db = await read();
-  const id = uuid();
-  const ts = p.ts ?? new Date().toISOString();
-  db.punches.push({ id, userId: p.userId, type: p.type, ts, station: p.station, note: p.note });
-  await write(db);
-  return { id, ts };
-}
-export async function updatePunch(id:string, patch: Partial<Omit<Punch,"id">>) {
-  const db = await read();
-  const i = db.punches.findIndex(x=>x.id===id);
-  if (i<0) return null;
-  db.punches[i] = { ...db.punches[i], ...patch };
-  await write(db);
-  return db.punches[i];
-}
-export async function deletePunch(id:string) {
-  const db = await read();
-  const before = db.punches.length;
-  db.punches = db.punches.filter(p=>p.id!==id);
-  await write(db);
-  return before - db.punches.length;
-}
-export async function listPunches(opts?: { userId?:string; from?:string; to?:string }) {
-  const db = await read();
-  let rows = db.punches.slice().sort((a,b)=>a.ts.localeCompare(b.ts));
-  if (opts?.userId) rows = rows.filter(p=>p.userId===opts.userId);
-  if (opts?.from) rows = rows.filter(p=>p.ts >= opts.from!);
-  if (opts?.to) rows = rows.filter(p=>p.ts < opts.to!);
-  return rows;
+export async function getStatus(userId: string): Promise<{ active: boolean, shift?: ActiveShift }> {
+    const db = await read();
+    const shift = db.active[userId];
+    return { active: !!shift, shift };
 }
 
-export async function activeNow() {
-    const oneDayAgo = new Date(Date.now() - 24 * 3600e3).toISOString();
-    const recentPunches = await listPunches({ from: oneDayAgo });
+export async function clockIn(data: { userId: string; stationId?: string; role?: string; hourlyRate?: number }): Promise<ActiveShift> {
+    const db = await read();
+    if (db.active[data.userId]) throw new Error("User is already clocked in.");
 
-    const activeUsers: { userId: string, startedAt: string, elapsedMs: number }[] = [];
-    const punchesByUser: Record<string, Punch[]> = {};
+    const user = (await getAllUsers()).find(u => u.id === data.userId);
 
-    for (const punch of recentPunches) {
-        if (!punchesByUser[punch.userId]) punchesByUser[punch.userId] = [];
-        punchesByUser[punch.userId].push(punch);
-    }
+    const newShift: ActiveShift = {
+        shiftId: `tc_${new Date().toISOString().split('T')[0]}_${data.userId}`,
+        clockInAt: new Date().toISOString(),
+        breaks: [],
+        stationId: data.stationId,
+        role: data.role || user?.role || 'cashier',
+        hourlyRate: data.hourlyRate ?? user?.hourlyRate ?? 0,
+    };
+    db.active[data.userId] = newShift;
+    await write(db);
+    return newShift;
+}
+
+export async function clockOut(userId: string): Promise<ShiftHistory> {
+    const db = await read();
+    const shift = db.active[userId];
+    if (!shift) throw new Error("User is not clocked in.");
     
-    for (const userId in punchesByUser) {
-        const userPunches = punchesByUser[userId];
-        const lastPunch = userPunches[userPunches.length - 1];
-        if (lastPunch && (lastPunch.type === 'in' || lastPunch.type === 'breakEnd')) {
-             activeUsers.push({
-                userId,
-                startedAt: lastPunch.ts,
-                elapsedMs: new Date().getTime() - new Date(lastPunch.ts).getTime()
-            });
-        }
-    }
+    const clockOutTime = new Date();
+    const clockInTime = new Date(shift.clockInAt);
     
-    return activeUsers;
+    const breakSeconds = shift.breaks.reduce((total, b) => {
+        const start = new Date(b.start).getTime();
+        const end = b.end ? new Date(b.end).getTime() : clockOutTime.getTime();
+        return total + (end - start) / 1000;
+    }, 0);
+
+    const workedSeconds = (clockOutTime.getTime() - clockInTime.getTime()) / 1000;
+    const paidSeconds = workedSeconds - breakSeconds;
+    const laborCost = (paidSeconds / 3600) * shift.hourlyRate;
+
+    const historyEntry: ShiftHistory = {
+        userId,
+        shiftId: shift.shiftId,
+        clockInAt: shift.clockInAt,
+        clockOutAt: clockOutTime.toISOString(),
+        breaks: shift.breaks.filter(b => b.end) as any, // Only save completed breaks
+        workedSeconds,
+        breakSeconds,
+        paidSeconds,
+        laborCost,
+    };
+
+    db.history.unshift(historyEntry);
+    delete db.active[userId];
+    await write(db);
+    return historyEntry;
 }
 
 
-export async function earningsForRange(opts: { from: string, to: string, userId?: string }) {
-    const allUsers = await getAllUsers();
-    const usersMap = new Map(allUsers.map(u => [u.id, u]));
+export async function startBreak(userId: string): Promise<ActiveShift> {
+    const db = await read();
+    const shift = db.active[userId];
+    if (!shift) throw new Error("User is not clocked in.");
+    if (shift.breaks.some(b => !b.end)) throw new Error("User is already on break.");
 
-    const allUserPunches = await listPunches({ userId: opts.userId });
+    shift.breaks.push({ start: new Date().toISOString() });
+    await write(db);
+    return shift;
+}
+
+export async function endBreak(userId: string): Promise<ActiveShift> {
+    const db = await read();
+    const shift = db.active[userId];
+    if (!shift) throw new Error("User is not clocked in.");
+    const openBreak = shift.breaks.find(b => !b.end);
+    if (!openBreak) throw new Error("User is not on break.");
+
+    openBreak.end = new Date().toISOString();
+    await write(db);
+    return shift;
+}
+
+export async function getReport(from?: string, to?: string) {
+    const { history } = await read();
+    const fromTime = from ? new Date(from).getTime() : 0;
+    const toTime = to ? new Date(to).getTime() : Date.now();
     
-    const byUser: Record<string, { totalMs: number, earningsZar: number }> = {};
-    const punchesByUser: Record<string, Punch[]> = {};
-    
-    for (const punch of allUserPunches) {
-        if (!punchesByUser[punch.userId]) punchesByUser[punch.userId] = [];
-        punchesByUser[punch.userId].push(punch);
+    const filtered = history.filter(h => {
+        const ts = new Date(h.clockInAt).getTime();
+        return ts >= fromTime && ts <= toTime;
+    });
+
+    const summary: Record<string, { totalPaidSeconds: number; totalLaborCost: number; shifts: number }> = {};
+    for(const h of filtered) {
+        if (!summary[h.userId]) summary[h.userId] = { totalPaidSeconds: 0, totalLaborCost: 0, shifts: 0 };
+        summary[h.userId].totalPaidSeconds += h.paidSeconds;
+        summary[h.userId].totalLaborCost += h.laborCost;
+        summary[h.userId].shifts++;
     }
-
-    const fromTime = new Date(opts.from).getTime();
-    const toTime = new Date(opts.to).getTime();
-
-    for (const userId of Object.keys(punchesByUser)) {
-        if (!usersMap.has(userId)) continue;
-
-        const userPunches = punchesByUser[userId];
-        const user = usersMap.get(userId);
-        const hourlyRate = user?.hourlyRate ?? 0;
-        
-        if (!byUser[userId]) byUser[userId] = { totalMs: 0, earningsZar: 0 };
-        
-        let sessionStart: number | null = null;
-        
-        // Find initial state before the 'from' date
-        const punchesBefore = allUserPunches.filter(p => p.userId === userId && new Date(p.ts).getTime() < fromTime);
-        const lastPunchBefore = punchesBefore.pop();
-
-        if (lastPunchBefore) {
-            if (lastPunchBefore.type === 'in' || lastPunchBefore.type === 'breakEnd') {
-                sessionStart = fromTime; // Start counting from the beginning of the range
-            }
-        }
-
-        for (const punch of userPunches) {
-            const punchTime = new Date(punch.ts).getTime();
-
-            if (punchTime < fromTime || punchTime > toTime) continue;
-            
-            if (punch.type === 'in' || punch.type === 'breakEnd') {
-                if (sessionStart) console.warn(`Consecutive clock-in/break-end for ${userId}`);
-                sessionStart = punchTime;
-            } else if ((punch.type === 'out' || punch.type === 'breakStart') && sessionStart) {
-                byUser[userId].totalMs += (punchTime - sessionStart);
-                sessionStart = null;
-            }
-        }
-        
-        if (sessionStart) { // Still clocked in at end of range
-            byUser[userId].totalMs += (toTime - sessionStart);
-        }
-
-        byUser[userId].earningsZar = (byUser[userId].totalMs / 3600000) * hourlyRate;
-    }
-    
-    return byUser;
-}
-
-export async function statusFor(userId: string) {
-  const punches = await listPunches({ userId });
-  const lastPunch = punches[punches.length - 1];
-  if (!lastPunch) return { state: "off" as const };
-  if (lastPunch.type === "out") return { state: "off" as const };
-  if (lastPunch.type === "breakStart") return { state: "break" as const };
-  return { state: "on" as const };
-}
-
-export async function clockIn(userId: string, ts = Date.now()) {
-  const status = await statusFor(userId);
-  if (status.state !== 'off') return; // Idempotent
-  await addPunch({ userId, type: 'in', ts: new Date(ts).toISOString() });
-}
-
-export async function breakStart(userId: string, ts = Date.now()) {
-  const status = await statusFor(userId);
-  if (status.state !== 'on') return; // Can only start break if 'on'
-  await addPunch({ userId, type: 'breakStart', ts: new Date(ts).toISOString() });
-}
-
-export async function breakEnd(userId: string, ts = Date.now()) {
-  const status = await statusFor(userId);
-  if (status.state !== 'break') return; // Can only end a break if 'on break'
-  await addPunch({ userId, type: 'breakEnd', ts: new Date(ts).toISOString() });
-}
-
-export async function clockOut(userId: string, ts = Date.now()) {
-  const status = await statusFor(userId);
-  if (status.state === 'off') return; // Idempotent
-  await addPunch({ userId, type: 'out', ts: new Date(ts).toISOString() });
-}
-
-
-export async function summary(fromISO?: string, toISO?: string) {
-  const from = fromISO ? new Date(fromISO) : undefined;
-  const to   = toISO   ? new Date(toISO)   : undefined;
-
-  const allShifts = await listPunches({ from: from?.toISOString(), to: to?.toISOString() });
-  const users = await getAllUsers(); // { id, hourlyRate?, name? }
-  const usersMap = new Map(users.map(u => [u.id, u]));
-
-  const punchesByUser: Record<string, Punch[]> = {};
-    for (const punch of allShifts) {
-        if (!punchesByUser[punch.userId]) punchesByUser[punch.userId] = [];
-        punchesByUser[punch.userId].push(punch);
-    }
-  
-  const byUser = new Map<string, { minutes: number; shifts: number; hourlyRate: number; name: string }>();
-
-  for (const userId in punchesByUser) {
-    const userPunches = punchesByUser[userId];
-    const user = usersMap.get(userId);
-    const rate = Number(user?.hourlyRate ?? 0);
-    const name = String(user?.name ?? userId);
-
-    let totalMs = 0;
-    let shiftCount = 0;
-    let sessionStart: number | null = null;
-    let breakStart: number | null = null;
-
-    for (const p of userPunches) {
-        const ts = new Date(p.ts).getTime();
-        
-        if (p.type === 'in') {
-            if (sessionStart) console.warn(`Found clock-in for ${userId} while already clocked in.`);
-            sessionStart = ts;
-            shiftCount++;
-        } else if (p.type === 'breakStart') {
-            if (sessionStart) {
-                totalMs += (ts - sessionStart);
-            }
-            sessionStart = null; // Pause work timer
-            breakStart = ts;
-        } else if (p.type === 'breakEnd') {
-            breakStart = null;
-            sessionStart = ts; // Resume work timer
-        } else if (p.type === 'out') {
-            if (sessionStart) {
-                 totalMs += (ts - sessionStart);
-            }
-            sessionStart = null;
-            breakStart = null;
-        }
-    }
-    
-    const acc = byUser.get(userId) ?? { minutes: 0, shifts: 0, hourlyRate: rate, name };
-    acc.minutes += Math.round(totalMs / 60000);
-    acc.shifts = shiftCount;
-    acc.hourlyRate = rate;
-    acc.name = name;
-    byUser.set(userId, acc);
-  }
-
-  // shape: array so it’s easy to render
-  const rows = [...byUser.entries()].map(([userId, v]) => {
-    const hours = v.minutes / 60;
-    const wage  = hours * v.hourlyRate;
-    return { userId, name: v.name, shifts: v.shifts, minutes: v.minutes, hours: Number(hours.toFixed(2)), hourlyRate: v.hourlyRate, wage: Number(wage.toFixed(2)) };
-  });
-
-  return { rows };
+    return summary;
 }

@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { getMenu } from "@/lib/menuRepo";
 
@@ -12,5 +13,3 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to load menu" }, { status: 500 });
   }
 }
-
-    

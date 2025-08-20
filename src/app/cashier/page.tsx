@@ -12,7 +12,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { type Menu, type MenuItem, type CartLineMod } from '@/lib/menuRepo';
 import { type Settings } from '@/lib/settingsRepo';
-import ShiftControls from '@/components/staff/ShiftControls';
 import { getSession } from '@/lib/session';
 
 // A constant for the cashier register ID. In a real app, this might be dynamic.
@@ -104,7 +103,7 @@ export default function CashierDashboardPage() {
     } catch (error) {
         toast({ variant: 'destructive', title: 'ScanError', description: (error as Error).message });
     }
-  }, [menuData, toast]);
+  }, [menuData]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
