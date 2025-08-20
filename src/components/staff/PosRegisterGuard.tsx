@@ -1,4 +1,5 @@
 
+'use client';
 import React, { useEffect, useState, useCallback } from 'react';
 import { ensureRegisterOpen } from '@/hooks/useEnsureRegisterOpen';
 import { getClockStatus, postClockIn } from '@/app/api/timeclock';
@@ -60,9 +61,14 @@ export function PosRegisterGuard({ user, onOpened }: { user: User; onOpened?: ()
         <span>⚠️</span>
         <strong>No Open Register</strong>
       </div>
+      {!clockedIn && (
+        <div className="bg-yellow-900/50 text-yellow-300 p-2 rounded-md mb-4 text-sm">
+          You are clocked out. Clock in to open the register.
+        </div>
+      )}
       <p className="text-sm text-brand-mute mb-4">A register shift must be opened before processing sales.</p>
       <div className="flex flex-col sm:flex-row gap-2">
-        {!clockedIn && <Button onClick={clockInAndOpen} disabled={busy} className="flex-1 bg-green-600 hover:bg-green-700"> {busy ? 'Working…' : 'Clock In & Open'} </Button>}
+        <Button onClick={clockInAndOpen} disabled={busy || clockedIn} className="flex-1 bg-green-600 hover:bg-green-700"> {busy ? 'Working…' : 'Clock In & Open'} </Button>
         <Button onClick={openOnly} disabled={openDisabled} title={clockedIn ? 'Open Register' : 'Clock in first'} className="flex-1">Open Register</Button>
       </div>
       {err && <div className="text-xs text-destructive mt-2">Failed: {err}</div>}

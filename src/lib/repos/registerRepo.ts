@@ -13,6 +13,7 @@ export interface RegisterFile {
 
 export interface RegisterShift {
   id: string;
+  registerId: string;
   openedAt: string;
   openedBy: string;
   openedByName: string;
@@ -35,13 +36,14 @@ export async function getRegister(): Promise<RegisterFile> {
   return readJson<RegisterFile>('register.json', DEFAULT_REGISTER);
 }
 
-export async function openRegister(userId: string, userName: string, openingFloat: number, notes?: string) {
+export async function openRegister(userId: string, userName: string, registerId: string, openingFloat: number, notes?: string) {
   const file = await getRegister();
   if (file.state === 'OPEN' && file.currentShift) {
     return { ok: false as const, status: 409, error: 'REGISTER_ALREADY_OPEN', register: file };
   }
   const shift: RegisterShift = {
     id: `rsh_${await nextSeq('shift')}`,
+    registerId,
     openedAt: nowIso(),
     openedBy: userId,
     openedByName: userName,

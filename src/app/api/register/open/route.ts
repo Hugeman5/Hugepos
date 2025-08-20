@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 const schema = z.object({
   userId: z.string().min(1, 'User ID is required.'),
   userName: z.string().min(1, 'User name is required.'),
+  registerId: z.string().min(1, 'Register ID is required.'),
   openingFloat: z.number().min(0, 'Float must be non-negative.'),
   notes: z.string().optional(),
 });
@@ -20,17 +21,18 @@ export async function POST(req: Request) {
     if (!validation.success) {
       return NextResponse.json({ ok: false, error: "BAD_REQUEST", details: validation.error.flatten().fieldErrors }, { status: 400 });
     }
-    const { userId, userName, openingFloat, notes } = validation.data;
+    const { userId, userName, registerId, openingFloat, notes } = validation.data;
 
     // Gate: User must be clocked in
     try {
       const tc = await getTimeclockStatus(userId);
       if (!tc.active) return NextResponse.json({ ok: false, error: 'NOT_CLOCKED_IN' }, { status: 403 });
     } catch {
+      // If time clock file missing or unreadable, treat as not clocked-in
       return NextResponse.json({ ok: false, error: 'NOT_CLOCKED_IN' }, { status: 403 });
     }
 
-    const result = await openRegister(userId, userName, openingFloat, notes);
+    const result = await openRegister(userId, userName, registerId, openingFloat, notes);
     if (!result.ok) {
         return NextResponse.json(result, { status: result.status });
     }

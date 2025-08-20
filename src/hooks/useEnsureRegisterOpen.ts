@@ -33,12 +33,12 @@ export async function ensureRegisterOpen(
   // 2. Check if register is already open
   try {
     const s = await getRegisterStatus();
-    if (s.current && s.current.registerId === registerId && s.state === 'OPEN') {
+    if (s.currentShift?.registerId === registerId && s.state === 'OPEN') {
       return { opened: false, alreadyOpen: true };
     }
-    // A shift is open on a DIFFERENT register, which is not allowed.
+    // A shift is open on a DIFFERENT register, which is not allowed in some models.
     if(s.state === 'OPEN') {
-      return { opened: false, alreadyOpen: false, error: `A shift is already open on another register (${s.current?.registerId})` };
+      return { opened: false, alreadyOpen: false, error: `A shift is already open on another register (${s.currentShift?.registerId})` };
     }
   } catch (e: any) {
     // If status check fails, proceed cautiously

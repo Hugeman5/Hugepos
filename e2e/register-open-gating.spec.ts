@@ -20,7 +20,7 @@ test.describe('Register open requires clock-in', () => {
     await api.post('/api/timeclock/clockout', { data: { userId: USER } }).catch(() => {});
 
     // Attempt open → expect 403
-    const r1 = await api.post('/api/register/open', { data: { userId: USER, userName: 'E2E Test', openingFloat: 500 } });
+    const r1 = await api.post('/api/register/open', { data: { userId: USER, userName: 'E2E Test', registerId: 'checkout_counter', openingFloat: 500 } });
     expect(r1.status()).toBe(403);
     const body1 = await r1.json();
     expect(body1.error).toBe('NOT_CLOCKED_IN');
@@ -28,11 +28,11 @@ test.describe('Register open requires clock-in', () => {
 
     // Clock-in, then open should work or be already open
     await api.post('/api/timeclock/clockin', { data: { userId: USER, stationId: 'front', role: 'cashier' } });
-    const r2 = await api.post('/api/register/open', { data: { userId: USER, userName: 'E2E Test', openingFloat: 500 } });
+    const r2 = await api.post('/api/register/open', { data: { userId: USER, userName: 'E2E Test', registerId: 'checkout_counter', openingFloat: 500 } });
     expect(r2.status()).toBe(200);
 
     // Attempting to open again should fail with 409
-    const r3 = await api.post('/api/register/open', { data: { userId: USER, userName: 'E2E Test', openingFloat: 500 } });
+    const r3 = await api.post('/api/register/open', { data: { userId: USER, userName: 'E2E Test', registerId: 'checkout_counter', openingFloat: 500 } });
     expect(r3.status()).toBe(409);
     const body3 = await r3.json();
     expect(body3.error).toBe('REGISTER_ALREADY_OPEN');
